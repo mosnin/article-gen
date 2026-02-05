@@ -77,7 +77,21 @@ The 5 keywords should be high-intent keywords related to the topic. They should 
         .replace(/```(?:json)?\n?/g, "")
         .replace(/```/g, "")
         .trim();
-      metadata = JSON.parse(cleaned);
+      const parsed = JSON.parse(cleaned);
+
+      const defaultSlug = topic
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+
+      metadata = {
+        title: parsed.title || topic,
+        metaDescription:
+          parsed.metaDescription || `Learn everything about ${topic}`,
+        slug: parsed.slug || defaultSlug,
+        focusKeyword: parsed.focusKeyword || focusKeyword || topic,
+        keywords: Array.isArray(parsed.keywords) ? parsed.keywords : [],
+      };
     } catch {
       metadata = {
         title: topic,
