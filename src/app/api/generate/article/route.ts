@@ -5,27 +5,14 @@ export const maxDuration = 60;
 
 const MODEL = "gpt-4.1-mini";
 
-interface GenerationResult {
-  title: string;
-  metaDescription: string;
-  slug: string;
-  focusKeyword: string;
-  keywords: string[];
-  article: string;
-  imagePrompts: {
-    type: string;
-    prompt: string;
-    altText: string;
-  }[];
-}
-
 export async function POST(req: NextRequest) {
   try {
-    const { topic, focusKeyword } = await req.json();
+    const { topic, focusKeyword, articleContext, researchContext } =
+      await req.json();
 
-    if (!topic) {
+    if (!topic || !articleContext || !researchContext) {
       return NextResponse.json(
-        { error: "Topic is required" },
+        { error: "Missing required fields from research phase" },
         { status: 400 }
       );
     }
@@ -39,64 +26,6 @@ export async function POST(req: NextRequest) {
     }
 
     const openai = new OpenAI({ apiKey });
-
-    // Step 1: Organize the context of the article
-    const step1 = await openai.chat.completions.create({
-      model: MODEL,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an expert content strategist and SEO specialist. Your job is to organize the context and structure for a comprehensive article.",
-        },
-        {
-          role: "user",
-          content: `Organize the context for a comprehensive, SEO-optimized article about: "${topic}"${focusKeyword ? `. The main focus keyword is: "${focusKeyword}"` : ""}.
-
-Please provide:
-1. The main theme and angle of the article
-2. Target audience
-3. Key points to cover (at least 8-10 subtopics)
-4. The logical flow and structure
-5. What questions readers might have
-6. Suggested focus keyword if not provided
-7. 5 high-intent related keywords
-
-Format your response clearly with labeled sections.`,
-        },
-      ],
-      temperature: 0.7,
-    });
-
-    const articleContext = step1.choices[0].message.content || "";
-
-    // Step 2: Search for factual context using web search
-    const step2 = await openai.chat.completions.create({
-      model: MODEL,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a research assistant. Provide factual, well-sourced information with real URLs to authoritative sources. Include statistics, expert opinions, and recent developments.",
-        },
-        {
-          role: "user",
-          content: `Research and provide approximately 1000 words of factual context about: "${topic}"
-
-Include:
-- Current statistics and data points
-- Expert opinions and quotes
-- Recent developments and trends
-- Historical context where relevant
-- At least 5 authoritative source URLs (from sites like .gov, .edu, major publications, industry leaders)
-
-Format each fact with its source URL. Make sure all information is accurate and verifiable.`,
-        },
-      ],
-      temperature: 0.5,
-    });
-
-    const researchContext = step2.choices[0].message.content || "";
 
     // Step 3: Generate title, meta description, slug, and keywords
     const step3 = await openai.chat.completions.create({
@@ -145,13 +74,19 @@ The 5 keywords should be high-intent keywords related to the topic. They should 
 
     try {
       const raw = step3.choices[0].message.content || "{}";
-      const cleaned = raw.replace(/```(?:json)?\n?/g, "").replace(/```/g, "").trim();
+      const cleaned = raw
+        .replace(/```(?:json)?\n?/g, "")
+        .replace(/```/g, "")
+        .trim();
       metadata = JSON.parse(cleaned);
     } catch {
       metadata = {
         title: topic,
         metaDescription: `Learn everything about ${topic}`,
-        slug: topic.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+        slug: topic
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, ""),
         focusKeyword: focusKeyword || topic,
         keywords: [],
       };
@@ -160,16 +95,19 @@ The 5 keywords should be high-intent keywords related to the topic. They should 
     const allKeywords = [metadata.focusKeyword, ...metadata.keywords];
 
     // Step 4: Generate the full 4000-word article
-    const step4 = await openai.chat.completions.create({
-      model: MODEL,
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert SEO content writer who creates highly optimized, engaging, and comprehensive articles. You write in a professional yet accessible tone. You always produce content ready for WordPress.`,
-        },
-        {
-          role: "user",
-          content: `Write a comprehensive, SEO-optimized article of approximately 4000 words.
+    // Step 5: Generate Midjourney image prompts
+    // Run in parallel since they don't depend on each other
+    const [step4, step5] = await Promise.all([
+      openai.chat.completions.create({
+        model: MODEL,
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert SEO content writer who creates highly optimized, engaging, and comprehensive articles. You write in a professional yet accessible tone. You always produce content ready for WordPress.`,
+          },
+          {
+            role: "user",
+            content: `Write a comprehensive, SEO-optimized article of approximately 4000 words.
 
 TITLE: ${metadata.title}
 META DESCRIPTION: ${metadata.metaDescription}
@@ -199,26 +137,22 @@ REQUIREMENTS:
 14. Include bullet points and numbered lists where appropriate
 
 The output should be pure markdown that can be directly pasted into a WordPress code editor.`,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 10000,
-    });
-
-    const article = step4.choices[0].message.content || "";
-
-    // Step 5: Generate Midjourney image prompts
-    const step5 = await openai.chat.completions.create({
-      model: MODEL,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are an expert at creating Midjourney image prompts that produce stunning, professional images suitable for blog articles.",
-        },
-        {
-          role: "user",
-          content: `Generate 4 Midjourney image prompts for an article about: "${topic}"
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 10000,
+      }),
+      openai.chat.completions.create({
+        model: MODEL,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an expert at creating Midjourney image prompts that produce stunning, professional images suitable for blog articles.",
+          },
+          {
+            role: "user",
+            content: `Generate 4 Midjourney image prompts for an article about: "${topic}"
 Title: ${metadata.title}
 Focus Keyword: ${metadata.focusKeyword}
 Keywords: ${allKeywords.join(", ")}
@@ -250,15 +184,21 @@ Generate EXACTLY this JSON format (no markdown, no code blocks, just raw JSON):
 }
 
 Each prompt should be vivid, specific, and produce professional-quality images. Alt texts must include keywords directly.`,
-        },
-      ],
-      temperature: 0.7,
-    });
+          },
+        ],
+        temperature: 0.7,
+      }),
+    ]);
+
+    const article = step4.choices[0].message.content || "";
 
     let imagePrompts: { type: string; prompt: string; altText: string }[] = [];
     try {
       const raw = step5.choices[0].message.content || "{}";
-      const cleaned = raw.replace(/```(?:json)?\n?/g, "").replace(/```/g, "").trim();
+      const cleaned = raw
+        .replace(/```(?:json)?\n?/g, "")
+        .replace(/```/g, "")
+        .trim();
       const parsed = JSON.parse(cleaned);
       imagePrompts = parsed.images || [];
     } catch {
@@ -271,7 +211,7 @@ Each prompt should be vivid, specific, and produce professional-quality images. 
       ];
     }
 
-    const result: GenerationResult = {
+    return NextResponse.json({
       title: metadata.title,
       metaDescription: metadata.metaDescription,
       slug: metadata.slug,
@@ -279,9 +219,7 @@ Each prompt should be vivid, specific, and produce professional-quality images. 
       keywords: metadata.keywords,
       article,
       imagePrompts,
-    };
-
-    return NextResponse.json(result);
+    });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "An unexpected error occurred";

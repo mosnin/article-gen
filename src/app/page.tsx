@@ -21,9 +21,7 @@ interface GenerationResult {
 const STEPS = [
   "Organizing article context...",
   "Researching factual information...",
-  "Generating SEO metadata...",
-  "Writing 4000-word article...",
-  "Creating image prompts...",
+  "Generating SEO metadata, article & images...",
 ];
 
 function CopyButton({ text, label }: { text: string; label?: string }) {
@@ -113,8 +111,8 @@ function OutputCard({
       <div className={`px-5 py-4 ${large ? "max-h-[600px] overflow-y-auto" : ""}`}>
         {large ? (
           <pre
-            className="whitespace-pre-wrap text-sm leading-relaxed font-mono"
-            style={{ color: "var(--foreground)" }}
+            className="whitespace-pre-wrap text-sm leading-relaxed"
+            style={{ color: "var(--foreground)", fontFamily: "'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace" }}
           >
             {content}
           </pre>
@@ -205,16 +203,10 @@ export default function Home() {
     setLoading(true);
     setCurrentStep(0);
 
-    // Simulate step progression
-    const stepInterval = setInterval(() => {
-      setCurrentStep((prev) => {
-        if (prev < STEPS.length - 1) return prev + 1;
-        return prev;
-      });
-    }, 8000);
-
     try {
-      const res = await fetch("/api/generate", {
+      // Batch 1: Context organization + Research
+      setCurrentStep(0);
+      const researchRes = await fetch("/api/generate/research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -223,19 +215,37 @@ export default function Home() {
         }),
       });
 
-      const data = await res.json();
+      const researchData = await researchRes.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to generate article");
+      if (!researchRes.ok) {
+        throw new Error(researchData.error || "Failed during research phase");
       }
 
-      setResult(data);
+      // Batch 2: Metadata + Article + Images
+      setCurrentStep(2);
+      const articleRes = await fetch("/api/generate/article", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: topic.trim(),
+          focusKeyword: focusKeyword.trim() || undefined,
+          articleContext: researchData.articleContext,
+          researchContext: researchData.researchContext,
+        }),
+      });
+
+      const articleData = await articleRes.json();
+
+      if (!articleRes.ok) {
+        throw new Error(articleData.error || "Failed during article generation");
+      }
+
+      setResult(articleData);
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Something went wrong";
       setError(message);
     } finally {
-      clearInterval(stepInterval);
       setLoading(false);
     }
   };
