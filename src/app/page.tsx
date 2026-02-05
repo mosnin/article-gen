@@ -19,10 +19,35 @@ interface GenerationResult {
 }
 
 const STEPS = [
-  "Organizing article context...",
-  "Researching factual information...",
-  "Generating SEO metadata, article & images...",
+  "Organizing context & researching facts...",
+  "Generating SEO metadata...",
+  "Writing article & creating image prompts...",
 ];
+
+async function safeFetch(url: string, body: object): Promise<{ ok: boolean; data: Record<string, unknown> }> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  let data: Record<string, unknown>;
+  const text = await res.text();
+  try {
+    data = JSON.parse(text);
+  } catch {
+    if (text.includes("FUNCTION_INVOCATION_TIMEOUT") || text.includes("Task timed out")) {
+      throw new Error("Request timed out. Please try again with a simpler topic.");
+    }
+    throw new Error(res.ok ? "Unexpected response from server" : `Server error (${res.status}): ${text.slice(0, 100)}`);
+  }
+
+  if (!res.ok) {
+    throw new Error((data.error as string) || `Request failed (${res.status})`);
+  }
+
+  return { ok: true, data };
+}
 
 function CopyButton({ text, label }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false);
@@ -204,43 +229,48 @@ export default function Home() {
     setCurrentStep(0);
 
     try {
-      // Batch 1: Context organization + Research
+      // Batch 1: Context + Research (parallel inside the route)
       setCurrentStep(0);
-      const researchRes = await fetch("/api/generate/research", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: topic.trim(),
-          focusKeyword: focusKeyword.trim() || undefined,
-        }),
+      const { data: researchData } = await safeFetch("/api/generate/research", {
+        topic: topic.trim(),
+        focusKeyword: focusKeyword.trim() || undefined,
       });
 
-      const researchData = await researchRes.json();
+      // Batch 2: Metadata
+      setCurrentStep(1);
+      const { data: metadataData } = await safeFetch("/api/generate/metadata", {
+        topic: topic.trim(),
+        focusKeyword: focusKeyword.trim() || undefined,
+        articleContext: researchData.articleContext,
+        researchContext: researchData.researchContext,
+      });
 
-      if (!researchRes.ok) {
-        throw new Error(researchData.error || "Failed during research phase");
-      }
+      const allKeywords = [
+        metadataData.focusKeyword as string,
+        ...((metadataData.keywords as string[]) || []),
+      ];
 
-      // Batch 2: Metadata + Article + Images
+      // Batch 3: Article + Images (parallel inside the route)
       setCurrentStep(2);
-      const articleRes = await fetch("/api/generate/article", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: topic.trim(),
-          focusKeyword: focusKeyword.trim() || undefined,
-          articleContext: researchData.articleContext,
-          researchContext: researchData.researchContext,
-        }),
+      const { data: articleData } = await safeFetch("/api/generate/article", {
+        topic: topic.trim(),
+        articleContext: researchData.articleContext,
+        researchContext: researchData.researchContext,
+        title: metadataData.title,
+        metaDescription: metadataData.metaDescription,
+        focusKeyword: metadataData.focusKeyword,
+        allKeywords,
       });
 
-      const articleData = await articleRes.json();
-
-      if (!articleRes.ok) {
-        throw new Error(articleData.error || "Failed during article generation");
-      }
-
-      setResult(articleData);
+      setResult({
+        title: metadataData.title as string,
+        metaDescription: metadataData.metaDescription as string,
+        slug: metadataData.slug as string,
+        focusKeyword: metadataData.focusKeyword as string,
+        keywords: (metadataData.keywords as string[]) || [],
+        article: articleData.article as string,
+        imagePrompts: articleData.imagePrompts as ImagePrompt[],
+      });
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Something went wrong";
@@ -266,7 +296,7 @@ export default function Home() {
           <h1 className="gradient-text text-2xl font-bold tracking-tight">
             Article Gen
           </h1>
-          {result && (
+          {(result || error) && !loading && (
             <button
               onClick={handleReset}
               className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
@@ -289,7 +319,7 @@ export default function Home() {
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-10">
-        {/* Input Form - shown when no result */}
+        {/* Input Form */}
         {!result && !loading && (
           <div className="mx-auto max-w-xl">
             <div className="mb-10 text-center">
@@ -454,19 +484,11 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Title */}
             <OutputCard label="Title" content={result.title} />
-
-            {/* Meta Description */}
             <OutputCard label="Meta Description" content={result.metaDescription} />
-
-            {/* Slug */}
             <OutputCard label="Slug" content={result.slug} />
-
-            {/* Full Article */}
             <OutputCard label="Article (Markdown)" content={result.article} large />
 
-            {/* Image Prompts */}
             <div>
               <h3
                 className="mb-4 text-lg font-semibold"
@@ -484,7 +506,6 @@ export default function Home() {
         )}
       </main>
 
-      {/* Footer */}
       <footer className="border-t py-6 text-center" style={{ borderColor: "var(--card-border)" }}>
         <p className="text-xs" style={{ color: "var(--muted)" }}>
           Article Gen &mdash; AI-Powered SEO Article Generator
