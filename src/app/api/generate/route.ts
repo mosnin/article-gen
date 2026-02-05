@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 const MODEL = "gpt-4.1-mini";
 
@@ -21,12 +21,20 @@ interface GenerationResult {
 
 export async function POST(req: NextRequest) {
   try {
-    const { topic, focusKeyword, apiKey } = await req.json();
+    const { topic, focusKeyword } = await req.json();
 
-    if (!topic || !apiKey) {
+    if (!topic) {
       return NextResponse.json(
-        { error: "Topic and API key are required" },
+        { error: "Topic is required" },
         { status: 400 }
+      );
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "OpenAI API key is not configured. Please set the OPENAI_API_KEY environment variable in Vercel." },
+        { status: 500 }
       );
     }
 

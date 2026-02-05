@@ -188,7 +188,6 @@ function ImagePromptCard({ image }: { image: ImagePrompt }) {
 export default function Home() {
   const [topic, setTopic] = useState("");
   const [focusKeyword, setFocusKeyword] = useState("");
-  const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<GenerationResult | null>(null);
@@ -197,10 +196,6 @@ export default function Home() {
   const handleGenerate = async () => {
     if (!topic.trim()) {
       setError("Please enter a topic for your article.");
-      return;
-    }
-    if (!apiKey.trim()) {
-      setError("Please enter your OpenAI API key.");
       return;
     }
 
@@ -225,7 +220,6 @@ export default function Home() {
         body: JSON.stringify({
           topic: topic.trim(),
           focusKeyword: focusKeyword.trim() || undefined,
-          apiKey: apiKey.trim(),
         }),
       });
 
@@ -299,38 +293,6 @@ export default function Home() {
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="apiKey"
-                  className="mb-2 block text-sm font-medium"
-                  style={{ color: "var(--muted)" }}
-                >
-                  OpenAI API Key
-                </label>
-                <input
-                  id="apiKey"
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-..."
-                  className="w-full rounded-xl border px-4 py-3 text-base transition-colors focus:outline-none"
-                  style={{
-                    background: "var(--card)",
-                    borderColor: "var(--card-border)",
-                    color: "var(--foreground)",
-                  }}
-                  onFocus={(e) => {
-                    (e.target as HTMLInputElement).style.borderColor = "var(--accent)";
-                  }}
-                  onBlur={(e) => {
-                    (e.target as HTMLInputElement).style.borderColor = "var(--card-border)";
-                  }}
-                />
-                <p className="mt-1.5 text-xs" style={{ color: "var(--muted)" }}>
-                  Your key is never stored. It&apos;s only used for this session.
-                </p>
-              </div>
-
               <div>
                 <label
                   htmlFor="topic"
