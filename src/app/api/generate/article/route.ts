@@ -16,9 +16,12 @@ export async function POST(req: NextRequest) {
       focusKeyword,
       allKeywords,
       targetWordCount,
+      advancedSettings,
     } = await req.json();
 
     const wordCount = targetWordCount || 4000;
+    const settings = advancedSettings || {};
+    const today = new Date().toISOString().split("T")[0];
 
     if (!topic || !articleContext || !title || !allKeywords) {
       return NextResponse.json(
@@ -163,15 +166,22 @@ Meta Description: ${metaDescription}
 Focus Keyword: ${focusKeyword}
 Keywords: ${(allKeywords as string[]).join(", ")}
 Topic: ${topic}
+Date Published: ${today}
+Date Modified: ${today}
+${settings.domain ? `Website Domain: ${settings.domain}` : ""}
+${settings.siteName ? `Site/Publisher Name: ${settings.siteName}` : ""}
+${settings.siteAbout ? `About the Site: ${settings.siteAbout}` : ""}
+${settings.authorName ? `Author Name: ${settings.authorName}` : ""}
+${settings.authorAbout ? `About the Author: ${settings.authorAbout}` : ""}
 
 Generate a JSON object with a single "schema" key containing the JSON-LD script content (NOT wrapped in a script tag, just the JSON object itself).
 
 REQUIREMENTS:
 - Use @type "Article" as the primary type
-- Include these properties: headline, description, keywords, author (@type Person with name placeholder "[Author Name]"), datePublished (use placeholder "[YYYY-MM-DD]"), dateModified (same placeholder), publisher (@type Organization with name placeholder "[Site Name]"), mainEntityOfPage, image (placeholder "[Featured Image URL]")
+- Include these properties: headline, description, keywords, author (@type Person with name ${settings.authorName ? `"${settings.authorName}"` : 'placeholder "[Author Name]"'}${settings.authorAbout ? `, description "${settings.authorAbout}"` : ""}), datePublished "${today}", dateModified "${today}", publisher (@type Organization with name ${settings.siteName ? `"${settings.siteName}"` : 'placeholder "[Site Name]"'}${settings.siteAbout ? `, description "${settings.siteAbout}"` : ""}), mainEntityOfPage, image (placeholder "[Featured Image URL]")
 - Add an FAQPage schema as a secondary @graph item since the article contains an FAQ section. Include 3-5 FAQ entries based on the topic with realistic questions and short answers
 - Optimize for Google rich snippets: featured snippets, FAQ rich results, and article rich results
-- Use "https://www.example.com/${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}" as the URL placeholder
+- Use "${settings.domain ? `${settings.domain.replace(/\/$/, "")}/${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}` : `https://www.example.com/${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`}" as the article URL
 - All values should be SEO-optimized for the focus keyword "${focusKeyword}"
 
 Return format:

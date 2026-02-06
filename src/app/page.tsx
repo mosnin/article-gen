@@ -39,6 +39,14 @@ interface BatchQueueItem {
   quality: "standard" | "premium";
 }
 
+interface AdvancedSettings {
+  domain: string;
+  siteName: string;
+  siteAbout: string;
+  authorName: string;
+  authorAbout: string;
+}
+
 const STEPS = [
   "Organizing context & researching facts...",
   "Generating SEO metadata...",
@@ -403,6 +411,19 @@ export default function Home() {
   const [formKeyword, setFormKeyword] = useState("");
   const [formError, setFormError] = useState("");
   const [resultView, setResultView] = useState<"data" | "preview">("data");
+  const [showHelp, setShowHelp] = useState(false);
+
+  // Advanced settings
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>({
+    domain: "",
+    siteName: "",
+    siteAbout: "",
+    authorName: "",
+    authorAbout: "",
+  });
+  const [showAdvancedJsonPaste, setShowAdvancedJsonPaste] = useState(false);
+  const [advancedJsonValue, setAdvancedJsonValue] = useState("");
 
   // Mode & batch state
   const [mode, setMode] = useState<"single" | "batch">("single");
@@ -479,6 +500,7 @@ export default function Home() {
             focusKeyword: metadataData.focusKeyword,
             allKeywords,
             targetWordCount,
+            advancedSettings,
           }
         );
 
@@ -686,6 +708,50 @@ export default function Home() {
     }
   };
 
+  const parseAndLoadAdvancedJson = (text: string): boolean => {
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed !== "object" || Array.isArray(parsed)) {
+        setFormError("Advanced settings JSON must be an object.");
+        return false;
+      }
+      setAdvancedSettings({
+        domain: (parsed.domain || parsed.url || "").trim(),
+        siteName: (parsed.siteName || parsed.site_name || parsed.blogName || "").trim(),
+        siteAbout: (parsed.siteAbout || parsed.site_about || parsed.blogAbout || parsed.about || "").trim(),
+        authorName: (parsed.authorName || parsed.author_name || parsed.author || "").trim(),
+        authorAbout: (parsed.authorAbout || parsed.author_about || parsed.authorBio || parsed.bio || "").trim(),
+      });
+      setFormError("");
+      return true;
+    } catch {
+      setFormError("Invalid JSON. Please check the format.");
+      return false;
+    }
+  };
+
+  const handleAdvancedJsonFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      parseAndLoadAdvancedJson(evt.target?.result as string);
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const handleAdvancedPasteSubmit = () => {
+    if (parseAndLoadAdvancedJson(advancedJsonValue)) {
+      setAdvancedJsonValue("");
+      setShowAdvancedJsonPaste(false);
+    }
+  };
+
+  const updateAdvanced = (field: keyof AdvancedSettings, value: string) => {
+    setAdvancedSettings((prev) => ({ ...prev, [field]: value }));
+  };
+
   const addBatchItem = () => {
     if (batchItems.length >= 25) return;
     setBatchItems((prev) => [
@@ -708,7 +774,7 @@ export default function Home() {
     );
   };
 
-  const showForm = activeSessionId === null;
+  const showForm = activeSessionId === null && !showHelp;
   const loadingCount = sessions.filter((s) => s.loading).length;
   const queuedCount = sessions.filter((s) => s.queued).length;
   const validBatchCount = batchItems.filter((i) => i.topic.trim()).length;
@@ -740,9 +806,43 @@ export default function Home() {
           className="flex items-center justify-between border-b px-4 py-4"
           style={{ borderColor: "var(--card-border)" }}
         >
-          <h1 className="gradient-text text-lg font-bold tracking-tight">
-            Article Sauce
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="gradient-text text-lg font-bold tracking-tight">
+              Article Sauce
+            </h1>
+            <button
+              onClick={() => {
+                setShowHelp(true);
+                setActiveSessionId(null);
+              }}
+              className="rounded-full p-1 transition-colors"
+              style={{ color: "var(--muted)" }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.color =
+                  "var(--foreground)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.color =
+                  "var(--muted)";
+              }}
+              title="How it works"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </button>
+          </div>
           <button
             className="rounded p-1 md:hidden"
             onClick={() => setSidebarOpen(false)}
@@ -768,6 +868,7 @@ export default function Home() {
           <button
             onClick={() => {
               setActiveSessionId(null);
+              setShowHelp(false);
               setFormError("");
               setSidebarOpen(false);
             }}
@@ -838,6 +939,7 @@ export default function Home() {
                   key={session.id}
                   onClick={() => {
                     setActiveSessionId(session.id);
+                    setShowHelp(false);
                     setSidebarOpen(false);
                   }}
                   className="group flex w-full items-start gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors"
@@ -987,6 +1089,339 @@ export default function Home() {
         {/* Content area */}
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-4xl px-6 py-10">
+            {/* Help Page */}
+            {showHelp && (
+              <div className="mx-auto max-w-2xl">
+                <div className="mb-8">
+                  <button
+                    onClick={() => {
+                      setShowHelp(false);
+                    }}
+                    className="mb-6 flex items-center gap-1.5 text-sm font-medium"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                    Back
+                  </button>
+                  <h2
+                    className="mb-3 text-3xl font-bold tracking-tight"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    How Article Sauce Works
+                  </h2>
+                  <p style={{ color: "var(--muted)" }}>
+                    A guide to generating SEO-optimized articles, using batch
+                    mode, and configuring advanced settings.
+                  </p>
+                </div>
+
+                <div className="space-y-8">
+                  {/* Overview */}
+                  <div
+                    className="rounded-xl border p-6"
+                    style={{
+                      background: "var(--card)",
+                      borderColor: "var(--card-border)",
+                    }}
+                  >
+                    <h3
+                      className="mb-3 text-lg font-semibold"
+                      style={{ color: "var(--foreground)" }}
+                    >
+                      Overview
+                    </h3>
+                    <div
+                      className="space-y-2 text-sm leading-relaxed"
+                      style={{ color: "var(--foreground)" }}
+                    >
+                      <p>
+                        Article Sauce generates comprehensive, SEO-optimized
+                        articles in three steps:
+                      </p>
+                      <ol
+                        className="list-decimal space-y-1 pl-5"
+                        style={{ color: "var(--muted)" }}
+                      >
+                        <li>
+                          <strong style={{ color: "var(--foreground)" }}>
+                            Research
+                          </strong>{" "}
+                          - Analyzes your topic and gathers context
+                        </li>
+                        <li>
+                          <strong style={{ color: "var(--foreground)" }}>
+                            Metadata
+                          </strong>{" "}
+                          - Generates title, meta description, slug, focus
+                          keyword, and supporting keywords
+                        </li>
+                        <li>
+                          <strong style={{ color: "var(--foreground)" }}>
+                            Content
+                          </strong>{" "}
+                          - Writes the article, creates image prompts, and
+                          generates JSON-LD schema
+                        </li>
+                      </ol>
+                      <p style={{ color: "var(--muted)" }}>
+                        Each article includes: a markdown article, copyable
+                        metadata fields, 4 photorealistic image prompts with
+                        alt texts, and structured data for SEO rich snippets.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Single Mode */}
+                  <div
+                    className="rounded-xl border p-6"
+                    style={{
+                      background: "var(--card)",
+                      borderColor: "var(--card-border)",
+                    }}
+                  >
+                    <h3
+                      className="mb-3 text-lg font-semibold"
+                      style={{ color: "var(--foreground)" }}
+                    >
+                      Single Mode
+                    </h3>
+                    <p
+                      className="text-sm leading-relaxed"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      Enter a topic and an optional focus keyword. The article
+                      generates immediately at premium quality (~4,000 words).
+                    </p>
+                  </div>
+
+                  {/* Batch Mode */}
+                  <div
+                    className="rounded-xl border p-6"
+                    style={{
+                      background: "var(--card)",
+                      borderColor: "var(--card-border)",
+                    }}
+                  >
+                    <h3
+                      className="mb-3 text-lg font-semibold"
+                      style={{ color: "var(--foreground)" }}
+                    >
+                      Batch Mode
+                    </h3>
+                    <div
+                      className="space-y-3 text-sm leading-relaxed"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      <p>
+                        Generate up to 25 articles at once. Choose between
+                        Standard (~2,000 words) or Premium (~4,000 words)
+                        quality. Articles process 2 at a time with 60-second
+                        intervals between batches to stay within rate limits.
+                      </p>
+                      <p>
+                        You can add articles manually or import them via JSON.
+                        Use the <strong style={{ color: "var(--foreground)" }}>Upload</strong> or{" "}
+                        <strong style={{ color: "var(--foreground)" }}>Paste</strong> buttons to
+                        import.
+                      </p>
+                      <div>
+                        <p
+                          className="mb-2 text-xs font-medium uppercase tracking-wider"
+                          style={{ color: "var(--accent)" }}
+                        >
+                          Batch JSON Format
+                        </p>
+                        <pre
+                          className="overflow-x-auto rounded-lg p-4 text-xs leading-relaxed"
+                          style={{
+                            background: "var(--background)",
+                            color: "var(--foreground)",
+                          }}
+                        >
+                          {`[
+  {
+    "concept": "The Ultimate Guide to Indoor Herb Gardening",
+    "keyword": "indoor herb gardening"
+  },
+  {
+    "concept": "Best Running Shoes for Marathon Training in 2025",
+    "keyword": "marathon running shoes"
+  }
+]`}
+                        </pre>
+                      </div>
+                      <div
+                        className="text-xs"
+                        style={{ color: "var(--muted)" }}
+                      >
+                        <strong style={{ color: "var(--foreground)" }}>
+                          Accepted fields:
+                        </strong>{" "}
+                        <code>concept</code> or <code>topic</code> for the
+                        article subject, <code>keyword</code> or{" "}
+                        <code>focusKeyword</code> for the target keyword.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Advanced Settings */}
+                  <div
+                    className="rounded-xl border p-6"
+                    style={{
+                      background: "var(--card)",
+                      borderColor: "var(--card-border)",
+                    }}
+                  >
+                    <h3
+                      className="mb-3 text-lg font-semibold"
+                      style={{ color: "var(--foreground)" }}
+                    >
+                      Advanced Settings
+                    </h3>
+                    <div
+                      className="space-y-3 text-sm leading-relaxed"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      <p>
+                        Optional settings that populate the JSON-LD schema with
+                        your actual site and author information instead of
+                        placeholders.
+                      </p>
+                      <div>
+                        <p
+                          className="mb-1 text-xs font-medium"
+                          style={{ color: "var(--foreground)" }}
+                        >
+                          Available fields:
+                        </p>
+                        <ul className="list-disc space-y-1 pl-5 text-xs">
+                          <li>
+                            <strong style={{ color: "var(--foreground)" }}>
+                              Domain
+                            </strong>{" "}
+                            - Your website URL (e.g., https://yourblog.com)
+                          </li>
+                          <li>
+                            <strong style={{ color: "var(--foreground)" }}>
+                              Site Name
+                            </strong>{" "}
+                            - Publisher/organization name
+                          </li>
+                          <li>
+                            <strong style={{ color: "var(--foreground)" }}>
+                              About the Blog
+                            </strong>{" "}
+                            - Short description of your site
+                          </li>
+                          <li>
+                            <strong style={{ color: "var(--foreground)" }}>
+                              Author Name
+                            </strong>{" "}
+                            - Article author&apos;s name
+                          </li>
+                          <li>
+                            <strong style={{ color: "var(--foreground)" }}>
+                              About the Author
+                            </strong>{" "}
+                            - Author bio/credentials
+                          </li>
+                        </ul>
+                      </div>
+                      <div>
+                        <p
+                          className="mb-2 text-xs font-medium uppercase tracking-wider"
+                          style={{ color: "var(--accent)" }}
+                        >
+                          Advanced Settings JSON Format
+                        </p>
+                        <pre
+                          className="overflow-x-auto rounded-lg p-4 text-xs leading-relaxed"
+                          style={{
+                            background: "var(--background)",
+                            color: "var(--foreground)",
+                          }}
+                        >
+                          {`{
+  "domain": "https://yourblog.com",
+  "siteName": "Your Blog Name",
+  "siteAbout": "A blog about sustainable living",
+  "authorName": "John Doe",
+  "authorAbout": "Expert with 10 years of experience"
+}`}
+                        </pre>
+                      </div>
+                      <div
+                        className="text-xs"
+                        style={{ color: "var(--muted)" }}
+                      >
+                        <strong style={{ color: "var(--foreground)" }}>
+                          Accepted aliases:
+                        </strong>{" "}
+                        <code>domain</code>/<code>url</code>,{" "}
+                        <code>siteName</code>/<code>site_name</code>/
+                        <code>blogName</code>, <code>authorName</code>/
+                        <code>author_name</code>/<code>author</code>,{" "}
+                        <code>authorAbout</code>/<code>author_about</code>/
+                        <code>authorBio</code>/<code>bio</code>,{" "}
+                        <code>siteAbout</code>/<code>site_about</code>/
+                        <code>blogAbout</code>/<code>about</code>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Output */}
+                  <div
+                    className="rounded-xl border p-6"
+                    style={{
+                      background: "var(--card)",
+                      borderColor: "var(--card-border)",
+                    }}
+                  >
+                    <h3
+                      className="mb-3 text-lg font-semibold"
+                      style={{ color: "var(--foreground)" }}
+                    >
+                      Output
+                    </h3>
+                    <div
+                      className="space-y-2 text-sm leading-relaxed"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      <p>Each generated article includes two views:</p>
+                      <ul className="list-disc space-y-1 pl-5 text-xs">
+                        <li>
+                          <strong style={{ color: "var(--foreground)" }}>
+                            Data tab
+                          </strong>{" "}
+                          - Copyable fields for title, meta description, slug,
+                          focus keyword, keywords, markdown article, 4 image
+                          prompts with alt texts, and JSON-LD schema
+                        </li>
+                        <li>
+                          <strong style={{ color: "var(--foreground)" }}>
+                            Preview tab
+                          </strong>{" "}
+                          - Rendered article as it would appear on a blog, with
+                          buttons to copy as plain text or HTML
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Input Form */}
             {showForm && (
               <div className="mx-auto max-w-2xl">
@@ -1040,6 +1475,286 @@ export default function Home() {
                   >
                     Batch
                   </button>
+                </div>
+
+                {/* Advanced settings dropdown */}
+                <div
+                  className="mb-6 rounded-xl border"
+                  style={{
+                    borderColor: "var(--card-border)",
+                    background: "var(--card)",
+                  }}
+                >
+                  <button
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="var(--muted)"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                      </svg>
+                      Advanced Settings
+                      <span
+                        className="text-xs font-normal"
+                        style={{ color: "var(--muted)" }}
+                      >
+                        (optional)
+                      </span>
+                    </span>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="var(--muted)"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={{
+                        transform: showAdvanced
+                          ? "rotate(180deg)"
+                          : "rotate(0deg)",
+                        transition: "transform 0.2s",
+                      }}
+                    >
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
+
+                  {showAdvanced && (
+                    <div
+                      className="space-y-3 border-t px-4 py-4"
+                      style={{ borderColor: "var(--card-border)" }}
+                    >
+                      {/* Import buttons */}
+                      <div className="flex items-center justify-end gap-1">
+                        <input
+                          type="file"
+                          accept=".json"
+                          id="advanced-json-import"
+                          className="hidden"
+                          onChange={handleAdvancedJsonFile}
+                        />
+                        <button
+                          onClick={() =>
+                            document
+                              .getElementById("advanced-json-import")
+                              ?.click()
+                          }
+                          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
+                          style={{
+                            color: "var(--accent)",
+                            background: "transparent",
+                          }}
+                          onMouseEnter={(e) => {
+                            (
+                              e.currentTarget as HTMLButtonElement
+                            ).style.background = "var(--background)";
+                          }}
+                          onMouseLeave={(e) => {
+                            (
+                              e.currentTarget as HTMLButtonElement
+                            ).style.background = "transparent";
+                          }}
+                        >
+                          <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                          </svg>
+                          Upload
+                        </button>
+                        <span
+                          className="text-xs"
+                          style={{ color: "var(--card-border)" }}
+                        >
+                          |
+                        </span>
+                        <button
+                          onClick={() =>
+                            setShowAdvancedJsonPaste(!showAdvancedJsonPaste)
+                          }
+                          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
+                          style={{
+                            color: showAdvancedJsonPaste
+                              ? "var(--foreground)"
+                              : "var(--accent)",
+                            background: showAdvancedJsonPaste
+                              ? "var(--background)"
+                              : "transparent",
+                          }}
+                          onMouseEnter={(e) => {
+                            (
+                              e.currentTarget as HTMLButtonElement
+                            ).style.background = "var(--background)";
+                          }}
+                          onMouseLeave={(e) => {
+                            (
+                              e.currentTarget as HTMLButtonElement
+                            ).style.background = showAdvancedJsonPaste
+                              ? "var(--background)"
+                              : "transparent";
+                          }}
+                        >
+                          <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <rect
+                              x="9"
+                              y="9"
+                              width="13"
+                              height="13"
+                              rx="2"
+                              ry="2"
+                            />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                          </svg>
+                          Paste
+                        </button>
+                      </div>
+
+                      {showAdvancedJsonPaste && (
+                        <div
+                          className="rounded-lg border p-3"
+                          style={{
+                            borderColor: "var(--card-border)",
+                            background: "var(--background)",
+                          }}
+                        >
+                          <textarea
+                            value={advancedJsonValue}
+                            onChange={(e) =>
+                              setAdvancedJsonValue(e.target.value)
+                            }
+                            placeholder={`{
+  "domain": "https://yourblog.com",
+  "siteName": "Your Blog Name",
+  "siteAbout": "A blog about...",
+  "authorName": "John Doe",
+  "authorAbout": "Expert in..."
+}`}
+                            rows={5}
+                            className="mb-2 w-full resize-none rounded-lg border px-3 py-2 font-mono text-xs transition-colors focus:outline-none"
+                            style={{
+                              background: "var(--card)",
+                              borderColor: "var(--card-border)",
+                              color: "var(--foreground)",
+                            }}
+                            onFocus={(e) => {
+                              (
+                                e.target as HTMLTextAreaElement
+                              ).style.borderColor = "var(--accent)";
+                            }}
+                            onBlur={(e) => {
+                              (
+                                e.target as HTMLTextAreaElement
+                              ).style.borderColor = "var(--card-border)";
+                            }}
+                          />
+                          <div className="flex justify-end">
+                            <button
+                              onClick={handleAdvancedPasteSubmit}
+                              disabled={!advancedJsonValue.trim()}
+                              className="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-40"
+                              style={{ background: "var(--accent)" }}
+                            >
+                              Load Settings
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {[
+                        {
+                          key: "domain" as const,
+                          label: "Domain",
+                          placeholder: "https://yourblog.com",
+                        },
+                        {
+                          key: "siteName" as const,
+                          label: "Site Name",
+                          placeholder: "Your Blog Name",
+                        },
+                        {
+                          key: "siteAbout" as const,
+                          label: "About the Blog",
+                          placeholder:
+                            "A blog about sustainable living and eco-friendly tips",
+                        },
+                        {
+                          key: "authorName" as const,
+                          label: "Author Name",
+                          placeholder: "John Doe",
+                        },
+                        {
+                          key: "authorAbout" as const,
+                          label: "About the Author",
+                          placeholder:
+                            "Expert in sustainable living with 10 years of experience",
+                        },
+                      ].map((field) => (
+                        <div key={field.key}>
+                          <label
+                            className="mb-1 block text-xs font-medium"
+                            style={{ color: "var(--muted)" }}
+                          >
+                            {field.label}
+                          </label>
+                          <input
+                            type="text"
+                            value={advancedSettings[field.key]}
+                            onChange={(e) =>
+                              updateAdvanced(field.key, e.target.value)
+                            }
+                            placeholder={field.placeholder}
+                            className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
+                            style={{
+                              background: "var(--background)",
+                              borderColor: "var(--card-border)",
+                              color: "var(--foreground)",
+                            }}
+                            onFocus={(e) => {
+                              (
+                                e.target as HTMLInputElement
+                              ).style.borderColor = "var(--accent)";
+                            }}
+                            onBlur={(e) => {
+                              (
+                                e.target as HTMLInputElement
+                              ).style.borderColor = "var(--card-border)";
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Single mode form */}

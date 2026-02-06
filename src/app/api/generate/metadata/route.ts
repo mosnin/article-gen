@@ -81,20 +81,31 @@ The 5 keywords should be high-intent keywords related to the topic. They should 
       const raw = completion.choices[0].message.content || "{}";
       const parsed = JSON.parse(raw);
 
+      const resolvedKeyword = parsed.focusKeyword || focusKeyword || topic;
+      const keywordSlug = resolvedKeyword
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+
       metadata = {
         title: parsed.title || topic,
         metaDescription:
           parsed.metaDescription || `Learn everything about ${topic}`,
-        slug: parsed.slug || defaultSlug,
-        focusKeyword: parsed.focusKeyword || focusKeyword || topic,
+        slug: keywordSlug,
+        focusKeyword: resolvedKeyword,
         keywords: Array.isArray(parsed.keywords) ? parsed.keywords : [],
       };
     } catch {
+      const fallbackKeyword = focusKeyword || topic;
+      const fallbackSlug = fallbackKeyword
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
       metadata = {
         title: topic,
         metaDescription: `Learn everything about ${topic}`,
-        slug: defaultSlug,
-        focusKeyword: focusKeyword || topic,
+        slug: fallbackSlug,
+        focusKeyword: fallbackKeyword,
         keywords: [],
       };
     }
