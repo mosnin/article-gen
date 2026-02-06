@@ -66,7 +66,7 @@ REQUIREMENTS:
 1. Start with the title as an H1 heading
 2. Below the title put the meta description in italics
 3. Write an introduction paragraph with its own descriptive H2 heading (DO NOT use the word "Introduction" - use an engaging, keyword-rich heading instead)
-4. Include a Table of Contents after the introduction (use markdown links to headings)
+4. Do NOT include a Table of Contents
 5. Write the main body with H2 and H3 headings covering all the key subtopics
 6. Include 3 outbound links to authoritative sources (use real, plausible URLs from the research)
 7. Include an FAQ section with at least 5 questions and answers as an H2
