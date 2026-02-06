@@ -17,6 +17,7 @@ interface GenerationResult {
   keywords: string[];
   article: string;
   imagePrompts: ImagePrompt[];
+  schema: string;
 }
 
 interface ArticleSession {
@@ -491,6 +492,7 @@ export default function Home() {
             keywords: (metadataData.keywords as string[]) || [],
             article: articleData.article as string,
             imagePrompts: articleData.imagePrompts as ImagePrompt[],
+            schema: (articleData.schema as string) || "",
           },
         });
       } catch (err: unknown) {
@@ -1873,6 +1875,48 @@ export default function Home() {
                         ))}
                       </div>
                     </div>
+
+                    {activeSession.result.schema && (
+                      <div>
+                        <h3
+                          className="mb-4 text-lg font-semibold"
+                          style={{ color: "var(--foreground)" }}
+                        >
+                          JSON-LD Schema
+                        </h3>
+                        <div
+                          className="rounded-xl border"
+                          style={{
+                            background: "var(--card)",
+                            borderColor: "var(--card-border)",
+                          }}
+                        >
+                          <div
+                            className="flex items-center justify-between border-b px-5 py-3"
+                            style={{ borderColor: "var(--card-border)" }}
+                          >
+                            <span
+                              className="text-xs font-medium uppercase tracking-wider"
+                              style={{ color: "var(--muted)" }}
+                            >
+                              Structured Data
+                            </span>
+                            <CopyButton
+                              text={`<script type="application/ld+json">\n${activeSession.result.schema}\n</script>`}
+                              label="Copy Schema"
+                            />
+                          </div>
+                          <pre
+                            className="overflow-x-auto p-5 text-xs leading-relaxed"
+                            style={{
+                              color: "var(--foreground)",
+                            }}
+                          >
+                            {activeSession.result.schema}
+                          </pre>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

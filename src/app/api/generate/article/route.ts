@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
 
     const openai = new OpenAI({ apiKey });
 
-    // Run article and image prompts in parallel
-    const [articleResult, imageResult] = await Promise.all([
+    // Run article, image prompts, and schema in parallel
+    const [articleResult, imageResult, schemaResult] = await Promise.all([
       openai.chat.completions.create({
         model: MODEL,
         messages: [
@@ -146,6 +146,43 @@ Each prompt must read like a brief for a professional photographer. Alt texts mu
         temperature: 0.7,
         response_format: { type: "json_object" },
       }),
+      openai.chat.completions.create({
+        model: MODEL,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an expert in SEO structured data and Schema.org markup. You generate optimized JSON-LD schema that maximizes rich snippet eligibility in Google Search. You must respond with valid JSON only.",
+          },
+          {
+            role: "user",
+            content: `Generate a comprehensive JSON-LD schema for an article with these details:
+
+Title: ${title}
+Meta Description: ${metaDescription}
+Focus Keyword: ${focusKeyword}
+Keywords: ${(allKeywords as string[]).join(", ")}
+Topic: ${topic}
+
+Generate a JSON object with a single "schema" key containing the JSON-LD script content (NOT wrapped in a script tag, just the JSON object itself).
+
+REQUIREMENTS:
+- Use @type "Article" as the primary type
+- Include these properties: headline, description, keywords, author (@type Person with name placeholder "[Author Name]"), datePublished (use placeholder "[YYYY-MM-DD]"), dateModified (same placeholder), publisher (@type Organization with name placeholder "[Site Name]"), mainEntityOfPage, image (placeholder "[Featured Image URL]")
+- Add an FAQPage schema as a secondary @graph item since the article contains an FAQ section. Include 3-5 FAQ entries based on the topic with realistic questions and short answers
+- Optimize for Google rich snippets: featured snippets, FAQ rich results, and article rich results
+- Use "https://www.example.com/${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}" as the URL placeholder
+- All values should be SEO-optimized for the focus keyword "${focusKeyword}"
+
+Return format:
+{
+  "schema": { ... the complete JSON-LD object ... }
+}`,
+          },
+        ],
+        temperature: 0.5,
+        response_format: { type: "json_object" },
+      }),
     ]);
 
     const article = articleResult.choices[0].message.content || "";
@@ -165,7 +202,16 @@ Each prompt must read like a brief for a professional photographer. Alt texts mu
       ];
     }
 
-    return NextResponse.json({ article, imagePrompts });
+    let schema = "";
+    try {
+      const rawSchema = schemaResult.choices[0].message.content || "{}";
+      const parsedSchema = JSON.parse(rawSchema);
+      schema = JSON.stringify(parsedSchema.schema || parsedSchema, null, 2);
+    } catch {
+      schema = "";
+    }
+
+    return NextResponse.json({ article, imagePrompts, schema });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "An unexpected error occurred";
