@@ -243,7 +243,7 @@ function ImagePromptCard({ image }: { image: ImagePrompt }) {
               className="text-xs font-medium uppercase tracking-wider"
               style={{ color: "var(--accent)" }}
             >
-              Midjourney Prompt
+              Prompt
             </span>
             <CopyButton text={image.prompt} label="Copy Prompt" />
           </div>
@@ -1714,7 +1714,7 @@ export default function Home() {
                   >
                     Image Prompts
                   </h3>
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     {activeSession.result.imagePrompts.map((image, i) => (
                       <ImagePromptCard key={i} image={image} />
                     ))}
