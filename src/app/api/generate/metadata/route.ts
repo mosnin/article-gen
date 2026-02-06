@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
         {
           role: "system",
           content:
-            "You are an SEO expert specializing in content optimization. Generate highly optimized metadata for articles.",
+            "You are an SEO expert specializing in content optimization. Generate highly optimized metadata for articles. You must respond with valid JSON only.",
         },
         {
           role: "user",
@@ -48,7 +48,7 @@ ${researchContext}
 TOPIC: ${topic}
 ${focusKeyword ? `PREFERRED FOCUS KEYWORD: ${focusKeyword}` : ""}
 
-Generate the following in EXACTLY this JSON format (no markdown, no code blocks, just raw JSON):
+Generate the following in EXACTLY this JSON format:
 {
   "title": "An SEO-optimized title (50-60 characters) that includes the focus keyword",
   "metaDescription": "A compelling meta description (150-160 characters) with the focus keyword",
@@ -61,7 +61,13 @@ The 5 keywords should be high-intent keywords related to the topic. They should 
         },
       ],
       temperature: 0.5,
+      response_format: { type: "json_object" },
     });
+
+    const defaultSlug = topic
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
 
     let metadata: {
       title: string;
@@ -73,16 +79,7 @@ The 5 keywords should be high-intent keywords related to the topic. They should 
 
     try {
       const raw = completion.choices[0].message.content || "{}";
-      const cleaned = raw
-        .replace(/```(?:json)?\n?/g, "")
-        .replace(/```/g, "")
-        .trim();
-      const parsed = JSON.parse(cleaned);
-
-      const defaultSlug = topic
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
+      const parsed = JSON.parse(raw);
 
       metadata = {
         title: parsed.title || topic,
@@ -96,10 +93,7 @@ The 5 keywords should be high-intent keywords related to the topic. They should 
       metadata = {
         title: topic,
         metaDescription: `Learn everything about ${topic}`,
-        slug: topic
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/(^-|-$)/g, ""),
+        slug: defaultSlug,
         focusKeyword: focusKeyword || topic,
         keywords: [],
       };

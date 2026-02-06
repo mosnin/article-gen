@@ -87,7 +87,7 @@ The output should be pure markdown that can be directly pasted into a WordPress 
           {
             role: "system",
             content:
-              "You are an expert at creating Midjourney image prompts that produce stunning, professional images suitable for blog articles.",
+              "You are an expert at creating Midjourney image prompts that produce stunning, professional images suitable for blog articles. You must respond with valid JSON only.",
           },
           {
             role: "user",
@@ -96,7 +96,7 @@ Title: ${title}
 Focus Keyword: ${focusKeyword}
 Keywords: ${(allKeywords as string[]).join(", ")}
 
-Generate EXACTLY this JSON format (no markdown, no code blocks, just raw JSON):
+Generate EXACTLY this JSON format:
 {
   "images": [
     {
@@ -126,6 +126,7 @@ Each prompt should be vivid, specific, and produce professional-quality images. 
           },
         ],
         temperature: 0.7,
+        response_format: { type: "json_object" },
       }),
     ]);
 
@@ -134,11 +135,7 @@ Each prompt should be vivid, specific, and produce professional-quality images. 
     let imagePrompts: { type: string; prompt: string; altText: string }[] = [];
     try {
       const raw = imageResult.choices[0].message.content || "{}";
-      const cleaned = raw
-        .replace(/```(?:json)?\n?/g, "")
-        .replace(/```/g, "")
-        .trim();
-      const parsed = JSON.parse(cleaned);
+      const parsed = JSON.parse(raw);
       imagePrompts = parsed.images || [];
     } catch {
       imagePrompts = [
