@@ -778,6 +778,16 @@ export default function Home() {
   const loadingCount = sessions.filter((s) => s.loading).length;
   const queuedCount = sessions.filter((s) => s.queued).length;
   const validBatchCount = batchItems.filter((i) => i.topic.trim()).length;
+  const [progressMinimized, setProgressMinimized] = useState(false);
+  const activeCount = loadingCount + queuedCount;
+  const completedInBatch = sessions.filter(
+    (s) => !s.loading && !s.queued && (s.result || s.error)
+  ).length;
+  const totalInProgress = activeCount + completedInBatch;
+  const progressPercent =
+    totalInProgress > 0
+      ? Math.round((completedInBatch / totalInProgress) * 100)
+      : 0;
 
   return (
     <div
@@ -899,30 +909,6 @@ export default function Home() {
             New Article
           </button>
         </div>
-
-        {/* Batch progress banner */}
-        {(batchProcessing || batchCountdown > 0) && (
-          <div
-            className="mx-3 mb-2 rounded-lg px-3 py-2 text-xs font-medium"
-            style={{
-              background: "var(--card)",
-              borderColor: "var(--card-border)",
-              color: "var(--foreground)",
-            }}
-          >
-            {batchCountdown > 0 ? (
-              <span>Next batch in {batchCountdown}s</span>
-            ) : (
-              <span>Processing batch...</span>
-            )}
-            {queuedCount > 0 && (
-              <span style={{ color: "var(--muted)" }}>
-                {" "}
-                &middot; {queuedCount} queued
-              </span>
-            )}
-          </div>
-        )}
 
         <div className="flex-1 overflow-y-auto px-3 pb-3">
           {sessions.length === 0 ? (
@@ -2653,6 +2639,130 @@ export default function Home() {
           </p>
         </footer>
       </div>
+
+      {/* Floating progress pill */}
+      {activeCount > 0 && (
+        <>
+          {progressMinimized ? (
+            <button
+              onClick={() => setProgressMinimized(false)}
+              className="progress-fab fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95"
+              style={{
+                background: "#1d1d1f",
+                boxShadow:
+                  "0 4px 24px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.08)",
+              }}
+              title="Show progress"
+            >
+              <svg
+                className="progress-spinner"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              >
+                <path d="M12 2a10 10 0 0 1 10 10" />
+              </svg>
+              <span
+                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold"
+                style={{ background: "#fff", color: "#1d1d1f" }}
+              >
+                {activeCount}
+              </span>
+            </button>
+          ) : (
+            <div
+              className="progress-pill fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full shadow-2xl transition-all duration-300"
+              style={{
+                background: "#1d1d1f",
+                boxShadow:
+                  "0 4px 30px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.06)",
+                minWidth: "320px",
+                maxWidth: "420px",
+              }}
+            >
+              <div className="flex items-center gap-3 px-5 py-3">
+                {/* Spinner */}
+                <svg
+                  className="progress-spinner flex-shrink-0"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                >
+                  <path d="M12 2a10 10 0 0 1 10 10" />
+                </svg>
+
+                {/* Text */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="truncate text-sm font-medium text-white">
+                      {batchCountdown > 0
+                        ? `Next batch in ${batchCountdown}s`
+                        : `Generating ${loadingCount === 1 ? "article" : "articles"}`}
+                    </span>
+                    <span
+                      className="flex-shrink-0 text-xs tabular-nums"
+                      style={{ color: "rgba(255,255,255,0.5)" }}
+                    >
+                      {completedInBatch}/{totalInProgress}
+                    </span>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div
+                    className="mt-2 h-1 w-full overflow-hidden rounded-full"
+                    style={{ background: "rgba(255,255,255,0.15)" }}
+                  >
+                    <div
+                      className="h-full rounded-full transition-all duration-700 ease-out"
+                      style={{
+                        width: `${Math.max(progressPercent, activeCount > 0 ? 3 : 0)}%`,
+                        background: "#fff",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Minimize button */}
+                <button
+                  onClick={() => setProgressMinimized(true)}
+                  className="flex-shrink-0 rounded-full p-1 transition-colors"
+                  style={{ color: "rgba(255,255,255,0.4)" }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.color =
+                      "rgba(255,255,255,0.8)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.color =
+                      "rgba(255,255,255,0.4)";
+                  }}
+                  title="Minimize"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
