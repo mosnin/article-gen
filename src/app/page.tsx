@@ -1492,6 +1492,16 @@ export default function Home() {
                   content={activeSession.result.slug}
                 />
                 <OutputCard
+                  label="Focus Keyword"
+                  content={activeSession.result.focusKeyword}
+                />
+                {activeSession.result.keywords.length > 0 && (
+                  <OutputCard
+                    label="Keywords"
+                    content={activeSession.result.keywords.join(", ")}
+                  />
+                )}
+                <OutputCard
                   label="Article (Markdown)"
                   content={activeSession.result.article}
                   large
@@ -1502,7 +1512,7 @@ export default function Home() {
                     className="mb-4 text-lg font-semibold"
                     style={{ color: "var(--foreground)" }}
                   >
-                    Midjourney Image Prompts
+                    Image Prompts
                   </h3>
                   <div className="space-y-4">
                     {activeSession.result.imagePrompts.map((image, i) => (
