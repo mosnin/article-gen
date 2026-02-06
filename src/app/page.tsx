@@ -524,6 +524,38 @@ export default function Home() {
     }
   };
 
+  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const parsed = JSON.parse(evt.target?.result as string);
+        const items = Array.isArray(parsed) ? parsed : [];
+        if (items.length === 0) {
+          setFormError("JSON file is empty or not an array.");
+          return;
+        }
+        const mapped = items.slice(0, 25).map((item: Record<string, string>) => ({
+          id: crypto.randomUUID(),
+          topic: (item.concept || item.topic || "").trim(),
+          keyword: (item.keyword || item.focusKeyword || "").trim(),
+        }));
+        const valid = mapped.filter((m: { topic: string }) => m.topic);
+        if (valid.length === 0) {
+          setFormError("No valid articles found. Each item needs a \"concept\" field.");
+          return;
+        }
+        setBatchItems(valid);
+        setFormError("");
+      } catch {
+        setFormError("Invalid JSON file. Please check the format.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
   const addBatchItem = () => {
     if (batchItems.length >= 25) return;
     setBatchItems((prev) => [
@@ -1073,12 +1105,59 @@ export default function Home() {
 
                     {/* Article list */}
                     <div>
-                      <label
-                        className="mb-2 block text-sm font-medium"
-                        style={{ color: "var(--muted)" }}
-                      >
-                        Articles ({batchItems.length}/25)
-                      </label>
+                      <div className="mb-2 flex items-center justify-between">
+                        <label
+                          className="text-sm font-medium"
+                          style={{ color: "var(--muted)" }}
+                        >
+                          Articles ({batchItems.length}/25)
+                        </label>
+                        <div>
+                          <input
+                            type="file"
+                            accept=".json"
+                            id="json-import"
+                            className="hidden"
+                            onChange={handleImportJson}
+                          />
+                          <button
+                            onClick={() =>
+                              document.getElementById("json-import")?.click()
+                            }
+                            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors"
+                            style={{
+                              color: "var(--accent)",
+                              background: "transparent",
+                            }}
+                            onMouseEnter={(e) => {
+                              (
+                                e.currentTarget as HTMLButtonElement
+                              ).style.background = "var(--card)";
+                            }}
+                            onMouseLeave={(e) => {
+                              (
+                                e.currentTarget as HTMLButtonElement
+                              ).style.background = "transparent";
+                            }}
+                          >
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="17 8 12 3 7 8" />
+                              <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            Import JSON
+                          </button>
+                        </div>
+                      </div>
                       <div className="space-y-2">
                         {batchItems.map((item, index) => (
                           <div
