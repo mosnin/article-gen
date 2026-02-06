@@ -30,6 +30,7 @@ interface ArticleSession {
   result: GenerationResult | null;
   currentStep: number;
   quality: "standard" | "premium";
+  posted: boolean;
 }
 
 interface BatchQueueItem {
@@ -412,6 +413,7 @@ export default function Home() {
   const [formError, setFormError] = useState("");
   const [resultView, setResultView] = useState<"data" | "preview">("data");
   const [showHelp, setShowHelp] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
 
   // Advanced settings
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -587,6 +589,7 @@ export default function Home() {
         result: null,
         currentStep: 0,
         quality: "premium",
+        posted: false,
       },
       ...prev,
     ]);
@@ -616,6 +619,7 @@ export default function Home() {
       result: null,
       currentStep: 0,
       quality: batchQuality,
+      posted: false,
     }));
 
     setSessions((prev) => [...newSessions, ...prev]);
@@ -774,7 +778,7 @@ export default function Home() {
     );
   };
 
-  const showForm = activeSessionId === null && !showHelp;
+  const showForm = activeSessionId === null && !showHelp && !showDashboard;
   const loadingCount = sessions.filter((s) => s.loading).length;
   const queuedCount = sessions.filter((s) => s.queued).length;
   const validBatchCount = batchItems.filter((i) => i.topic.trim()).length;
@@ -908,6 +912,48 @@ export default function Home() {
             </svg>
             New Article
           </button>
+          {sessions.filter((s) => s.result).length > 0 && (
+            <button
+              onClick={() => {
+                setShowDashboard(true);
+                setShowHelp(false);
+                setActiveSessionId(null);
+                setSidebarOpen(false);
+              }}
+              className="mt-1.5 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+              style={{
+                background: showDashboard ? "var(--card)" : "transparent",
+                color: "var(--foreground)",
+              }}
+              onMouseEnter={(e) => {
+                if (!showDashboard)
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    "rgba(0,0,0,0.04)";
+              }}
+              onMouseLeave={(e) => {
+                if (!showDashboard)
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    "transparent";
+              }}
+            >
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="3" y="3" width="7" height="7" />
+                <rect x="14" y="3" width="7" height="7" />
+                <rect x="3" y="14" width="7" height="7" />
+                <rect x="14" y="14" width="7" height="7" />
+              </svg>
+              Dashboard
+            </button>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 pb-3">
@@ -964,10 +1010,15 @@ export default function Home() {
                         className="block h-2 w-2 rounded-full"
                         style={{ background: "var(--error)" }}
                       />
-                    ) : (
+                    ) : session.posted ? (
                       <span
                         className="block h-2 w-2 rounded-full"
                         style={{ background: "var(--success)" }}
+                      />
+                    ) : (
+                      <span
+                        className="block h-2 w-2 rounded-full"
+                        style={{ background: "#007aff" }}
                       />
                     )}
                   </span>
@@ -1405,6 +1456,331 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Dashboard */}
+            {showDashboard && (
+              <div className="mx-auto max-w-4xl">
+                <div className="mb-8">
+                  <button
+                    onClick={() => setShowDashboard(false)}
+                    className="mb-6 flex items-center gap-1.5 text-sm font-medium"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                    Back
+                  </button>
+                  <h2
+                    className="mb-2 text-3xl font-bold tracking-tight"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    Dashboard
+                  </h2>
+                  <p className="text-sm" style={{ color: "var(--muted)" }}>
+                    {sessions.filter((s) => s.result && !s.posted).length} need
+                    to post &middot;{" "}
+                    {sessions.filter((s) => s.posted).length} posted
+                  </p>
+                </div>
+
+                {/* Need to Post */}
+                {sessions.filter(
+                  (s) => s.result && !s.posted && !s.loading && !s.queued
+                ).length > 0 && (
+                  <div className="mb-8">
+                    <h3
+                      className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={{ background: "#007aff" }}
+                      />
+                      Need to Post
+                    </h3>
+                    <div className="space-y-2">
+                      {sessions
+                        .filter(
+                          (s) =>
+                            s.result &&
+                            !s.posted &&
+                            !s.loading &&
+                            !s.queued
+                        )
+                        .map((session) => (
+                          <div
+                            key={session.id}
+                            className="group flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors"
+                            style={{
+                              background: "var(--card)",
+                              borderColor: "var(--card-border)",
+                            }}
+                          >
+                            <button
+                              onClick={() =>
+                                updateSession(session.id, { posted: true })
+                              }
+                              className="flex-shrink-0 rounded-full border-2 p-0.5 transition-colors"
+                              style={{ borderColor: "var(--card-border)" }}
+                              onMouseEnter={(e) => {
+                                (
+                                  e.currentTarget as HTMLButtonElement
+                                ).style.borderColor = "var(--success)";
+                              }}
+                              onMouseLeave={(e) => {
+                                (
+                                  e.currentTarget as HTMLButtonElement
+                                ).style.borderColor = "var(--card-border)";
+                              }}
+                              title="Mark as posted"
+                            >
+                              <span className="block h-3 w-3 rounded-full" />
+                            </button>
+                            <button
+                              className="min-w-0 flex-1 text-left"
+                              onClick={() => {
+                                setActiveSessionId(session.id);
+                                setShowDashboard(false);
+                              }}
+                            >
+                              <span
+                                className="block truncate text-sm font-medium"
+                                style={{ color: "var(--foreground)" }}
+                              >
+                                {session.result?.title || session.topic}
+                              </span>
+                              <span
+                                className="block truncate text-xs"
+                                style={{ color: "var(--muted)" }}
+                              >
+                                {session.result?.focusKeyword}
+                              </span>
+                            </button>
+                            <span
+                              className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider"
+                              style={{
+                                background: "rgba(0, 122, 255, 0.1)",
+                                color: "#007aff",
+                              }}
+                            >
+                              Ready
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Posted */}
+                {sessions.filter((s) => s.posted).length > 0 && (
+                  <div className="mb-8">
+                    <h3
+                      className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={{ background: "var(--success)" }}
+                      />
+                      Posted
+                    </h3>
+                    <div className="space-y-2">
+                      {sessions
+                        .filter((s) => s.posted)
+                        .map((session) => (
+                          <div
+                            key={session.id}
+                            className="group flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors"
+                            style={{
+                              background: "var(--card)",
+                              borderColor: "var(--card-border)",
+                            }}
+                          >
+                            <button
+                              onClick={() =>
+                                updateSession(session.id, { posted: false })
+                              }
+                              className="flex-shrink-0 transition-colors"
+                              style={{ color: "var(--success)" }}
+                              title="Unmark as posted"
+                            >
+                              <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            </button>
+                            <button
+                              className="min-w-0 flex-1 text-left"
+                              onClick={() => {
+                                setActiveSessionId(session.id);
+                                setShowDashboard(false);
+                              }}
+                            >
+                              <span
+                                className="block truncate text-sm font-medium"
+                                style={{ color: "var(--foreground)" }}
+                              >
+                                {session.result?.title || session.topic}
+                              </span>
+                              <span
+                                className="block truncate text-xs"
+                                style={{ color: "var(--muted)" }}
+                              >
+                                {session.result?.focusKeyword}
+                              </span>
+                            </button>
+                            <span
+                              className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider"
+                              style={{
+                                background: "rgba(52, 199, 89, 0.1)",
+                                color: "var(--success)",
+                              }}
+                            >
+                              Posted
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* In Progress / Queued */}
+                {sessions.filter(
+                  (s) => (s.loading || s.queued) && !s.error
+                ).length > 0 && (
+                  <div className="mb-8">
+                    <h3
+                      className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      <span
+                        className="sidebar-pulse inline-block h-2 w-2 rounded-full"
+                        style={{ background: "var(--accent)" }}
+                      />
+                      In Progress
+                    </h3>
+                    <div className="space-y-2">
+                      {sessions
+                        .filter(
+                          (s) => (s.loading || s.queued) && !s.error
+                        )
+                        .map((session) => (
+                          <div
+                            key={session.id}
+                            className="flex items-center gap-3 rounded-xl border px-4 py-3"
+                            style={{
+                              background: "var(--card)",
+                              borderColor: "var(--card-border)",
+                            }}
+                          >
+                            <span
+                              className={`block h-4 w-4 flex-shrink-0 rounded-full border-2 ${session.loading ? "sidebar-pulse" : ""}`}
+                              style={{
+                                borderColor: session.loading
+                                  ? "var(--accent)"
+                                  : "var(--card-border)",
+                              }}
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span
+                                className="block truncate text-sm font-medium"
+                                style={{ color: "var(--foreground)" }}
+                              >
+                                {session.topic}
+                              </span>
+                              <span
+                                className="block truncate text-xs"
+                                style={{ color: "var(--muted)" }}
+                              >
+                                {session.loading
+                                  ? STEP_LABELS[session.currentStep]
+                                  : "Queued"}
+                              </span>
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Failed */}
+                {sessions.filter(
+                  (s) => s.error && !s.loading && !s.queued
+                ).length > 0 && (
+                  <div className="mb-8">
+                    <h3
+                      className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={{ background: "var(--error)" }}
+                      />
+                      Failed
+                    </h3>
+                    <div className="space-y-2">
+                      {sessions
+                        .filter(
+                          (s) => s.error && !s.loading && !s.queued
+                        )
+                        .map((session) => (
+                          <div
+                            key={session.id}
+                            className="flex items-center gap-3 rounded-xl border px-4 py-3"
+                            style={{
+                              background: "var(--card)",
+                              borderColor: "var(--card-border)",
+                            }}
+                          >
+                            <span
+                              className="block h-2 w-2 flex-shrink-0 rounded-full"
+                              style={{ background: "var(--error)" }}
+                            />
+                            <button
+                              className="min-w-0 flex-1 text-left"
+                              onClick={() => {
+                                setActiveSessionId(session.id);
+                                setShowDashboard(false);
+                              }}
+                            >
+                              <span
+                                className="block truncate text-sm font-medium"
+                                style={{ color: "var(--foreground)" }}
+                              >
+                                {session.topic}
+                              </span>
+                              <span
+                                className="block truncate text-xs"
+                                style={{ color: "var(--error)" }}
+                              >
+                                {session.error}
+                              </span>
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2466,12 +2842,72 @@ export default function Home() {
             {activeSession?.result && (
               <div className="space-y-6">
                 <div className="mb-2">
-                  <h2
-                    className="mb-1 text-2xl font-bold"
-                    style={{ color: "var(--foreground)" }}
-                  >
-                    Generated Article
-                  </h2>
+                  <div className="flex items-start justify-between gap-4">
+                    <h2
+                      className="mb-1 text-2xl font-bold"
+                      style={{ color: "var(--foreground)" }}
+                    >
+                      Generated Article
+                    </h2>
+                    <button
+                      onClick={() =>
+                        updateSession(activeSession.id, {
+                          posted: !activeSession.posted,
+                        })
+                      }
+                      className="flex flex-shrink-0 items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all duration-200"
+                      style={{
+                        borderColor: activeSession.posted
+                          ? "var(--success)"
+                          : "var(--card-border)",
+                        background: activeSession.posted
+                          ? "rgba(52, 199, 89, 0.1)"
+                          : "var(--card)",
+                        color: activeSession.posted
+                          ? "var(--success)"
+                          : "var(--muted)",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!activeSession.posted) {
+                          (
+                            e.currentTarget as HTMLButtonElement
+                          ).style.borderColor = "var(--success)";
+                          (e.currentTarget as HTMLButtonElement).style.color =
+                            "var(--success)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!activeSession.posted) {
+                          (
+                            e.currentTarget as HTMLButtonElement
+                          ).style.borderColor = "var(--card-border)";
+                          (e.currentTarget as HTMLButtonElement).style.color =
+                            "var(--muted)";
+                        }
+                      }}
+                    >
+                      {activeSession.posted ? (
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      ) : (
+                        <span
+                          className="block h-3.5 w-3.5 rounded-full border-2"
+                          style={{ borderColor: "currentColor" }}
+                        />
+                      )}
+                      {activeSession.posted ? "Posted" : "Mark as Posted"}
+                    </button>
+                  </div>
                   <p className="text-sm" style={{ color: "var(--muted)" }}>
                     Focus:{" "}
                     <span style={{ color: "var(--accent)" }}>
