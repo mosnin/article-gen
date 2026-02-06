@@ -15,7 +15,10 @@ export async function POST(req: NextRequest) {
       metaDescription,
       focusKeyword,
       allKeywords,
+      targetWordCount,
     } = await req.json();
+
+    const wordCount = targetWordCount || 4000;
 
     if (!topic || !articleContext || !title || !allKeywords) {
       return NextResponse.json(
@@ -46,7 +49,7 @@ export async function POST(req: NextRequest) {
           },
           {
             role: "user",
-            content: `Write a comprehensive, SEO-optimized article of approximately 4000 words.
+            content: `Write a comprehensive, SEO-optimized article of approximately ${wordCount} words.
 
 TITLE: ${title}
 META DESCRIPTION: ${metaDescription}
@@ -70,7 +73,7 @@ REQUIREMENTS:
 8. Write a conclusion paragraph with a descriptive H2 heading that includes the focus keyword (DO NOT use the word "Conclusion")
 9. Maintain a combined 2% keyword density across all keywords: ${(allKeywords as string[]).join(", ")}
 10. Use markdown formatting throughout (H1 #, H2 ##, H3 ###, bold, italic, lists, links)
-11. Write approximately 4000 words - this is critical, do not write less
+11. Write approximately ${wordCount} words - this is critical, do not write less
 12. Make the content engaging, informative, and actionable
 13. Use short paragraphs (2-3 sentences max) for readability
 14. Include bullet points and numbered lists where appropriate
@@ -83,7 +86,7 @@ The output should be pure markdown that can be directly pasted into a WordPress 
           },
         ],
         temperature: 0.7,
-        max_tokens: 10000,
+        max_tokens: wordCount <= 2000 ? 5000 : 10000,
       }),
       openai.chat.completions.create({
         model: MODEL,
@@ -91,42 +94,53 @@ The output should be pure markdown that can be directly pasted into a WordPress 
           {
             role: "system",
             content:
-              "You are an expert at creating Midjourney image prompts that produce stunning, professional images suitable for blog articles. You must respond with valid JSON only.",
+              "You are an expert at creating hyper-realistic, cinematic photography prompts for AI image generators. Every prompt you write must look like it describes a real photograph taken by a professional photographer. No illustrations, diagrams, infographics, or abstract art. You must respond with valid JSON only.",
           },
           {
             role: "user",
-            content: `Generate 4 Midjourney image prompts for an article about: "${topic}"
+            content: `Generate 4 photorealistic image prompts for an article about: "${topic}"
 Title: ${title}
 Focus Keyword: ${focusKeyword}
-Keywords: ${(allKeywords as string[]).join(", ")}
+
+CRITICAL RULES FOR PROMPTS:
+- Every prompt must describe a hyper-realistic, cinematic photograph that looks like it was taken during a real professional photoshoot
+- Include specific photography details: camera angle, lens type, lighting setup (golden hour, soft natural light, studio lighting, etc.), depth of field, color grading
+- NO diagrams, infographics, illustrations, text overlays, or abstract concepts
+- NO customization parameters (do NOT include things like --ar 16:9, --v 6, --style, or any flags)
+- The scenes should be realistic and grounded - things that could actually be photographed in real life
+- Think editorial photography, documentary style, lifestyle shoots, product photography, or cinematic stills
+
+CRITICAL RULES FOR ALT TEXTS:
+- Every alt text MUST contain the exact focus keyword "${focusKeyword}" verbatim
+- The alt text should naturally describe the image while incorporating the focus keyword
 
 Generate EXACTLY this JSON format:
 {
   "images": [
     {
       "type": "Featured Image",
-      "prompt": "A detailed Midjourney prompt for a hero/featured image that captures the essence of the article. Include style, lighting, composition details. End with --ar 16:9 --v 6",
-      "altText": "Descriptive alt text that naturally includes relevant keywords from: ${(allKeywords as string[]).join(", ")}"
+      "prompt": "A hyper-realistic cinematic photograph that captures the essence of the article topic. Describe the scene, subjects, lighting, camera angle, lens, and mood as if directing a real photoshoot",
+      "altText": "Descriptive alt text that includes the exact focus keyword: ${focusKeyword}"
     },
     {
       "type": "Article Image 1",
-      "prompt": "A detailed Midjourney prompt for an image related to a key section of the article. End with --ar 16:9 --v 6",
-      "altText": "Descriptive alt text with keywords"
+      "prompt": "A photorealistic shot related to a key aspect of the article. Describe real-world scene with professional photography details",
+      "altText": "Descriptive alt text that includes the exact focus keyword: ${focusKeyword}"
     },
     {
       "type": "Article Image 2",
-      "prompt": "A detailed Midjourney prompt for another section image. End with --ar 16:9 --v 6",
-      "altText": "Descriptive alt text with keywords"
+      "prompt": "Another realistic photograph related to the article. Different scene, angle, or subject but still connected to the topic",
+      "altText": "Descriptive alt text that includes the exact focus keyword: ${focusKeyword}"
     },
     {
       "type": "Article Image 3",
-      "prompt": "A detailed Midjourney prompt for another section image. End with --ar 16:9 --v 6",
-      "altText": "Descriptive alt text with keywords"
+      "prompt": "A cinematic still photograph related to the article. Focus on a specific detail or moment that a real photographer would capture",
+      "altText": "Descriptive alt text that includes the exact focus keyword: ${focusKeyword}"
     }
   ]
 }
 
-Each prompt should be vivid, specific, and produce professional-quality images. Alt texts must include keywords directly.`,
+Each prompt must read like a brief for a professional photographer. Alt texts must contain "${focusKeyword}" exactly as written.`,
           },
         ],
         temperature: 0.7,
@@ -145,8 +159,8 @@ Each prompt should be vivid, specific, and produce professional-quality images. 
       imagePrompts = [
         {
           type: "Featured Image",
-          prompt: `Professional photograph related to ${topic}, high quality, editorial style --ar 16:9 --v 6`,
-          altText: `${focusKeyword} featured image`,
+          prompt: `Hyper-realistic cinematic photograph related to ${topic}, shot with a 50mm lens, soft natural lighting, shallow depth of field, editorial style, color graded`,
+          altText: `${focusKeyword} - professional editorial photograph`,
         },
       ];
     }
