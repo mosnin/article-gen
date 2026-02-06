@@ -298,6 +298,8 @@ export default function Home() {
   const [batchItems, setBatchItems] = useState<
     Array<{ id: string; topic: string; keyword: string }>
   >([{ id: crypto.randomUUID(), topic: "", keyword: "" }]);
+  const [showJsonPaste, setShowJsonPaste] = useState(false);
+  const [jsonPasteValue, setJsonPasteValue] = useState("");
   const [batchCountdown, setBatchCountdown] = useState(0);
   const [batchProcessing, setBatchProcessing] = useState(false);
   const batchQueueRef = useRef<BatchQueueItem[]>([]);
@@ -524,36 +526,49 @@ export default function Home() {
     }
   };
 
-  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const parseAndLoadJson = (text: string): boolean => {
+    try {
+      const parsed = JSON.parse(text);
+      const items = Array.isArray(parsed) ? parsed : [];
+      if (items.length === 0) {
+        setFormError("JSON is empty or not an array.");
+        return false;
+      }
+      const mapped = items.slice(0, 25).map((item: Record<string, string>) => ({
+        id: crypto.randomUUID(),
+        topic: (item.concept || item.topic || "").trim(),
+        keyword: (item.keyword || item.focusKeyword || "").trim(),
+      }));
+      const valid = mapped.filter((m: { topic: string }) => m.topic);
+      if (valid.length === 0) {
+        setFormError('No valid articles found. Each item needs a "concept" field.');
+        return false;
+      }
+      setBatchItems(valid);
+      setFormError("");
+      return true;
+    } catch {
+      setFormError("Invalid JSON. Please check the format.");
+      return false;
+    }
+  };
+
+  const handleImportJsonFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (evt) => {
-      try {
-        const parsed = JSON.parse(evt.target?.result as string);
-        const items = Array.isArray(parsed) ? parsed : [];
-        if (items.length === 0) {
-          setFormError("JSON file is empty or not an array.");
-          return;
-        }
-        const mapped = items.slice(0, 25).map((item: Record<string, string>) => ({
-          id: crypto.randomUUID(),
-          topic: (item.concept || item.topic || "").trim(),
-          keyword: (item.keyword || item.focusKeyword || "").trim(),
-        }));
-        const valid = mapped.filter((m: { topic: string }) => m.topic);
-        if (valid.length === 0) {
-          setFormError("No valid articles found. Each item needs a \"concept\" field.");
-          return;
-        }
-        setBatchItems(valid);
-        setFormError("");
-      } catch {
-        setFormError("Invalid JSON file. Please check the format.");
-      }
+      parseAndLoadJson(evt.target?.result as string);
     };
     reader.readAsText(file);
     e.target.value = "";
+  };
+
+  const handlePasteJsonSubmit = () => {
+    if (parseAndLoadJson(jsonPasteValue)) {
+      setJsonPasteValue("");
+      setShowJsonPaste(false);
+    }
   };
 
   const addBatchItem = () => {
@@ -1112,19 +1127,19 @@ export default function Home() {
                         >
                           Articles ({batchItems.length}/25)
                         </label>
-                        <div>
+                        <div className="flex items-center gap-1">
                           <input
                             type="file"
                             accept=".json"
                             id="json-import"
                             className="hidden"
-                            onChange={handleImportJson}
+                            onChange={handleImportJsonFile}
                           />
                           <button
                             onClick={() =>
                               document.getElementById("json-import")?.click()
                             }
-                            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors"
+                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
                             style={{
                               color: "var(--accent)",
                               background: "transparent",
@@ -1154,10 +1169,116 @@ export default function Home() {
                               <polyline points="17 8 12 3 7 8" />
                               <line x1="12" y1="3" x2="12" y2="15" />
                             </svg>
-                            Import JSON
+                            Upload
+                          </button>
+                          <span
+                            className="text-xs"
+                            style={{ color: "var(--card-border)" }}
+                          >
+                            |
+                          </span>
+                          <button
+                            onClick={() => {
+                              setShowJsonPaste(!showJsonPaste);
+                              setFormError("");
+                            }}
+                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
+                            style={{
+                              color: showJsonPaste
+                                ? "var(--foreground)"
+                                : "var(--accent)",
+                              background: showJsonPaste
+                                ? "var(--card)"
+                                : "transparent",
+                            }}
+                            onMouseEnter={(e) => {
+                              (
+                                e.currentTarget as HTMLButtonElement
+                              ).style.background = "var(--card)";
+                            }}
+                            onMouseLeave={(e) => {
+                              (
+                                e.currentTarget as HTMLButtonElement
+                              ).style.background = showJsonPaste
+                                ? "var(--card)"
+                                : "transparent";
+                            }}
+                          >
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <rect
+                                x="9"
+                                y="9"
+                                width="13"
+                                height="13"
+                                rx="2"
+                                ry="2"
+                              />
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                            </svg>
+                            Paste
                           </button>
                         </div>
                       </div>
+                      {showJsonPaste && (
+                        <div
+                          className="mb-3 rounded-xl border p-3"
+                          style={{
+                            borderColor: "var(--card-border)",
+                            background: "var(--card)",
+                          }}
+                        >
+                          <textarea
+                            value={jsonPasteValue}
+                            onChange={(e) => setJsonPasteValue(e.target.value)}
+                            placeholder={`[
+  { "concept": "Article topic here", "keyword": "focus keyword" },
+  { "concept": "Another article topic", "keyword": "another keyword" }
+]`}
+                            rows={6}
+                            className="mb-2 w-full resize-none rounded-lg border px-3 py-2 font-mono text-xs transition-colors focus:outline-none"
+                            style={{
+                              background: "var(--background)",
+                              borderColor: "var(--card-border)",
+                              color: "var(--foreground)",
+                            }}
+                            onFocus={(e) => {
+                              (
+                                e.target as HTMLTextAreaElement
+                              ).style.borderColor = "var(--accent)";
+                            }}
+                            onBlur={(e) => {
+                              (
+                                e.target as HTMLTextAreaElement
+                              ).style.borderColor = "var(--card-border)";
+                            }}
+                          />
+                          <div className="flex items-center justify-between">
+                            <span
+                              className="text-xs"
+                              style={{ color: "var(--muted)" }}
+                            >
+                              Paste a JSON array of articles
+                            </span>
+                            <button
+                              onClick={handlePasteJsonSubmit}
+                              disabled={!jsonPasteValue.trim()}
+                              className="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-40"
+                              style={{ background: "var(--accent)" }}
+                            >
+                              Load Articles
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       <div className="space-y-2">
                         {batchItems.map((item, index) => (
                           <div
