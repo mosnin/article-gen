@@ -63,33 +63,44 @@ The 5 keywords should be high-intent keywords related to the topic. They should 
       temperature: 0.5,
     });
 
-    let metadata: {
-      title: string;
-      metaDescription: string;
-      slug: string;
-      focusKeyword: string;
-      keywords: string[];
+    const fallback = {
+      title: topic,
+      metaDescription: `Learn everything about ${topic}`,
+      slug: topic
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, ""),
+      focusKeyword: focusKeyword || topic,
+      keywords: [] as string[],
     };
 
+    let parsed: Record<string, unknown> = {};
     try {
       const raw = completion.choices[0].message.content || "{}";
       const cleaned = raw
         .replace(/```(?:json)?\n?/g, "")
         .replace(/```/g, "")
         .trim();
-      metadata = JSON.parse(cleaned);
+      parsed = JSON.parse(cleaned);
     } catch {
-      metadata = {
-        title: topic,
-        metaDescription: `Learn everything about ${topic}`,
-        slug: topic
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/(^-|-$)/g, ""),
-        focusKeyword: focusKeyword || topic,
-        keywords: [],
-      };
+      // JSON parse failed, use fallback entirely
     }
+
+    // Normalize keys - GPT sometimes uses different casing
+    const get = (obj: Record<string, unknown>, ...keys: string[]): unknown => {
+      for (const key of keys) {
+        if (obj[key] !== undefined && obj[key] !== null && obj[key] !== "") return obj[key];
+      }
+      return undefined;
+    };
+
+    const metadata = {
+      title: (get(parsed, "title", "Title") as string) || fallback.title,
+      metaDescription: (get(parsed, "metaDescription", "meta_description", "metadescription", "Meta Description", "MetaDescription") as string) || fallback.metaDescription,
+      slug: (get(parsed, "slug", "Slug") as string) || fallback.slug,
+      focusKeyword: (get(parsed, "focusKeyword", "focus_keyword", "FocusKeyword", "Focus Keyword") as string) || fallback.focusKeyword,
+      keywords: (Array.isArray(parsed.keywords) ? parsed.keywords as string[] : Array.isArray(parsed.Keywords) ? parsed.Keywords as string[] : fallback.keywords),
+    };
 
     return NextResponse.json(metadata);
   } catch (error: unknown) {

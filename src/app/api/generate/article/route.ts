@@ -7,19 +7,20 @@ const MODEL = "gpt-4.1-mini";
 
 export async function POST(req: NextRequest) {
   try {
-    const {
-      topic,
-      articleContext,
-      researchContext,
-      title,
-      metaDescription,
-      focusKeyword,
-      allKeywords,
-    } = await req.json();
+    const body = await req.json();
+    const topic = body.topic;
+    const articleContext = body.articleContext || "";
+    const researchContext = body.researchContext || "";
+    const title = body.title || topic;
+    const metaDescription = body.metaDescription || "";
+    const focusKeyword = body.focusKeyword || topic;
+    const allKeywords: string[] = Array.isArray(body.allKeywords) && body.allKeywords.length > 0
+      ? body.allKeywords
+      : [focusKeyword];
 
-    if (!topic || !articleContext || !title || !allKeywords) {
+    if (!topic) {
       return NextResponse.json(
-        { error: "Missing required fields from metadata phase" },
+        { error: "Topic is required" },
         { status: 400 }
       );
     }
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
 TITLE: ${title}
 META DESCRIPTION: ${metaDescription}
 FOCUS KEYWORD: ${focusKeyword}
-ALL KEYWORDS (aim for combined 2% keyword density across all): ${(allKeywords as string[]).join(", ")}
+ALL KEYWORDS (aim for combined 2% keyword density across all): ${allKeywords.join(", ")}
 
 RESEARCH CONTEXT:
 ${researchContext}
@@ -68,7 +69,7 @@ REQUIREMENTS:
 6. Include 3 outbound links to authoritative sources (use real, plausible URLs from the research)
 7. Include an FAQ section with at least 5 questions and answers as an H2
 8. Write a conclusion paragraph with a descriptive H2 heading that includes the focus keyword (DO NOT use the word "Conclusion")
-9. Maintain a combined 2% keyword density across all keywords: ${(allKeywords as string[]).join(", ")}
+9. Maintain a combined 2% keyword density across all keywords: ${allKeywords.join(", ")}
 10. Use markdown formatting throughout (H1 #, H2 ##, H3 ###, bold, italic, lists, links)
 11. Write approximately 4000 words - this is critical, do not write less
 12. Make the content engaging, informative, and actionable
@@ -94,7 +95,7 @@ The output should be pure markdown that can be directly pasted into a WordPress 
             content: `Generate 4 Midjourney image prompts for an article about: "${topic}"
 Title: ${title}
 Focus Keyword: ${focusKeyword}
-Keywords: ${(allKeywords as string[]).join(", ")}
+Keywords: ${allKeywords.join(", ")}
 
 Generate EXACTLY this JSON format (no markdown, no code blocks, just raw JSON):
 {
@@ -102,7 +103,7 @@ Generate EXACTLY this JSON format (no markdown, no code blocks, just raw JSON):
     {
       "type": "Featured Image",
       "prompt": "A detailed Midjourney prompt for a hero/featured image that captures the essence of the article. Include style, lighting, composition details. End with --ar 16:9 --v 6",
-      "altText": "Descriptive alt text that naturally includes relevant keywords from: ${(allKeywords as string[]).join(", ")}"
+      "altText": "Descriptive alt text that naturally includes relevant keywords from: ${allKeywords.join(", ")}"
     },
     {
       "type": "Article Image 1",
