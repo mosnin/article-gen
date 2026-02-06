@@ -4,7 +4,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Article Sauce - AI-Powered SEO Article Generator",
   description:
-    "Generate comprehensive, SEO-optimized 4000-word articles with metadata, keywords, and Midjourney image prompts.",
+    "Generate comprehensive, SEO-optimized articles with metadata, keywords, image prompts, and JSON-LD schema.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
