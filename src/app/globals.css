@@ -51,6 +51,15 @@ body {
   animation-delay: 0.4s;
 }
 
+/* Sidebar pulse for loading indicator */
+@keyframes sidebar-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.sidebar-pulse {
+  animation: sidebar-pulse 1.5s ease-in-out infinite;
+}
+
 /* Gradient text */
 .gradient-text {
   background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
