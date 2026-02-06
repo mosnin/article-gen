@@ -420,7 +420,7 @@ export default function Home() {
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          className="fixed inset-0 z-40 bg-black/20 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -431,7 +431,7 @@ export default function Home() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{
-          background: "#14141b",
+          background: "var(--sidebar-bg)",
           borderColor: "var(--card-border)",
         }}
       >
@@ -440,7 +440,7 @@ export default function Home() {
           style={{ borderColor: "var(--card-border)" }}
         >
           <h1 className="gradient-text text-lg font-bold tracking-tight">
-            Article Gen
+            Article Sauce
           </h1>
           <button
             className="rounded p-1 md:hidden"
@@ -525,7 +525,7 @@ export default function Home() {
                   onMouseEnter={(e) => {
                     if (activeSessionId !== session.id)
                       (e.currentTarget as HTMLButtonElement).style.background =
-                        "rgba(255,255,255,0.03)";
+                        "rgba(0,0,0,0.04)";
                   }}
                   onMouseLeave={(e) => {
                     if (activeSessionId !== session.id)
@@ -576,7 +576,7 @@ export default function Home() {
                     )}
                   </span>
                   <span
-                    className="mt-0.5 flex-shrink-0 rounded p-0.5 opacity-0 transition-opacity hover:bg-white/10 group-hover:opacity-100"
+                    className="mt-0.5 flex-shrink-0 rounded p-0.5 opacity-0 transition-opacity hover:bg-black/5 group-hover:opacity-100"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDeleteSession(session.id);
@@ -640,7 +640,7 @@ export default function Home() {
             )}
           </button>
           <h1 className="gradient-text text-lg font-bold tracking-tight">
-            Article Gen
+            Article Sauce
           </h1>
         </header>
 
@@ -973,7 +973,7 @@ export default function Home() {
           style={{ borderColor: "var(--card-border)" }}
         >
           <p className="text-xs" style={{ color: "var(--muted)" }}>
-            Article Gen &mdash; AI-Powered SEO Article Generator
+            Article Sauce
           </p>
         </footer>
       </div>

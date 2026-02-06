@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
           {
             role: "system",
             content:
-              "You are an expert SEO content writer who creates highly optimized, engaging, and comprehensive articles. You write in a professional yet accessible tone. You always produce content ready for WordPress.",
+              "You are an expert SEO content writer who creates highly optimized, engaging, and comprehensive articles that follow Google's E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) principles. You write in a natural, human tone - conversational yet professional, as if a real subject-matter expert is speaking to the reader. Vary your sentence structure and length. Avoid robotic or formulaic phrasing. Never use em dashes (—). You always produce content ready for WordPress.",
           },
           {
             role: "user",
@@ -74,6 +74,10 @@ REQUIREMENTS:
 12. Make the content engaging, informative, and actionable
 13. Use short paragraphs (2-3 sentences max) for readability
 14. Include bullet points and numbered lists where appropriate
+15. Follow E-E-A-T principles throughout: demonstrate first-hand experience, cite expert sources, reference authoritative data, and build trust with specific facts rather than vague claims
+16. Write in a natural, humanized tone. Vary sentence length and rhythm. Use contractions, rhetorical questions, and direct address ("you") to sound like a real person, not AI
+17. NEVER use em dashes (—) anywhere in the article. Use commas, periods, colons, or parentheses instead
+18. Avoid filler phrases like "In today's world", "It's important to note", "In this article we will", "Let's dive in", or similar AI-sounding cliches
 
 The output should be pure markdown that can be directly pasted into a WordPress code editor.`,
           },
