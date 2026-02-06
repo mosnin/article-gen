@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
+import { marked } from "marked";
 
 interface ImagePrompt {
   type: string;
@@ -282,6 +283,117 @@ function ImagePromptCard({ image }: { image: ImagePrompt }) {
   );
 }
 
+function ArticlePreview({ article }: { article: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const html = useMemo(() => {
+    return marked.parse(article, { async: false }) as string;
+  }, [article]);
+
+  const handleCopyPlainText = async () => {
+    const temp = document.createElement("div");
+    temp.innerHTML = html;
+    const plainText = temp.innerText || temp.textContent || "";
+    await navigator.clipboard.writeText(plainText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyHtml = async () => {
+    await navigator.clipboard.writeText(html);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center gap-2">
+        <button
+          onClick={handleCopyPlainText}
+          className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
+          style={{
+            borderColor: "var(--card-border)",
+            background: "var(--card)",
+            color: "var(--foreground)",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor =
+              "var(--accent)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor =
+              "var(--card-border)";
+          }}
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          Copy Plain Text
+        </button>
+        <button
+          onClick={handleCopyHtml}
+          className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
+          style={{
+            borderColor: "var(--card-border)",
+            background: "var(--card)",
+            color: "var(--foreground)",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor =
+              "var(--accent)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor =
+              "var(--card-border)";
+          }}
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="16 18 22 12 16 6" />
+            <polyline points="8 6 2 12 8 18" />
+          </svg>
+          Copy HTML
+        </button>
+        {copied && (
+          <span
+            className="text-xs font-medium"
+            style={{ color: "var(--accent)" }}
+          >
+            Copied!
+          </span>
+        )}
+      </div>
+      <div
+        className="article-preview rounded-xl border p-8 md:p-12"
+        style={{
+          background: "var(--card)",
+          borderColor: "var(--card-border)",
+          color: "var(--foreground)",
+        }}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    </div>
+  );
+}
+
 export default function Home() {
   const [sessions, setSessions] = useState<ArticleSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -289,6 +401,7 @@ export default function Home() {
   const [formTopic, setFormTopic] = useState("");
   const [formKeyword, setFormKeyword] = useState("");
   const [formError, setFormError] = useState("");
+  const [resultView, setResultView] = useState<"data" | "preview">("data");
 
   // Mode & batch state
   const [mode, setMode] = useState<"single" | "batch">("single");
@@ -1649,7 +1762,7 @@ export default function Home() {
             {/* Results */}
             {activeSession?.result && (
               <div className="space-y-6">
-                <div className="mb-8">
+                <div className="mb-2">
                   <h2
                     className="mb-1 text-2xl font-bold"
                     style={{ color: "var(--foreground)" }}
@@ -1679,47 +1792,94 @@ export default function Home() {
                   </p>
                 </div>
 
-                <OutputCard
-                  label="Title"
-                  content={activeSession.result.title}
-                />
-                <OutputCard
-                  label="Meta Description"
-                  content={activeSession.result.metaDescription}
-                />
-                <OutputCard
-                  label="Slug"
-                  content={activeSession.result.slug}
-                />
-                <OutputCard
-                  label="Focus Keyword"
-                  content={activeSession.result.focusKeyword}
-                />
-                {activeSession.result.keywords.length > 0 && (
-                  <OutputCard
-                    label="Keywords"
-                    content={activeSession.result.keywords.join(", ")}
-                  />
-                )}
-                <OutputCard
-                  label="Article (Markdown)"
-                  content={activeSession.result.article}
-                  large
-                />
-
-                <div>
-                  <h3
-                    className="mb-4 text-lg font-semibold"
-                    style={{ color: "var(--foreground)" }}
+                {/* Result view tabs */}
+                <div
+                  className="flex overflow-hidden rounded-lg border"
+                  style={{ borderColor: "var(--card-border)" }}
+                >
+                  <button
+                    onClick={() => setResultView("data")}
+                    className="flex-1 px-4 py-2 text-sm font-medium transition-colors"
+                    style={{
+                      background:
+                        resultView === "data"
+                          ? "var(--accent)"
+                          : "var(--card)",
+                      color:
+                        resultView === "data" ? "#fff" : "var(--foreground)",
+                    }}
                   >
-                    Image Prompts
-                  </h3>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    {activeSession.result.imagePrompts.map((image, i) => (
-                      <ImagePromptCard key={i} image={image} />
-                    ))}
-                  </div>
+                    Data
+                  </button>
+                  <button
+                    onClick={() => setResultView("preview")}
+                    className="flex-1 px-4 py-2 text-sm font-medium transition-colors"
+                    style={{
+                      background:
+                        resultView === "preview"
+                          ? "var(--accent)"
+                          : "var(--card)",
+                      color:
+                        resultView === "preview"
+                          ? "#fff"
+                          : "var(--foreground)",
+                    }}
+                  >
+                    Preview
+                  </button>
                 </div>
+
+                {/* Data tab */}
+                {resultView === "data" && (
+                  <div className="space-y-6">
+                    <OutputCard
+                      label="Title"
+                      content={activeSession.result.title}
+                    />
+                    <OutputCard
+                      label="Meta Description"
+                      content={activeSession.result.metaDescription}
+                    />
+                    <OutputCard
+                      label="Slug"
+                      content={activeSession.result.slug}
+                    />
+                    <OutputCard
+                      label="Focus Keyword"
+                      content={activeSession.result.focusKeyword}
+                    />
+                    {activeSession.result.keywords.length > 0 && (
+                      <OutputCard
+                        label="Keywords"
+                        content={activeSession.result.keywords.join(", ")}
+                      />
+                    )}
+                    <OutputCard
+                      label="Article (Markdown)"
+                      content={activeSession.result.article}
+                      large
+                    />
+
+                    <div>
+                      <h3
+                        className="mb-4 text-lg font-semibold"
+                        style={{ color: "var(--foreground)" }}
+                      >
+                        Image Prompts
+                      </h3>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        {activeSession.result.imagePrompts.map((image, i) => (
+                          <ImagePromptCard key={i} image={image} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Preview tab */}
+                {resultView === "preview" && (
+                  <ArticlePreview article={activeSession.result.article} />
+                )}
               </div>
             )}
           </div>
