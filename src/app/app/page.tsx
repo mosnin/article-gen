@@ -1066,205 +1066,6 @@ export default function Home() {
               Dashboard
             </button>
           )}
-          <button
-            onClick={() => setShowIdeas(!showIdeas)}
-            className="mt-1.5 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-            style={{
-              background: showIdeas ? "var(--card)" : "transparent",
-              color: "var(--foreground)",
-            }}
-            onMouseEnter={(e) => {
-              if (!showIdeas)
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  "rgba(0,0,0,0.04)";
-            }}
-            onMouseLeave={(e) => {
-              if (!showIdeas)
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  "transparent";
-            }}
-          >
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M9 18h6" />
-              <path d="M10 22h4" />
-              <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
-            </svg>
-            Generate Ideas
-          </button>
-
-          {/* Generate Ideas Panel */}
-          {showIdeas && (
-            <div
-              className="mt-2 rounded-xl border p-3"
-              style={{
-                background: "var(--card)",
-                borderColor: "var(--card-border)",
-              }}
-            >
-              <div className="space-y-2.5">
-                <div>
-                  <label
-                    className="mb-1 block text-xs font-medium"
-                    style={{ color: "var(--muted)" }}
-                  >
-                    Niche
-                  </label>
-                  <input
-                    type="text"
-                    value={ideasNiche}
-                    onChange={(e) => setIdeasNiche(e.target.value)}
-                    placeholder="e.g., sustainable living"
-                    className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
-                    style={{
-                      background: "var(--background)",
-                      borderColor: "var(--card-border)",
-                      color: "var(--foreground)",
-                    }}
-                    onFocus={(e) => {
-                      (e.target as HTMLInputElement).style.borderColor =
-                        "var(--accent)";
-                    }}
-                    onBlur={(e) => {
-                      (e.target as HTMLInputElement).style.borderColor =
-                        "var(--card-border)";
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleGenerateIdeas();
-                    }}
-                  />
-                </div>
-                <div>
-                  <label
-                    className="mb-1 block text-xs font-medium"
-                    style={{ color: "var(--muted)" }}
-                  >
-                    Number of ideas
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={25}
-                    value={ideasCount}
-                    onChange={(e) =>
-                      setIdeasCount(
-                        Math.min(25, Math.max(1, Number(e.target.value)))
-                      )
-                    }
-                    className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
-                    style={{
-                      background: "var(--background)",
-                      borderColor: "var(--card-border)",
-                      color: "var(--foreground)",
-                    }}
-                    onFocus={(e) => {
-                      (e.target as HTMLInputElement).style.borderColor =
-                        "var(--accent)";
-                    }}
-                    onBlur={(e) => {
-                      (e.target as HTMLInputElement).style.borderColor =
-                        "var(--card-border)";
-                    }}
-                  />
-                </div>
-                <button
-                  onClick={handleGenerateIdeas}
-                  disabled={!ideasNiche.trim() || ideasLoading}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium text-white transition-colors disabled:opacity-40"
-                  style={{ background: "var(--accent)" }}
-                >
-                  {ideasLoading ? (
-                    <>
-                      <svg
-                        className="progress-spinner"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                      >
-                        <path d="M12 2a10 10 0 0 1 10 10" />
-                      </svg>
-                      Generating...
-                    </>
-                  ) : (
-                    "Generate Ideas"
-                  )}
-                </button>
-              </div>
-
-              {/* Ideas results */}
-              {ideasResult.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  <div
-                    className="border-t pt-3"
-                    style={{ borderColor: "var(--card-border)" }}
-                  >
-                    <div className="mb-2 flex items-center justify-between">
-                      <span
-                        className="text-xs font-medium"
-                        style={{ color: "var(--muted)" }}
-                      >
-                        {ideasResult.length} ideas generated
-                      </span>
-                    </div>
-                    <div className="max-h-48 space-y-1.5 overflow-y-auto">
-                      {ideasResult.map((idea, i) => (
-                        <div
-                          key={i}
-                          className="rounded-lg px-2.5 py-2 text-xs"
-                          style={{ background: "var(--background)" }}
-                        >
-                          <span
-                            className="block font-medium"
-                            style={{ color: "var(--foreground)" }}
-                          >
-                            {idea.concept}
-                          </span>
-                          <span style={{ color: "var(--muted)" }}>
-                            {idea.keyword}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <button
-                      onClick={handleLoadIdeasToBatch}
-                      className="mt-2 w-full rounded-lg border py-2 text-xs font-medium transition-colors"
-                      style={{
-                        borderColor: "var(--accent)",
-                        color: "var(--accent)",
-                        background: "transparent",
-                      }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.background =
-                          "var(--accent)";
-                        (e.currentTarget as HTMLButtonElement).style.color =
-                          "#fff";
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.background =
-                          "transparent";
-                        (e.currentTarget as HTMLButtonElement).style.color =
-                          "var(--accent)";
-                      }}
-                    >
-                      Load into Batch Mode
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 pb-3">
@@ -2452,6 +2253,46 @@ export default function Home() {
                             </svg>
                             Paste
                           </button>
+                          <span
+                            className="text-xs"
+                            style={{ color: "var(--card-border)" }}
+                          >
+                            |
+                          </span>
+                          <button
+                            onClick={() => setShowIdeas(true)}
+                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
+                            style={{
+                              color: "var(--accent)",
+                              background: "transparent",
+                            }}
+                            onMouseEnter={(e) => {
+                              (
+                                e.currentTarget as HTMLButtonElement
+                              ).style.background = "var(--card)";
+                            }}
+                            onMouseLeave={(e) => {
+                              (
+                                e.currentTarget as HTMLButtonElement
+                              ).style.background = "transparent";
+                            }}
+                          >
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M9 18h6" />
+                              <path d="M10 22h4" />
+                              <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
+                            </svg>
+                            Ideas
+                          </button>
                         </div>
                       </div>
                       {showJsonPaste && (
@@ -3234,6 +3075,262 @@ export default function Home() {
             </div>
           )}
         </>
+      )}
+
+      {/* Generate Ideas Modal */}
+      {showIdeas && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowIdeas(false);
+            }
+          }}
+        >
+          <div
+            className="absolute inset-0"
+            style={{ background: "rgba(0,0,0,0.3)", backdropFilter: "blur(4px)" }}
+          />
+          <div
+            className="relative mx-4 w-full max-w-md rounded-2xl border shadow-2xl"
+            style={{
+              background: "var(--background)",
+              borderColor: "var(--card-border)",
+              animation: "modal-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+          >
+            {/* Header */}
+            <div
+              className="flex items-center justify-between border-b px-5 py-4"
+              style={{ borderColor: "var(--card-border)" }}
+            >
+              <div className="flex items-center gap-2.5">
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-full"
+                  style={{ background: "var(--card)" }}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--foreground)"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M9 18h6" />
+                    <path d="M10 22h4" />
+                    <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3
+                    className="text-sm font-semibold"
+                    style={{ color: "var(--foreground)" }}
+                  >
+                    Generate Ideas
+                  </h3>
+                  <p className="text-xs" style={{ color: "var(--muted)" }}>
+                    AI-powered article idea generation
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowIdeas(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors"
+                style={{ color: "var(--muted)" }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    "var(--card)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    "transparent";
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="space-y-4 px-5 py-5">
+              <div>
+                <label
+                  className="mb-1.5 block text-sm font-medium"
+                  style={{ color: "var(--foreground)" }}
+                >
+                  Niche
+                </label>
+                <input
+                  type="text"
+                  value={ideasNiche}
+                  onChange={(e) => setIdeasNiche(e.target.value)}
+                  placeholder="e.g., sustainable living, digital marketing, pet care"
+                  className="w-full rounded-xl border px-4 py-3 text-sm transition-colors focus:outline-none"
+                  style={{
+                    background: "var(--card)",
+                    borderColor: "var(--card-border)",
+                    color: "var(--foreground)",
+                  }}
+                  onFocus={(e) => {
+                    (e.target as HTMLInputElement).style.borderColor =
+                      "var(--accent)";
+                  }}
+                  onBlur={(e) => {
+                    (e.target as HTMLInputElement).style.borderColor =
+                      "var(--card-border)";
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleGenerateIdeas();
+                  }}
+                />
+              </div>
+              <div>
+                <label
+                  className="mb-1.5 block text-sm font-medium"
+                  style={{ color: "var(--foreground)" }}
+                >
+                  Number of ideas
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={25}
+                  value={ideasCount}
+                  onChange={(e) =>
+                    setIdeasCount(
+                      Math.min(25, Math.max(1, Number(e.target.value)))
+                    )
+                  }
+                  className="w-full rounded-xl border px-4 py-3 text-sm transition-colors focus:outline-none"
+                  style={{
+                    background: "var(--card)",
+                    borderColor: "var(--card-border)",
+                    color: "var(--foreground)",
+                  }}
+                  onFocus={(e) => {
+                    (e.target as HTMLInputElement).style.borderColor =
+                      "var(--accent)";
+                  }}
+                  onBlur={(e) => {
+                    (e.target as HTMLInputElement).style.borderColor =
+                      "var(--card-border)";
+                  }}
+                />
+              </div>
+              <button
+                onClick={handleGenerateIdeas}
+                disabled={!ideasNiche.trim() || ideasLoading}
+                className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-colors disabled:opacity-40"
+                style={{ background: "var(--accent)" }}
+                onMouseEnter={(e) => {
+                  if (!(!ideasNiche.trim() || ideasLoading))
+                    (e.currentTarget as HTMLButtonElement).style.background =
+                      "var(--accent-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    "var(--accent)";
+                }}
+              >
+                {ideasLoading ? (
+                  <>
+                    <svg
+                      className="progress-spinner"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                    >
+                      <path d="M12 2a10 10 0 0 1 10 10" />
+                    </svg>
+                    Generating...
+                  </>
+                ) : (
+                  "Generate Ideas"
+                )}
+              </button>
+
+              {/* Ideas results */}
+              {ideasResult.length > 0 && (
+                <div
+                  className="rounded-xl border"
+                  style={{
+                    borderColor: "var(--card-border)",
+                    background: "var(--card)",
+                  }}
+                >
+                  <div className="px-4 py-3">
+                    <span
+                      className="text-xs font-medium"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      {ideasResult.length} ideas generated
+                    </span>
+                  </div>
+                  <div
+                    className="max-h-56 space-y-1 overflow-y-auto border-t px-3 py-2"
+                    style={{ borderColor: "var(--card-border)" }}
+                  >
+                    {ideasResult.map((idea, i) => (
+                      <div
+                        key={i}
+                        className="rounded-lg px-3 py-2.5"
+                        style={{ background: "var(--background)" }}
+                      >
+                        <span
+                          className="block text-sm font-medium"
+                          style={{ color: "var(--foreground)" }}
+                        >
+                          {idea.concept}
+                        </span>
+                        <span className="text-xs" style={{ color: "var(--muted)" }}>
+                          {idea.keyword}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div
+                    className="border-t px-4 py-3"
+                    style={{ borderColor: "var(--card-border)" }}
+                  >
+                    <button
+                      onClick={handleLoadIdeasToBatch}
+                      className="w-full rounded-xl py-2.5 text-sm font-semibold text-white transition-colors"
+                      style={{ background: "var(--accent)" }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background =
+                          "var(--accent-hover)";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background =
+                          "var(--accent)";
+                      }}
+                    >
+                      Load into Batch Mode
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
