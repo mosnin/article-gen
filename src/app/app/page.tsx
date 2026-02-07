@@ -794,6 +794,116 @@ export default function Home() {
       ? Math.round((completedInBatch / totalInProgress) * 100)
       : 0;
 
+  // Generate ideas state
+  const [showIdeas, setShowIdeas] = useState(false);
+  const [ideasNiche, setIdeasNiche] = useState("");
+  const [ideasCount, setIdeasCount] = useState(5);
+  const [ideasLoading, setIdeasLoading] = useState(false);
+  const [ideasResult, setIdeasResult] = useState<
+    Array<{ concept: string; keyword: string }>
+  >([]);
+
+  const handleGenerateIdeas = async () => {
+    if (!ideasNiche.trim()) return;
+    setIdeasLoading(true);
+    setIdeasResult([]);
+    try {
+      const res = await fetch("/api/generate/ideas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          niche: ideasNiche.trim(),
+          count: ideasCount,
+        }),
+      });
+      const data = await res.json();
+      if (data.ideas) {
+        setIdeasResult(data.ideas);
+      }
+    } catch {
+      setFormError("Failed to generate ideas.");
+    } finally {
+      setIdeasLoading(false);
+    }
+  };
+
+  const handleLoadIdeasToBatch = () => {
+    const mapped = ideasResult.map((item) => ({
+      id: crypto.randomUUID(),
+      topic: item.concept,
+      keyword: item.keyword,
+    }));
+    setBatchItems(mapped);
+    setMode("batch");
+    setShowIdeas(false);
+    setIdeasResult([]);
+  };
+
+  // Shared advanced settings panel JSX
+  const advancedSettingsPanel = (
+    <div
+      className="rounded-xl border"
+      style={{
+        borderColor: "var(--card-border)",
+        background: "var(--card)",
+      }}
+    >
+      <button
+        onClick={() => setShowAdvanced(!showAdvanced)}
+        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium"
+        style={{ color: "var(--foreground)" }}
+      >
+        <span className="flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+          </svg>
+          Advanced Settings
+          <span className="text-xs font-normal" style={{ color: "var(--muted)" }}>(optional)</span>
+        </span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showAdvanced ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {showAdvanced && (
+        <div className="space-y-3 border-t px-4 py-4" style={{ borderColor: "var(--card-border)" }}>
+          <div className="flex items-center justify-end gap-1">
+            <input type="file" accept=".json" id="advanced-json-import" className="hidden" onChange={handleAdvancedJsonFile} />
+            <button onClick={() => document.getElementById("advanced-json-import")?.click()} className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors" style={{ color: "var(--accent)", background: "transparent" }} onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }} onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+              Upload
+            </button>
+            <span className="text-xs" style={{ color: "var(--card-border)" }}>|</span>
+            <button onClick={() => setShowAdvancedJsonPaste(!showAdvancedJsonPaste)} className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors" style={{ color: showAdvancedJsonPaste ? "var(--foreground)" : "var(--accent)", background: showAdvancedJsonPaste ? "var(--background)" : "transparent" }} onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }} onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = showAdvancedJsonPaste ? "var(--background)" : "transparent"; }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+              Paste
+            </button>
+          </div>
+          {showAdvancedJsonPaste && (
+            <div className="rounded-lg border p-3" style={{ borderColor: "var(--card-border)", background: "var(--background)" }}>
+              <textarea value={advancedJsonValue} onChange={(e) => setAdvancedJsonValue(e.target.value)} placeholder={`{\n  "domain": "https://yourblog.com",\n  "siteName": "Your Blog Name",\n  "siteAbout": "A blog about...",\n  "authorName": "John Doe",\n  "authorAbout": "Expert in..."\n}`} rows={5} className="mb-2 w-full resize-none rounded-lg border px-3 py-2 font-mono text-xs transition-colors focus:outline-none" style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }} onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--accent)"; }} onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--card-border)"; }} />
+              <div className="flex justify-end">
+                <button onClick={handleAdvancedPasteSubmit} disabled={!advancedJsonValue.trim()} className="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-40" style={{ background: "var(--accent)" }}>Load Settings</button>
+              </div>
+            </div>
+          )}
+          {[
+            { key: "domain" as const, label: "Domain", placeholder: "https://yourblog.com" },
+            { key: "siteName" as const, label: "Site Name", placeholder: "Your Blog Name" },
+            { key: "siteAbout" as const, label: "About the Blog", placeholder: "A blog about sustainable living and eco-friendly tips" },
+            { key: "authorName" as const, label: "Author Name", placeholder: "John Doe" },
+            { key: "authorAbout" as const, label: "About the Author", placeholder: "Expert in sustainable living with 10 years of experience" },
+          ].map((field) => (
+            <div key={field.key}>
+              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--muted)" }}>{field.label}</label>
+              <input type="text" value={advancedSettings[field.key]} onChange={(e) => updateAdvanced(field.key, e.target.value)} placeholder={field.placeholder} className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none" style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }} onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }} onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div
       className="flex h-screen overflow-hidden"
@@ -955,6 +1065,205 @@ export default function Home() {
               </svg>
               Dashboard
             </button>
+          )}
+          <button
+            onClick={() => setShowIdeas(!showIdeas)}
+            className="mt-1.5 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+            style={{
+              background: showIdeas ? "var(--card)" : "transparent",
+              color: "var(--foreground)",
+            }}
+            onMouseEnter={(e) => {
+              if (!showIdeas)
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  "rgba(0,0,0,0.04)";
+            }}
+            onMouseLeave={(e) => {
+              if (!showIdeas)
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  "transparent";
+            }}
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 18h6" />
+              <path d="M10 22h4" />
+              <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
+            </svg>
+            Generate Ideas
+          </button>
+
+          {/* Generate Ideas Panel */}
+          {showIdeas && (
+            <div
+              className="mt-2 rounded-xl border p-3"
+              style={{
+                background: "var(--card)",
+                borderColor: "var(--card-border)",
+              }}
+            >
+              <div className="space-y-2.5">
+                <div>
+                  <label
+                    className="mb-1 block text-xs font-medium"
+                    style={{ color: "var(--muted)" }}
+                  >
+                    Niche
+                  </label>
+                  <input
+                    type="text"
+                    value={ideasNiche}
+                    onChange={(e) => setIdeasNiche(e.target.value)}
+                    placeholder="e.g., sustainable living"
+                    className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
+                    style={{
+                      background: "var(--background)",
+                      borderColor: "var(--card-border)",
+                      color: "var(--foreground)",
+                    }}
+                    onFocus={(e) => {
+                      (e.target as HTMLInputElement).style.borderColor =
+                        "var(--accent)";
+                    }}
+                    onBlur={(e) => {
+                      (e.target as HTMLInputElement).style.borderColor =
+                        "var(--card-border)";
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleGenerateIdeas();
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    className="mb-1 block text-xs font-medium"
+                    style={{ color: "var(--muted)" }}
+                  >
+                    Number of ideas
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={25}
+                    value={ideasCount}
+                    onChange={(e) =>
+                      setIdeasCount(
+                        Math.min(25, Math.max(1, Number(e.target.value)))
+                      )
+                    }
+                    className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
+                    style={{
+                      background: "var(--background)",
+                      borderColor: "var(--card-border)",
+                      color: "var(--foreground)",
+                    }}
+                    onFocus={(e) => {
+                      (e.target as HTMLInputElement).style.borderColor =
+                        "var(--accent)";
+                    }}
+                    onBlur={(e) => {
+                      (e.target as HTMLInputElement).style.borderColor =
+                        "var(--card-border)";
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={handleGenerateIdeas}
+                  disabled={!ideasNiche.trim() || ideasLoading}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium text-white transition-colors disabled:opacity-40"
+                  style={{ background: "var(--accent)" }}
+                >
+                  {ideasLoading ? (
+                    <>
+                      <svg
+                        className="progress-spinner"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                      >
+                        <path d="M12 2a10 10 0 0 1 10 10" />
+                      </svg>
+                      Generating...
+                    </>
+                  ) : (
+                    "Generate Ideas"
+                  )}
+                </button>
+              </div>
+
+              {/* Ideas results */}
+              {ideasResult.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  <div
+                    className="border-t pt-3"
+                    style={{ borderColor: "var(--card-border)" }}
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <span
+                        className="text-xs font-medium"
+                        style={{ color: "var(--muted)" }}
+                      >
+                        {ideasResult.length} ideas generated
+                      </span>
+                    </div>
+                    <div className="max-h-48 space-y-1.5 overflow-y-auto">
+                      {ideasResult.map((idea, i) => (
+                        <div
+                          key={i}
+                          className="rounded-lg px-2.5 py-2 text-xs"
+                          style={{ background: "var(--background)" }}
+                        >
+                          <span
+                            className="block font-medium"
+                            style={{ color: "var(--foreground)" }}
+                          >
+                            {idea.concept}
+                          </span>
+                          <span style={{ color: "var(--muted)" }}>
+                            {idea.keyword}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={handleLoadIdeasToBatch}
+                      className="mt-2 w-full rounded-lg border py-2 text-xs font-medium transition-colors"
+                      style={{
+                        borderColor: "var(--accent)",
+                        color: "var(--accent)",
+                        background: "transparent",
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background =
+                          "var(--accent)";
+                        (e.currentTarget as HTMLButtonElement).style.color =
+                          "#fff";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background =
+                          "transparent";
+                        (e.currentTarget as HTMLButtonElement).style.color =
+                          "var(--accent)";
+                      }}
+                    >
+                      Load into Batch Mode
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -1842,286 +2151,6 @@ export default function Home() {
                   </button>
                 </div>
 
-                {/* Advanced settings dropdown */}
-                <div
-                  className="mb-6 rounded-xl border"
-                  style={{
-                    borderColor: "var(--card-border)",
-                    background: "var(--card)",
-                  }}
-                >
-                  <button
-                    onClick={() => setShowAdvanced(!showAdvanced)}
-                    className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium"
-                    style={{ color: "var(--foreground)" }}
-                  >
-                    <span className="flex items-center gap-2">
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="var(--muted)"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <circle cx="12" cy="12" r="3" />
-                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-                      </svg>
-                      Advanced Settings
-                      <span
-                        className="text-xs font-normal"
-                        style={{ color: "var(--muted)" }}
-                      >
-                        (optional)
-                      </span>
-                    </span>
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="var(--muted)"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      style={{
-                        transform: showAdvanced
-                          ? "rotate(180deg)"
-                          : "rotate(0deg)",
-                        transition: "transform 0.2s",
-                      }}
-                    >
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </button>
-
-                  {showAdvanced && (
-                    <div
-                      className="space-y-3 border-t px-4 py-4"
-                      style={{ borderColor: "var(--card-border)" }}
-                    >
-                      {/* Import buttons */}
-                      <div className="flex items-center justify-end gap-1">
-                        <input
-                          type="file"
-                          accept=".json"
-                          id="advanced-json-import"
-                          className="hidden"
-                          onChange={handleAdvancedJsonFile}
-                        />
-                        <button
-                          onClick={() =>
-                            document
-                              .getElementById("advanced-json-import")
-                              ?.click()
-                          }
-                          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
-                          style={{
-                            color: "var(--accent)",
-                            background: "transparent",
-                          }}
-                          onMouseEnter={(e) => {
-                            (
-                              e.currentTarget as HTMLButtonElement
-                            ).style.background = "var(--background)";
-                          }}
-                          onMouseLeave={(e) => {
-                            (
-                              e.currentTarget as HTMLButtonElement
-                            ).style.background = "transparent";
-                          }}
-                        >
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="17 8 12 3 7 8" />
-                            <line x1="12" y1="3" x2="12" y2="15" />
-                          </svg>
-                          Upload
-                        </button>
-                        <span
-                          className="text-xs"
-                          style={{ color: "var(--card-border)" }}
-                        >
-                          |
-                        </span>
-                        <button
-                          onClick={() =>
-                            setShowAdvancedJsonPaste(!showAdvancedJsonPaste)
-                          }
-                          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
-                          style={{
-                            color: showAdvancedJsonPaste
-                              ? "var(--foreground)"
-                              : "var(--accent)",
-                            background: showAdvancedJsonPaste
-                              ? "var(--background)"
-                              : "transparent",
-                          }}
-                          onMouseEnter={(e) => {
-                            (
-                              e.currentTarget as HTMLButtonElement
-                            ).style.background = "var(--background)";
-                          }}
-                          onMouseLeave={(e) => {
-                            (
-                              e.currentTarget as HTMLButtonElement
-                            ).style.background = showAdvancedJsonPaste
-                              ? "var(--background)"
-                              : "transparent";
-                          }}
-                        >
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <rect
-                              x="9"
-                              y="9"
-                              width="13"
-                              height="13"
-                              rx="2"
-                              ry="2"
-                            />
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                          </svg>
-                          Paste
-                        </button>
-                      </div>
-
-                      {showAdvancedJsonPaste && (
-                        <div
-                          className="rounded-lg border p-3"
-                          style={{
-                            borderColor: "var(--card-border)",
-                            background: "var(--background)",
-                          }}
-                        >
-                          <textarea
-                            value={advancedJsonValue}
-                            onChange={(e) =>
-                              setAdvancedJsonValue(e.target.value)
-                            }
-                            placeholder={`{
-  "domain": "https://yourblog.com",
-  "siteName": "Your Blog Name",
-  "siteAbout": "A blog about...",
-  "authorName": "John Doe",
-  "authorAbout": "Expert in..."
-}`}
-                            rows={5}
-                            className="mb-2 w-full resize-none rounded-lg border px-3 py-2 font-mono text-xs transition-colors focus:outline-none"
-                            style={{
-                              background: "var(--card)",
-                              borderColor: "var(--card-border)",
-                              color: "var(--foreground)",
-                            }}
-                            onFocus={(e) => {
-                              (
-                                e.target as HTMLTextAreaElement
-                              ).style.borderColor = "var(--accent)";
-                            }}
-                            onBlur={(e) => {
-                              (
-                                e.target as HTMLTextAreaElement
-                              ).style.borderColor = "var(--card-border)";
-                            }}
-                          />
-                          <div className="flex justify-end">
-                            <button
-                              onClick={handleAdvancedPasteSubmit}
-                              disabled={!advancedJsonValue.trim()}
-                              className="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-40"
-                              style={{ background: "var(--accent)" }}
-                            >
-                              Load Settings
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {[
-                        {
-                          key: "domain" as const,
-                          label: "Domain",
-                          placeholder: "https://yourblog.com",
-                        },
-                        {
-                          key: "siteName" as const,
-                          label: "Site Name",
-                          placeholder: "Your Blog Name",
-                        },
-                        {
-                          key: "siteAbout" as const,
-                          label: "About the Blog",
-                          placeholder:
-                            "A blog about sustainable living and eco-friendly tips",
-                        },
-                        {
-                          key: "authorName" as const,
-                          label: "Author Name",
-                          placeholder: "John Doe",
-                        },
-                        {
-                          key: "authorAbout" as const,
-                          label: "About the Author",
-                          placeholder:
-                            "Expert in sustainable living with 10 years of experience",
-                        },
-                      ].map((field) => (
-                        <div key={field.key}>
-                          <label
-                            className="mb-1 block text-xs font-medium"
-                            style={{ color: "var(--muted)" }}
-                          >
-                            {field.label}
-                          </label>
-                          <input
-                            type="text"
-                            value={advancedSettings[field.key]}
-                            onChange={(e) =>
-                              updateAdvanced(field.key, e.target.value)
-                            }
-                            placeholder={field.placeholder}
-                            className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
-                            style={{
-                              background: "var(--background)",
-                              borderColor: "var(--card-border)",
-                              color: "var(--foreground)",
-                            }}
-                            onFocus={(e) => {
-                              (
-                                e.target as HTMLInputElement
-                              ).style.borderColor = "var(--accent)";
-                            }}
-                            onBlur={(e) => {
-                              (
-                                e.target as HTMLInputElement
-                              ).style.borderColor = "var(--card-border)";
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
                 {/* Single mode form */}
                 {mode === "single" && (
                   <div className="space-y-4">
@@ -2208,6 +2237,8 @@ export default function Home() {
                         }}
                       />
                     </div>
+
+                    {advancedSettingsPanel}
 
                     {formError && (
                       <div
@@ -2620,6 +2651,8 @@ export default function Home() {
                         Add Article
                       </button>
                     )}
+
+                    {advancedSettingsPanel}
 
                     {formError && (
                       <div
