@@ -139,7 +139,7 @@ function LandingPage() {
       if (error) {
         setAuthError(error.message);
       } else {
-        setAuthMessage("Check your email to confirm your account.");
+        router.push("/app");
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({
@@ -210,13 +210,29 @@ function LandingPage() {
               Article Sauce
             </span>
           </Link>
-          <button
-            onClick={() => openAuth("login")}
-            className="rounded-full px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:scale-105 active:scale-95"
-            style={{ background: "var(--accent)" }}
-          >
-            Login
-          </button>
+          <div className="flex items-center gap-6">
+            <a
+              href="#how-it-works"
+              className="text-sm font-medium transition-colors"
+              style={{ color: "var(--muted)" }}
+            >
+              How it Works
+            </a>
+            <a
+              href="#pricing"
+              className="text-sm font-medium transition-colors"
+              style={{ color: "var(--muted)" }}
+            >
+              Pricing
+            </a>
+            <button
+              onClick={() => openAuth("login")}
+              className="rounded-full px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:scale-105 active:scale-95"
+              style={{ background: "var(--accent)" }}
+            >
+              Login
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -632,6 +648,137 @@ function LandingPage() {
               </div>
             </div>
           </FadeIn>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="px-6 pb-24">
+        <div className="mx-auto max-w-5xl">
+          <FadeIn>
+            <div className="mb-4 text-center">
+              <span
+                className="inline-block rounded-full px-3 py-1 text-xs font-medium tracking-wide"
+                style={{
+                  background: "var(--card)",
+                  color: "var(--muted)",
+                  border: "1px solid var(--card-border)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                Pricing
+              </span>
+            </div>
+            <h2
+              className="mb-3 text-center text-3xl font-bold tracking-tight md:text-4xl"
+              style={{ letterSpacing: "-0.02em" }}
+            >
+              Simple, transparent pricing
+            </h2>
+            <p
+              className="mx-auto mb-12 max-w-lg text-center text-base"
+              style={{ color: "var(--muted)" }}
+            >
+              Start free and scale as you grow. Every credit generates one full SEO article.
+            </p>
+          </FadeIn>
+          <div className="grid gap-5 md:grid-cols-4">
+            {[
+              {
+                name: "Free",
+                price: "$0",
+                period: "",
+                credits: "10",
+                features: ["10 articles/month", "Standard & premium quality", "Image prompts", "JSON-LD schema", "Email support"],
+                cta: "Get Started",
+                featured: false,
+              },
+              {
+                name: "Starter",
+                price: "$29",
+                period: "/mo",
+                credits: "50",
+                features: ["50 articles/month", "Standard & premium quality", "Topic clusters", "Batch generation", "Priority support"],
+                cta: "Subscribe",
+                featured: false,
+              },
+              {
+                name: "Growth",
+                price: "$50",
+                period: "/mo",
+                credits: "120",
+                features: ["120 articles/month", "Standard & premium quality", "Topic clusters", "Batch generation", "Priority support"],
+                cta: "Subscribe",
+                featured: true,
+              },
+              {
+                name: "Pro",
+                price: "$99",
+                period: "/mo",
+                credits: "300",
+                features: ["300 articles/month", "Standard & premium quality", "Topic clusters", "Batch generation", "Dedicated support"],
+                cta: "Subscribe",
+                featured: false,
+              },
+            ].map((plan, i) => (
+              <FadeIn key={plan.name} delay={i * 0.08}>
+                <div
+                  className="relative flex h-full flex-col rounded-2xl p-6"
+                  style={{
+                    background: plan.featured ? "#1d1d1f" : "var(--card)",
+                    border: plan.featured ? "none" : "1px solid var(--card-border)",
+                    color: plan.featured ? "#fff" : "var(--foreground)",
+                  }}
+                >
+                  {plan.featured && (
+                    <div
+                      className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-0.5 text-xs font-semibold"
+                      style={{ background: "var(--success)", color: "#fff" }}
+                    >
+                      Most Popular
+                    </div>
+                  )}
+                  <div className="mb-1 text-sm font-semibold" style={{ color: plan.featured ? "rgba(255,255,255,0.7)" : "var(--muted)" }}>
+                    {plan.name}
+                  </div>
+                  <div className="mb-1 flex items-baseline gap-1">
+                    <span className="text-3xl font-extrabold">{plan.price}</span>
+                    {plan.period && (
+                      <span className="text-sm font-medium" style={{ color: plan.featured ? "rgba(255,255,255,0.5)" : "var(--muted)" }}>
+                        {plan.period}
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    className="mb-5 text-sm"
+                    style={{ color: plan.featured ? "rgba(255,255,255,0.5)" : "var(--muted)" }}
+                  >
+                    {plan.credits} credits/month
+                  </div>
+                  <ul className="mb-6 flex flex-1 flex-col gap-2.5">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-center gap-2 text-sm">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={plan.featured ? "#34c759" : "var(--success)"} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        <span style={{ color: plan.featured ? "rgba(255,255,255,0.8)" : "var(--foreground)" }}>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => openAuth("signup")}
+                    className="w-full rounded-xl py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                    style={{
+                      background: plan.featured ? "#fff" : "var(--accent)",
+                      color: plan.featured ? "#1d1d1f" : "#fff",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {plan.cta}
+                  </button>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
         </div>
       </section>
 
