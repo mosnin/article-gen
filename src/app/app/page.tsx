@@ -456,6 +456,12 @@ export default function Home() {
   const [showAdvancedJsonPaste, setShowAdvancedJsonPaste] = useState(false);
   const [advancedJsonValue, setAdvancedJsonValue] = useState("");
 
+  // Credits & role
+  const [userCredits, setUserCredits] = useState<number | null>(null);
+  const [userPlan, setUserPlan] = useState<string>("free");
+  const [userRole, setUserRole] = useState<string>("user");
+  const isAdmin = userRole === "admin";
+
   // Mode & batch state
   const [mode, setMode] = useState<"single" | "batch" | "cluster">("single");
   const [batchQuality, setBatchQuality] = useState<"standard" | "premium">(
@@ -499,6 +505,19 @@ export default function Home() {
           authorName: settings.author_name || "",
           authorAbout: settings.author_about || "",
         });
+      }
+
+      // Load credit info
+      try {
+        const creditRes = await fetch("/api/credits");
+        const creditData = await creditRes.json();
+        if (!creditData.error) {
+          setUserCredits(creditData.credits);
+          setUserPlan(creditData.plan || "free");
+          setUserRole(creditData.role || "user");
+        }
+      } catch {
+        // Credits will show as loading
       }
 
       // Load saved articles
@@ -740,6 +759,11 @@ export default function Home() {
         };
         updateSession(id, { loading: false, result });
 
+        // Update credit display
+        if (typeof articleData.credits === "number") {
+          setUserCredits(articleData.credits);
+        }
+
         // Save to DB
         saveArticleToDb({
           id, topic, focusKeyword: result.focusKeyword, loading: false, queued: false,
@@ -797,6 +821,11 @@ export default function Home() {
   const handleGenerate = () => {
     if (!formTopic.trim()) {
       setFormError("Please enter a topic for your article.");
+      return;
+    }
+
+    if (!isAdmin && userCredits !== null && userCredits < 1) {
+      setFormError("No credits remaining. Please upgrade your plan.");
       return;
     }
 
@@ -2022,12 +2051,55 @@ export default function Home() {
           ) : null}
         </div>
 
-        {/* User / Logout */}
+        {/* Credits & Navigation */}
         {user && (
           <div
             className="mt-auto border-t px-3 py-3"
             style={{ borderColor: "var(--card-border)" }}
           >
+            {/* Credit display */}
+            <div
+              className="mb-2 rounded-lg px-3 py-2"
+              style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: "var(--muted)" }}>Credits</span>
+                <span className="text-xs font-bold" style={{ color: "var(--foreground)" }}>
+                  {isAdmin ? "Unlimited" : userCredits !== null ? userCredits : "..."}
+                </span>
+              </div>
+              <div className="mt-1 flex items-center justify-between">
+                <span className="text-xs" style={{ color: "var(--muted)" }}>Plan</span>
+                <span className="text-xs font-semibold" style={{ color: "var(--accent)", textTransform: "capitalize" }}>
+                  {isAdmin ? "Admin" : userPlan}
+                </span>
+              </div>
+            </div>
+
+            {/* Nav links */}
+            <div className="mb-2 flex flex-col gap-1">
+              <button
+                onClick={() => router.push("/app/billing")}
+                className="w-full rounded-lg px-3 py-1.5 text-left text-xs font-medium transition-colors"
+                style={{ color: "var(--muted)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--foreground)"; (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+              >
+                Billing & Credits
+              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => router.push("/app/admin")}
+                  className="w-full rounded-lg px-3 py-1.5 text-left text-xs font-medium transition-colors"
+                  style={{ color: "var(--error)" }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                >
+                  Admin Dashboard
+                </button>
+              )}
+            </div>
+
             <div className="flex items-center justify-between">
               <span
                 className="truncate text-xs"

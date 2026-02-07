@@ -91,8 +91,96 @@ create policy "Users can insert own settings" on user_settings
 create policy "Users can update own settings" on user_settings
   for update using (auth.uid() = user_id);
 
+-- User profiles: role and credit tracking
+create table if not exists user_profiles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null unique,
+  role text not null default 'user' check (role in ('user', 'admin')),
+  credits integer not null default 10,
+  stripe_customer_id text,
+  stripe_subscription_id text,
+  subscription_plan text not null default 'free' check (subscription_plan in ('free', 'starter', 'growth', 'pro')),
+  subscription_status text default 'active',
+  current_period_start timestamptz,
+  current_period_end timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Credit usage log
+create table if not exists credit_transactions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  amount integer not null,
+  type text not null check (type in ('usage', 'purchase', 'subscription_reset', 'admin_grant', 'refund')),
+  description text,
+  article_id uuid references articles(id) on delete set null,
+  created_at timestamptz default now()
+);
+
+alter table user_profiles enable row level security;
+alter table credit_transactions enable row level security;
+
+-- Users can read their own profile
+create policy "Users can view own profile" on user_profiles
+  for select using (auth.uid() = user_id);
+
+-- Users can insert their own profile (on first login)
+create policy "Users can insert own profile" on user_profiles
+  for insert with check (auth.uid() = user_id);
+
+-- Users can update their own profile (limited fields handled by app logic)
+create policy "Users can update own profile" on user_profiles
+  for update using (auth.uid() = user_id);
+
+-- Admins can view all profiles
+create policy "Admins can view all profiles" on user_profiles
+  for select using (
+    exists (select 1 from user_profiles up where up.user_id = auth.uid() and up.role = 'admin')
+  );
+
+-- Admins can update all profiles (for granting credits, etc.)
+create policy "Admins can update all profiles" on user_profiles
+  for update using (
+    exists (select 1 from user_profiles up where up.user_id = auth.uid() and up.role = 'admin')
+  );
+
+-- Credit transaction policies
+create policy "Users can view own transactions" on credit_transactions
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert own transactions" on credit_transactions
+  for insert with check (auth.uid() = user_id);
+
+-- Admins can view all transactions
+create policy "Admins can view all transactions" on credit_transactions
+  for select using (
+    exists (select 1 from user_profiles up where up.user_id = auth.uid() and up.role = 'admin')
+  );
+
+-- Admins can insert transactions for any user
+create policy "Admins can insert any transaction" on credit_transactions
+  for insert with check (
+    exists (select 1 from user_profiles up where up.user_id = auth.uid() and up.role = 'admin')
+  );
+
+-- Admin policies for articles (view all)
+create policy "Admins can view all articles" on articles
+  for select using (
+    exists (select 1 from user_profiles up where up.user_id = auth.uid() and up.role = 'admin')
+  );
+
+-- Admin policies for clusters (view all)
+create policy "Admins can view all clusters" on clusters
+  for select using (
+    exists (select 1 from user_profiles up where up.user_id = auth.uid() and up.role = 'admin')
+  );
+
 -- Index for faster queries
 create index if not exists idx_articles_user_id on articles(user_id);
 create index if not exists idx_articles_cluster_id on articles(cluster_id);
 create index if not exists idx_clusters_user_id on clusters(user_id);
 create index if not exists idx_user_settings_user_id on user_settings(user_id);
+create index if not exists idx_user_profiles_user_id on user_profiles(user_id);
+create index if not exists idx_user_profiles_stripe_customer on user_profiles(stripe_customer_id);
+create index if not exists idx_credit_transactions_user_id on credit_transactions(user_id);

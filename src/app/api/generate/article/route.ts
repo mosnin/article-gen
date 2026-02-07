@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { createClient } from "@/lib/supabase-server";
+import { deductCredit } from "@/lib/credits";
 
 export const maxDuration = 60;
 
@@ -7,6 +9,13 @@ const MODEL = "gpt-4.1-mini";
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const {
       topic,
       articleContext,
@@ -234,7 +243,10 @@ Return format:
       schema = "";
     }
 
-    return NextResponse.json({ article, imagePrompts, schema });
+    // Deduct 1 credit on successful generation
+    const deductResult = await deductCredit(supabase, user.id, undefined, `Article: ${topic}`);
+
+    return NextResponse.json({ article, imagePrompts, schema, credits: deductResult.credits });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "An unexpected error occurred";
