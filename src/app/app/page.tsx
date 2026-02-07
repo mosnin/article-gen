@@ -806,6 +806,10 @@ export default function Home() {
   const [clusterPillarTopic, setClusterPillarTopic] = useState("");
   const [clusterPillarKeyword, setClusterPillarKeyword] = useState("");
   const [clusterQuality, setClusterQuality] = useState<"standard" | "premium">("premium");
+  const [clusterCount, setClusterCount] = useState(30);
+  const [clusterUseExistingPillar, setClusterUseExistingPillar] = useState(false);
+  const [clusterExistingPillarUrl, setClusterExistingPillarUrl] = useState("");
+  const [clusterExistingPillarSummary, setClusterExistingPillarSummary] = useState("");
   const [clusterActiveArticleId, setClusterActiveArticleId] = useState<string | null>(null);
 
   const activeCluster = clusters.find((c) => c.id === activeClusterId) || null;
@@ -996,10 +1000,16 @@ export default function Home() {
       setFormError("Domain is required for topic clusters (needed for internal links). Please fill in Advanced Settings.");
       return;
     }
+    if (clusterUseExistingPillar && !clusterExistingPillarUrl.trim()) {
+      setFormError("Please enter the URL of your existing pillar page.");
+      return;
+    }
 
     setFormError("");
     const clusterId = crypto.randomUUID();
     const domain = advancedSettings.domain.replace(/\/$/, "");
+    const useExisting = clusterUseExistingPillar && clusterExistingPillarUrl.trim();
+    const articleCount = Math.min(Math.max(clusterCount, 1), 30);
 
     const newCluster: TopicCluster = {
       id: clusterId,
@@ -1023,14 +1033,14 @@ export default function Home() {
     setSidebarOpen(false);
 
     try {
-      // Phase 1: Generate 30 cluster article ideas
+      // Phase 1: Generate cluster article ideas
       const res = await fetch("/api/generate/cluster", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           pillarTopic: clusterPillarTopic.trim(),
           pillarKeyword: clusterPillarKeyword.trim() || undefined,
-          count: 30,
+          count: articleCount,
         }),
       });
       const data = await res.json();
@@ -1049,46 +1059,84 @@ export default function Home() {
         })
       );
 
-      updateCluster(clusterId, {
-        clusterArticles,
-        generationPhase: "pillar",
-      });
+      let pillarUrl: string;
 
-      // Phase 2: Generate the pillar article first
-      const pillarSessionId = "pillar";
-      const pillarSession: ArticleSession = {
-        id: pillarSessionId,
-        topic: clusterPillarTopic.trim(),
-        focusKeyword: clusterPillarKeyword.trim(),
-        loading: true,
-        queued: false,
-        error: "",
-        result: null,
-        currentStep: 0,
-        quality: clusterQuality === "standard" ? "premium" : "premium",
-        posted: false,
-      };
+      if (useExisting) {
+        // Use existing pillar URL - skip pillar generation
+        pillarUrl = clusterExistingPillarUrl.trim().replace(/\/$/, "");
 
-      updateCluster(clusterId, { pillarSession });
+        // Create a "completed" pillar session with the provided info
+        const existingPillarSession: ArticleSession = {
+          id: "pillar",
+          topic: clusterPillarTopic.trim(),
+          focusKeyword: clusterPillarKeyword.trim(),
+          loading: false,
+          queued: false,
+          error: "",
+          result: {
+            title: clusterPillarTopic.trim(),
+            metaDescription: clusterExistingPillarSummary.trim() || `Pillar page about ${clusterPillarTopic.trim()}`,
+            slug: pillarUrl.split("/").pop() || "",
+            focusKeyword: clusterPillarKeyword.trim(),
+            keywords: [],
+            article: clusterExistingPillarSummary.trim() ? `*Existing pillar page*\n\n${clusterExistingPillarSummary.trim()}` : "*Existing pillar page - content hosted externally*",
+            imagePrompts: [],
+            schema: "",
+          },
+          currentStep: 0,
+          quality: "premium",
+          posted: true,
+        };
 
-      const pillarSlug = await runClusterArticleGeneration(
-        clusterId,
-        pillarSessionId,
-        clusterPillarTopic.trim(),
-        clusterPillarKeyword.trim() || undefined,
-        "premium",
-        undefined
-      );
+        updateCluster(clusterId, {
+          clusterArticles,
+          pillarSession: existingPillarSession,
+          generationPhase: "clusters",
+        });
+      } else {
+        // Generate the pillar article first
+        updateCluster(clusterId, {
+          clusterArticles,
+          generationPhase: "pillar",
+        });
 
-      if (!pillarSlug) {
-        updateCluster(clusterId, { generating: false, generationPhase: "idle" });
-        return;
+        const pillarSessionId = "pillar";
+        const pillarSession: ArticleSession = {
+          id: pillarSessionId,
+          topic: clusterPillarTopic.trim(),
+          focusKeyword: clusterPillarKeyword.trim(),
+          loading: true,
+          queued: false,
+          error: "",
+          result: null,
+          currentStep: 0,
+          quality: "premium",
+          posted: false,
+        };
+
+        updateCluster(clusterId, { pillarSession });
+
+        const pillarSlug = await runClusterArticleGeneration(
+          clusterId,
+          pillarSessionId,
+          clusterPillarTopic.trim(),
+          clusterPillarKeyword.trim() || undefined,
+          "premium",
+          undefined
+        );
+
+        if (!pillarSlug) {
+          updateCluster(clusterId, { generating: false, generationPhase: "idle" });
+          return;
+        }
+
+        pillarUrl = `${domain}/${pillarSlug}`;
       }
 
-      const pillarUrl = `${domain}/${pillarSlug}`;
-
       // Phase 3: Generate cluster articles in batches of 2 with 60s delay
-      updateCluster(clusterId, { generationPhase: "clusters" });
+      if (activeCluster?.generationPhase !== "clusters") {
+        updateCluster(clusterId, { generationPhase: "clusters" });
+      }
 
       // Initialize all cluster sessions
       const updatedArticles = clusterArticles.map((a) => ({
@@ -1175,32 +1223,34 @@ export default function Home() {
         }
       }
 
-      // Phase 4: Re-generate pillar with all cluster links
-      updateCluster(clusterId, { generationPhase: "relinking" });
-      const allClusterUrls = completedSlugs.map((s) => ({
-        url: `${domain}/${s.slug}`,
-        title: s.title,
-        keyword: s.keyword,
-      }));
+      // Phase 4: Re-generate pillar with all cluster links (only if we generated the pillar)
+      if (!useExisting) {
+        updateCluster(clusterId, { generationPhase: "relinking" });
+        const allClusterUrls = completedSlugs.map((s) => ({
+          url: `${domain}/${s.slug}`,
+          title: s.title,
+          keyword: s.keyword,
+        }));
 
-      updateClusterArticle(clusterId, "pillar", {
-        loading: true,
-        currentStep: 0,
-        error: "",
-        result: null,
-      });
+        updateClusterArticle(clusterId, "pillar", {
+          loading: true,
+          currentStep: 0,
+          error: "",
+          result: null,
+        });
 
-      await runClusterArticleGeneration(
-        clusterId,
-        "pillar",
-        clusterPillarTopic.trim(),
-        clusterPillarKeyword.trim() || undefined,
-        "premium",
-        {
-          isPillar: true,
-          clusterUrls: allClusterUrls,
-        }
-      );
+        await runClusterArticleGeneration(
+          clusterId,
+          "pillar",
+          clusterPillarTopic.trim(),
+          clusterPillarKeyword.trim() || undefined,
+          "premium",
+          {
+            isPillar: true,
+            clusterUrls: allClusterUrls,
+          }
+        );
+      }
 
       updateCluster(clusterId, {
         generating: false,
@@ -3126,8 +3176,8 @@ export default function Home() {
                           Topic Cluster Generator
                         </span>
                       </div>
-                      <p className="mb-4 text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
-                        Generate a comprehensive topic cluster: one pillar page plus 30 interlinked cluster articles.
+                      <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+                        Generate a comprehensive topic cluster: one pillar page plus interlinked cluster articles.
                         All articles will link back to the pillar page and cross-link to each other following SEO best practices.
                         Advanced settings with your domain are required for internal linking.
                       </p>
@@ -3162,6 +3212,38 @@ export default function Home() {
                           Premium
                           <span className="block text-xs font-normal" style={{ opacity: 0.7 }}>~4,000 words</span>
                         </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium" style={{ color: "var(--muted)" }}>
+                        Number of Cluster Articles
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min={1}
+                          max={30}
+                          value={clusterCount}
+                          onChange={(e) => setClusterCount(Number(e.target.value))}
+                          className="flex-1"
+                          style={{ accentColor: "var(--accent)" }}
+                        />
+                        <input
+                          type="number"
+                          min={1}
+                          max={30}
+                          value={clusterCount}
+                          onChange={(e) => setClusterCount(Math.min(30, Math.max(1, Number(e.target.value))))}
+                          className="w-16 rounded-lg border px-3 py-2 text-center text-sm font-medium focus:outline-none"
+                          style={{
+                            background: "var(--card)",
+                            borderColor: "var(--card-border)",
+                            color: "var(--foreground)",
+                          }}
+                          onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }}
+                          onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }}
+                        />
                       </div>
                     </div>
 
@@ -3205,6 +3287,81 @@ export default function Home() {
                       />
                     </div>
 
+                    {/* Existing pillar option */}
+                    <div
+                      className="rounded-xl border"
+                      style={{ borderColor: "var(--card-border)", background: "var(--card)" }}
+                    >
+                      <button
+                        onClick={() => setClusterUseExistingPillar(!clusterUseExistingPillar)}
+                        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium"
+                        style={{ color: "var(--foreground)" }}
+                      >
+                        <span className="flex items-center gap-2">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                          </svg>
+                          Use Existing Pillar Page
+                          <span className="text-xs font-normal" style={{ color: "var(--muted)" }}>(optional)</span>
+                        </span>
+                        <div
+                          className="flex h-5 w-9 items-center rounded-full px-0.5 transition-colors"
+                          style={{ background: clusterUseExistingPillar ? "var(--accent)" : "var(--card-border)" }}
+                        >
+                          <div
+                            className="h-4 w-4 rounded-full bg-white shadow transition-transform"
+                            style={{ transform: clusterUseExistingPillar ? "translateX(16px)" : "translateX(0)" }}
+                          />
+                        </div>
+                      </button>
+                      {clusterUseExistingPillar && (
+                        <div className="space-y-3 border-t px-4 py-4" style={{ borderColor: "var(--card-border)" }}>
+                          <p className="text-xs" style={{ color: "var(--muted)" }}>
+                            Already have a pillar page? Provide the URL and a brief summary. Cluster articles will link to this URL instead of generating a new pillar page.
+                          </p>
+                          <div>
+                            <label className="mb-1 block text-xs font-medium" style={{ color: "var(--muted)" }}>
+                              Pillar Page URL
+                            </label>
+                            <input
+                              type="url"
+                              value={clusterExistingPillarUrl}
+                              onChange={(e) => setClusterExistingPillarUrl(e.target.value)}
+                              placeholder="https://yourblog.com/pillar-article-slug"
+                              className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
+                              style={{
+                                background: "var(--background)",
+                                borderColor: "var(--card-border)",
+                                color: "var(--foreground)",
+                              }}
+                              onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }}
+                              onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }}
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-medium" style={{ color: "var(--muted)" }}>
+                              Summary of Pillar Content <span style={{ opacity: 0.6 }}>(optional, helps AI write better cluster articles)</span>
+                            </label>
+                            <textarea
+                              value={clusterExistingPillarSummary}
+                              onChange={(e) => setClusterExistingPillarSummary(e.target.value)}
+                              placeholder="Brief description of what your pillar page covers..."
+                              rows={3}
+                              className="w-full resize-none rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
+                              style={{
+                                background: "var(--background)",
+                                borderColor: "var(--card-border)",
+                                color: "var(--foreground)",
+                              }}
+                              onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--accent)"; }}
+                              onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--card-border)"; }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     {advancedSettingsPanel}
 
                     {!advancedSettings.domain.trim() && (
@@ -3235,7 +3392,7 @@ export default function Home() {
 
                     <button
                       onClick={handleStartCluster}
-                      disabled={!clusterPillarTopic.trim() || !advancedSettings.domain.trim()}
+                      disabled={!clusterPillarTopic.trim() || !advancedSettings.domain.trim() || (clusterUseExistingPillar && !clusterExistingPillarUrl.trim())}
                       className="w-full rounded-xl py-3.5 text-base font-semibold text-white transition-all duration-200 disabled:opacity-40"
                       style={{ background: "var(--accent)" }}
                       onMouseEnter={(e) => {
@@ -3246,11 +3403,16 @@ export default function Home() {
                         (e.currentTarget as HTMLButtonElement).style.background = "var(--accent)";
                       }}
                     >
-                      Generate Topic Cluster (31 Articles)
+                      Generate Topic Cluster ({clusterUseExistingPillar ? clusterCount : clusterCount + 1} Articles)
                     </button>
 
                     <p className="text-center text-xs" style={{ color: "var(--muted)" }}>
-                      Generates 1 pillar page + 30 cluster articles. Articles generate 2 at a time with 60-second intervals. The pillar page is regenerated at the end with links to all cluster articles.
+                      {clusterUseExistingPillar
+                        ? `Generates ${clusterCount} cluster articles linked to your existing pillar page.`
+                        : `Generates 1 pillar page + ${clusterCount} cluster articles.`
+                      }
+                      {" "}Articles generate 2 at a time with 60-second intervals.
+                      {!clusterUseExistingPillar && " The pillar page is regenerated at the end with links to all cluster articles."}
                     </p>
                   </div>
                 )}
