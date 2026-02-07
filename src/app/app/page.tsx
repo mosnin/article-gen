@@ -13,6 +13,13 @@ interface ImagePrompt {
   altText: string;
 }
 
+interface GeneratedImage {
+  type: string;
+  altText: string;
+  b64: string | null;
+  success: boolean;
+}
+
 interface GenerationResult {
   title: string;
   metaDescription: string;
@@ -22,6 +29,7 @@ interface GenerationResult {
   article: string;
   imagePrompts: ImagePrompt[];
   schema: string;
+  generatedImages?: GeneratedImage[];
 }
 
 interface ArticleSession {
@@ -79,9 +87,10 @@ const STEPS = [
   "Organizing context & researching facts...",
   "Generating SEO metadata...",
   "Writing article & creating image prompts...",
+  "Generating AI images...",
 ];
 
-const STEP_LABELS = ["Researching...", "Metadata...", "Writing..."];
+const STEP_LABELS = ["Researching...", "Metadata...", "Writing...", "Images..."];
 
 async function safeFetch(
   url: string,
@@ -254,7 +263,7 @@ function OutputCard({
   );
 }
 
-function ImagePromptCard({ image }: { image: ImagePrompt }) {
+function ImagePromptCard({ image, generatedImage }: { image: ImagePrompt; generatedImage?: GeneratedImage }) {
   return (
     <div
       className="rounded-xl border"
@@ -274,6 +283,17 @@ function ImagePromptCard({ image }: { image: ImagePrompt }) {
           {image.type}
         </h3>
       </div>
+      {/* Generated image preview */}
+      {generatedImage?.b64 && (
+        <div className="border-b px-5 py-4" style={{ borderColor: "var(--card-border)" }}>
+          <img
+            src={`data:image/png;base64,${generatedImage.b64}`}
+            alt={image.altText}
+            className="w-full rounded-lg"
+            style={{ aspectRatio: "1536/1024", objectFit: "cover" }}
+          />
+        </div>
+      )}
       <div className="space-y-3 px-5 py-4">
         <div>
           <div className="mb-1.5 flex items-center justify-between">
@@ -461,6 +481,9 @@ export default function Home() {
   });
   const [showAdvancedJsonPaste, setShowAdvancedJsonPaste] = useState(false);
   const [advancedJsonValue, setAdvancedJsonValue] = useState("");
+
+  // AI Image generation toggle
+  const [generateImages, setGenerateImages] = useState(false);
 
   // Credits & role
   const [userCredits, setUserCredits] = useState<number | null>(null);
@@ -712,7 +735,8 @@ export default function Home() {
       id: string,
       topic: string,
       focusKeyword: string | undefined,
-      quality: "standard" | "premium" = "premium"
+      quality: "standard" | "premium" = "premium",
+      withImages: boolean = false
     ) => {
       try {
         // Batch 1: Context + Research (parallel inside the route)
@@ -759,7 +783,7 @@ export default function Home() {
           }
         );
 
-        const result = {
+        const result: GenerationResult = {
           title: metadataData.title as string,
           metaDescription: metadataData.metaDescription as string,
           slug: metadataData.slug as string,
@@ -769,12 +793,31 @@ export default function Home() {
           imagePrompts: articleData.imagePrompts as ImagePrompt[],
           schema: (articleData.schema as string) || "",
         };
-        updateSession(id, { loading: false, result });
 
         // Update credit display
         if (typeof articleData.credits === "number") {
           setUserCredits(articleData.credits);
         }
+
+        // Generate AI images if toggle is on
+        if (withImages && result.imagePrompts.length > 0) {
+          updateSession(id, { currentStep: 3 });
+          try {
+            const { data: imageData } = await safeFetch(
+              "/api/generate/images",
+              { prompts: result.imagePrompts }
+            );
+            result.generatedImages = (imageData.images as GeneratedImage[]) || [];
+            if (typeof imageData.credits === "number") {
+              setUserCredits(imageData.credits);
+            }
+          } catch (imgErr) {
+            console.error("Image generation failed:", imgErr);
+            // Continue without images - article is still valid
+          }
+        }
+
+        updateSession(id, { loading: false, result });
 
         // Save to DB
         saveArticleToDb({
@@ -836,8 +879,11 @@ export default function Home() {
       return;
     }
 
-    if (!isAdmin && userCredits !== null && userCredits < 1) {
-      setFormError("No credits remaining. Please upgrade your plan.");
+    const creditsNeeded = generateImages ? 2 : 1;
+    if (!isAdmin && userCredits !== null && userCredits < creditsNeeded) {
+      setFormError(generateImages
+        ? "You need 2 credits (1 article + 1 images). Please upgrade your plan."
+        : "No credits remaining. Please upgrade your plan.");
       return;
     }
 
@@ -866,7 +912,7 @@ export default function Home() {
     setFormError("");
     setSidebarOpen(false);
 
-    runGeneration(id, topic, focusKeyword, "premium");
+    runGeneration(id, topic, focusKeyword, "premium", generateImages);
   };
 
   const handleBatchGenerate = () => {
@@ -3044,6 +3090,35 @@ export default function Home() {
                       </div>
                     )}
 
+                    {/* Generate AI Images toggle */}
+                    <div
+                      className="flex items-center justify-between rounded-xl border px-4 py-3"
+                      style={{ borderColor: "var(--card-border)", background: "var(--card)" }}
+                    >
+                      <div>
+                        <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
+                          Generate AI Images
+                        </div>
+                        <div className="text-xs" style={{ color: "var(--muted)" }}>
+                          +1 credit &middot; 4 images at 1536x1024
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setGenerateImages(!generateImages)}
+                        className="relative h-6 w-11 rounded-full transition-colors duration-200"
+                        style={{
+                          background: generateImages ? "var(--success)" : "var(--card-border)",
+                        }}
+                      >
+                        <span
+                          className="absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200"
+                          style={{
+                            transform: generateImages ? "translateX(22px)" : "translateX(2px)",
+                          }}
+                        />
+                      </button>
+                    </div>
+
                     <button
                       onClick={handleGenerate}
                       className="w-full rounded-xl py-3.5 text-base font-semibold text-white transition-all duration-200"
@@ -3059,7 +3134,7 @@ export default function Home() {
                         ).style.background = "var(--accent)";
                       }}
                     >
-                      Generate Article
+                      Generate Article{generateImages ? " (2 credits)" : " (1 credit)"}
                     </button>
                   </div>
                 )}
@@ -4323,7 +4398,14 @@ export default function Home() {
                     </button>
                     {advancedSettings.wpUrl && (
                       <button
-                        onClick={() => router.push(`/app/publish/${activeSession.id}`)}
+                        onClick={() => {
+                          if (activeSession.result?.generatedImages) {
+                            try {
+                              sessionStorage.setItem(`images-${activeSession.id}`, JSON.stringify(activeSession.result.generatedImages));
+                            } catch { /* storage full, images won't be included */ }
+                          }
+                          router.push(`/app/publish/${activeSession.id}`);
+                        }}
                         className="flex flex-shrink-0 items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all duration-200"
                         style={{
                           borderColor: "var(--card-border)",
@@ -4450,7 +4532,7 @@ export default function Home() {
                       </h3>
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {activeSession.result.imagePrompts.map((image, i) => (
-                          <ImagePromptCard key={i} image={image} />
+                          <ImagePromptCard key={i} image={image} generatedImage={activeSession.result?.generatedImages?.[i]} />
                         ))}
                       </div>
                     </div>

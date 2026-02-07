@@ -39,8 +39,10 @@ export default function PublishPage() {
   const [wpConnected, setWpConnected] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [creatingCategory, setCreatingCategory] = useState(false);
-  const [publishResult, setPublishResult] = useState<{ postUrl: string; editUrl: string } | null>(null);
+  const [publishResult, setPublishResult] = useState<{ postUrl: string; editUrl: string; imagesUploaded?: number } | null>(null);
   const [previewHtml, setPreviewHtml] = useState("");
+  const [generatedImages, setGeneratedImages] = useState<Array<{ type: string; altText: string; b64: string | null; success: boolean }>>([]);
+  const [includeImages, setIncludeImages] = useState(true);
 
   const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -79,6 +81,19 @@ export default function PublishPage() {
       }
     } catch {
       setError("Failed to connect to WordPress");
+    }
+
+    // Load generated images from sessionStorage
+    try {
+      const stored = sessionStorage.getItem(`images-${articleId}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setGeneratedImages(parsed);
+        }
+      }
+    } catch {
+      // ignore parse errors
     }
 
     setLoading(false);
@@ -121,6 +136,13 @@ export default function PublishPage() {
     setPublishing(true);
     setError("");
     try {
+      // Prepare images for upload if toggle is on and images exist
+      const imagesToSend = includeImages && generatedImages.length > 0
+        ? generatedImages
+            .filter((img) => img.success && img.b64)
+            .map((img) => ({ type: img.type, altText: img.altText, b64: img.b64 as string }))
+        : undefined;
+
       const res = await fetch("/api/wordpress/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -128,12 +150,15 @@ export default function PublishPage() {
           articleId,
           categoryIds: selectedCategories,
           status: postStatus,
+          images: imagesToSend,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        setPublishResult({ postUrl: data.postUrl, editUrl: data.editUrl });
+        setPublishResult({ postUrl: data.postUrl, editUrl: data.editUrl, imagesUploaded: data.imagesUploaded });
         setArticle((prev) => prev ? { ...prev, posted: true } : prev);
+        // Clean up sessionStorage
+        try { sessionStorage.removeItem(`images-${articleId}`); } catch {}
       } else {
         setError(data.error || "Failed to publish");
       }
@@ -187,6 +212,7 @@ export default function PublishPage() {
             </h1>
             <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: 24 }}>
               &quot;{article.title}&quot; has been sent to your WordPress site.
+              {publishResult.imagesUploaded ? ` ${publishResult.imagesUploaded} image${publishResult.imagesUploaded > 1 ? "s" : ""} uploaded.` : ""}
             </p>
             <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
               <a
@@ -353,6 +379,57 @@ export default function PublishPage() {
                       </button>
                     </div>
                   </div>
+
+                  {/* AI Images */}
+                  {generatedImages.length > 0 && (
+                    <div style={{ padding: "0 20px 16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                        <h3 style={{ fontSize: 15, fontWeight: 700 }}>AI Images ({generatedImages.filter((i) => i.success).length})</h3>
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 500 }}>
+                          <span style={{ color: "var(--muted)" }}>Include</span>
+                          <div
+                            onClick={() => setIncludeImages(!includeImages)}
+                            style={{
+                              width: 36,
+                              height: 20,
+                              borderRadius: 10,
+                              background: includeImages ? "var(--accent)" : "var(--card-border)",
+                              position: "relative",
+                              cursor: "pointer",
+                              transition: "background 0.2s",
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 16,
+                                height: 16,
+                                borderRadius: "50%",
+                                background: "#fff",
+                                position: "absolute",
+                                top: 2,
+                                left: includeImages ? 18 : 2,
+                                transition: "left 0.2s",
+                              }}
+                            />
+                          </div>
+                        </label>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, opacity: includeImages ? 1 : 0.4, transition: "opacity 0.2s" }}>
+                        {generatedImages.filter((i) => i.success && i.b64).map((img, idx) => (
+                          <div key={idx} style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--card-border)", position: "relative" }}>
+                            <img
+                              src={`data:image/png;base64,${img.b64}`}
+                              alt={img.altText}
+                              style={{ width: "100%", height: 80, objectFit: "cover", display: "block" }}
+                            />
+                            <div style={{ padding: "4px 6px", fontSize: 10, color: "var(--muted)", background: "var(--background)" }}>
+                              {img.type}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Error */}
                   {error && (
