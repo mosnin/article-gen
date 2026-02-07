@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { marked } from "marked";
+import { createClient } from "@/lib/supabase-browser";
+import type { User } from "@supabase/supabase-js";
 
 interface ImagePrompt {
   type: string;
@@ -426,6 +429,11 @@ function ArticlePreview({ article }: { article: string }) {
 }
 
 export default function Home() {
+  const router = useRouter();
+  const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
+
   const [sessions, setSessions] = useState<ArticleSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -465,6 +473,199 @@ export default function Home() {
 
   const activeSession =
     sessions.find((s) => s.id === activeSessionId) || null;
+
+  // Auth check and data loading
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
+        router.replace("/?auth=login");
+        return;
+      }
+      setUser(currentUser);
+
+      // Load user settings
+      const { data: settings } = await supabase
+        .from("user_settings")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .single();
+
+      if (settings) {
+        setAdvancedSettings({
+          domain: settings.domain || "",
+          siteName: settings.site_name || "",
+          siteAbout: settings.site_about || "",
+          authorName: settings.author_name || "",
+          authorAbout: settings.author_about || "",
+        });
+      }
+
+      // Load saved articles
+      const { data: articles } = await supabase
+        .from("articles")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .is("cluster_id", null)
+        .order("created_at", { ascending: false });
+
+      if (articles && articles.length > 0) {
+        const loaded: ArticleSession[] = articles.map((a) => ({
+          id: a.id,
+          topic: a.topic,
+          focusKeyword: a.focus_keyword || "",
+          loading: false,
+          queued: false,
+          error: "",
+          result: a.article_markdown ? {
+            title: a.title || a.topic,
+            metaDescription: a.meta_description || "",
+            slug: a.slug || "",
+            focusKeyword: a.focus_keyword || "",
+            keywords: a.keywords || [],
+            article: a.article_markdown,
+            imagePrompts: (a.image_prompts as ImagePrompt[]) || [],
+            schema: a.schema_json || "",
+          } : null,
+          currentStep: 0,
+          quality: (a.quality as "standard" | "premium") || "premium",
+          posted: a.posted || false,
+        }));
+        setSessions(loaded);
+      }
+
+      // Load clusters
+      const { data: clusterRows } = await supabase
+        .from("clusters")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .order("created_at", { ascending: false });
+
+      if (clusterRows && clusterRows.length > 0) {
+        const loadedClusters: TopicCluster[] = [];
+        for (const c of clusterRows) {
+          const { data: clusterArticles } = await supabase
+            .from("articles")
+            .select("*")
+            .eq("cluster_id", c.id)
+            .order("created_at", { ascending: true });
+
+          const pillarArticle = clusterArticles?.find((a) => a.is_pillar);
+          const subArticles = clusterArticles?.filter((a) => !a.is_pillar) || [];
+
+          const mapArticle = (a: Record<string, unknown>): ArticleSession => ({
+            id: a.id as string,
+            topic: a.topic as string,
+            focusKeyword: (a.focus_keyword as string) || "",
+            loading: false,
+            queued: false,
+            error: "",
+            result: a.article_markdown ? {
+              title: (a.title as string) || (a.topic as string),
+              metaDescription: (a.meta_description as string) || "",
+              slug: (a.slug as string) || "",
+              focusKeyword: (a.focus_keyword as string) || "",
+              keywords: (a.keywords as string[]) || [],
+              article: a.article_markdown as string,
+              imagePrompts: (a.image_prompts as ImagePrompt[]) || [],
+              schema: (a.schema_json as string) || "",
+            } : null,
+            currentStep: 0,
+            quality: ((a.quality as string) || "premium") as "standard" | "premium",
+            posted: (a.posted as boolean) || false,
+          });
+
+          loadedClusters.push({
+            id: c.id,
+            pillarTopic: c.pillar_topic,
+            pillarKeyword: c.pillar_keyword || "",
+            pillarSession: pillarArticle ? mapArticle(pillarArticle) : null,
+            clusterArticles: subArticles.map((a) => ({
+              id: a.id,
+              concept: a.topic,
+              keyword: a.focus_keyword || "",
+              relation: "",
+              session: mapArticle(a),
+            })),
+            quality: (c.quality as "standard" | "premium") || "premium",
+            generating: false,
+            generationPhase: "done",
+            expanded: false,
+          });
+        }
+        setClusters(loadedClusters);
+      }
+
+      setDataLoaded(true);
+    };
+    init();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save article to Supabase
+  const saveArticleToDb = useCallback(
+    async (session: ArticleSession, clusterId?: string, isPillar?: boolean) => {
+      if (!user || !session.result) return;
+      const { error } = await supabase.from("articles").upsert({
+        id: session.id,
+        user_id: user.id,
+        topic: session.topic,
+        focus_keyword: session.result.focusKeyword,
+        quality: session.quality,
+        title: session.result.title,
+        meta_description: session.result.metaDescription,
+        slug: session.result.slug,
+        keywords: session.result.keywords,
+        article_markdown: session.result.article,
+        image_prompts: session.result.imagePrompts,
+        schema_json: session.result.schema,
+        posted: session.posted,
+        cluster_id: clusterId || null,
+        is_pillar: isPillar || false,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) console.error("Save article error:", error);
+    },
+    [user, supabase]
+  );
+
+  // Save advanced settings to DB
+  const saveSettingsToDb = useCallback(
+    async (settings: AdvancedSettings) => {
+      if (!user) return;
+      await supabase.from("user_settings").upsert({
+        user_id: user.id,
+        domain: settings.domain,
+        site_name: settings.siteName,
+        site_about: settings.siteAbout,
+        author_name: settings.authorName,
+        author_about: settings.authorAbout,
+        updated_at: new Date().toISOString(),
+      });
+    },
+    [user, supabase]
+  );
+
+  // Save cluster to DB
+  const saveClusterToDb = useCallback(
+    async (cluster: TopicCluster, existingPillarUrl?: string) => {
+      if (!user) return;
+      await supabase.from("clusters").upsert({
+        id: cluster.id,
+        user_id: user.id,
+        pillar_topic: cluster.pillarTopic,
+        pillar_keyword: cluster.pillarKeyword,
+        quality: cluster.quality,
+        existing_pillar_url: existingPillarUrl || null,
+        updated_at: new Date().toISOString(),
+      });
+    },
+    [user, supabase]
+  );
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.replace("/");
+  };
 
   const updateSession = useCallback(
     (id: string, updates: Partial<ArticleSession>) => {
@@ -527,18 +728,22 @@ export default function Home() {
           }
         );
 
-        updateSession(id, {
-          loading: false,
-          result: {
-            title: metadataData.title as string,
-            metaDescription: metadataData.metaDescription as string,
-            slug: metadataData.slug as string,
-            focusKeyword: metadataData.focusKeyword as string,
-            keywords: (metadataData.keywords as string[]) || [],
-            article: articleData.article as string,
-            imagePrompts: articleData.imagePrompts as ImagePrompt[],
-            schema: (articleData.schema as string) || "",
-          },
+        const result = {
+          title: metadataData.title as string,
+          metaDescription: metadataData.metaDescription as string,
+          slug: metadataData.slug as string,
+          focusKeyword: metadataData.focusKeyword as string,
+          keywords: (metadataData.keywords as string[]) || [],
+          article: articleData.article as string,
+          imagePrompts: articleData.imagePrompts as ImagePrompt[],
+          schema: (articleData.schema as string) || "",
+        };
+        updateSession(id, { loading: false, result });
+
+        // Save to DB
+        saveArticleToDb({
+          id, topic, focusKeyword: result.focusKeyword, loading: false, queued: false,
+          error: "", result, currentStep: 0, quality, posted: false,
         });
       } catch (err: unknown) {
         const message =
@@ -546,7 +751,7 @@ export default function Home() {
         updateSession(id, { loading: false, error: message });
       }
     },
-    [updateSession]
+    [updateSession, saveArticleToDb, advancedSettings]
   );
 
   // Batch queue processor: 2 at a time, 60s between batches
@@ -678,13 +883,16 @@ export default function Home() {
     );
   };
 
-  const handleDeleteSession = (id: string) => {
+  const handleDeleteSession = async (id: string) => {
     setSessions((prev) => prev.filter((s) => s.id !== id));
     batchQueueRef.current = batchQueueRef.current.filter(
       (item) => item.id !== id
     );
     if (activeSessionId === id) {
       setActiveSessionId(null);
+    }
+    if (user) {
+      await supabase.from("articles").delete().eq("id", id).eq("user_id", user.id);
     }
   };
 
@@ -740,13 +948,15 @@ export default function Home() {
         setFormError("Advanced settings JSON must be an object.");
         return false;
       }
-      setAdvancedSettings({
+      const updated = {
         domain: (parsed.domain || parsed.url || "").trim(),
         siteName: (parsed.siteName || parsed.site_name || parsed.blogName || "").trim(),
         siteAbout: (parsed.siteAbout || parsed.site_about || parsed.blogAbout || parsed.about || "").trim(),
         authorName: (parsed.authorName || parsed.author_name || parsed.author || "").trim(),
         authorAbout: (parsed.authorAbout || parsed.author_about || parsed.authorBio || parsed.bio || "").trim(),
-      });
+      };
+      setAdvancedSettings(updated);
+      saveSettingsToDb(updated);
       setFormError("");
       return true;
     } catch {
@@ -773,8 +983,14 @@ export default function Home() {
     }
   };
 
+  const settingsSaveTimer = useRef<ReturnType<typeof setTimeout>>();
   const updateAdvanced = (field: keyof AdvancedSettings, value: string) => {
-    setAdvancedSettings((prev) => ({ ...prev, [field]: value }));
+    setAdvancedSettings((prev) => {
+      const updated = { ...prev, [field]: value };
+      if (settingsSaveTimer.current) clearTimeout(settingsSaveTimer.current);
+      settingsSaveTimer.current = setTimeout(() => saveSettingsToDb(updated), 1500);
+      return updated;
+    });
   };
 
   const addBatchItem = () => {
@@ -963,19 +1179,28 @@ export default function Home() {
           }
         );
 
+        const clusterResult = {
+          title: metadataData.title as string,
+          metaDescription: metadataData.metaDescription as string,
+          slug: metadataData.slug as string,
+          focusKeyword: metadataData.focusKeyword as string,
+          keywords: (metadataData.keywords as string[]) || [],
+          article: articleData.article as string,
+          imagePrompts: articleData.imagePrompts as ImagePrompt[],
+          schema: (articleData.schema as string) || "",
+        };
         updateClusterArticle(clusterId, articleId, {
           loading: false,
-          result: {
-            title: metadataData.title as string,
-            metaDescription: metadataData.metaDescription as string,
-            slug: metadataData.slug as string,
-            focusKeyword: metadataData.focusKeyword as string,
-            keywords: (metadataData.keywords as string[]) || [],
-            article: articleData.article as string,
-            imagePrompts: articleData.imagePrompts as ImagePrompt[],
-            schema: (articleData.schema as string) || "",
-          },
+          result: clusterResult,
         });
+
+        // Save cluster article to DB
+        const isPillar = articleId === "pillar";
+        const saveId = isPillar ? `${clusterId}-pillar` : articleId;
+        saveArticleToDb({
+          id: saveId, topic, focusKeyword: clusterResult.focusKeyword, loading: false, queued: false,
+          error: "", result: clusterResult, currentStep: 0, quality, posted: false,
+        }, clusterId, isPillar);
 
         return metadataData.slug as string;
       } catch (err: unknown) {
@@ -988,7 +1213,7 @@ export default function Home() {
         return null;
       }
     },
-    [updateClusterArticle, advancedSettings]
+    [updateClusterArticle, advancedSettings, saveArticleToDb]
   );
 
   const handleStartCluster = async () => {
@@ -1024,6 +1249,7 @@ export default function Home() {
     };
 
     setClusters((prev) => [newCluster, ...prev]);
+    saveClusterToDb(newCluster, useExisting ? clusterExistingPillarUrl.trim() : undefined);
     setActiveClusterId(clusterId);
     setShowClusterView(true);
     setClusterActiveArticleId(null);
@@ -1795,6 +2021,42 @@ export default function Home() {
             </div>
           ) : null}
         </div>
+
+        {/* User / Logout */}
+        {user && (
+          <div
+            className="mt-auto border-t px-3 py-3"
+            style={{ borderColor: "var(--card-border)" }}
+          >
+            <div className="flex items-center justify-between">
+              <span
+                className="truncate text-xs"
+                style={{ color: "var(--muted)" }}
+                title={user.email}
+              >
+                {user.email}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="ml-2 flex-shrink-0 rounded px-2 py-1 text-xs transition-colors"
+                style={{ color: "var(--muted)" }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.color = "var(--error)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)";
+                }}
+                title="Sign out"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* Main content */}
@@ -3889,11 +4151,14 @@ export default function Home() {
                       Generated Article
                     </h2>
                     <button
-                      onClick={() =>
+                      onClick={() => {
                         updateSession(activeSession.id, {
                           posted: !activeSession.posted,
-                        })
-                      }
+                        });
+                        if (user) {
+                          supabase.from("articles").update({ posted: !activeSession.posted, updated_at: new Date().toISOString() }).eq("id", activeSession.id).then(() => {});
+                        }
+                      }}
                       className="flex flex-shrink-0 items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all duration-200"
                       style={{
                         borderColor: activeSession.posted
