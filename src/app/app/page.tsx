@@ -50,6 +50,9 @@ interface AdvancedSettings {
   siteAbout: string;
   authorName: string;
   authorAbout: string;
+  wpUrl: string;
+  wpUsername: string;
+  wpAppPassword: string;
 }
 
 interface ClusterArticle {
@@ -452,6 +455,9 @@ export default function Home() {
     siteAbout: "",
     authorName: "",
     authorAbout: "",
+    wpUrl: "",
+    wpUsername: "",
+    wpAppPassword: "",
   });
   const [showAdvancedJsonPaste, setShowAdvancedJsonPaste] = useState(false);
   const [advancedJsonValue, setAdvancedJsonValue] = useState("");
@@ -504,6 +510,9 @@ export default function Home() {
           siteAbout: settings.site_about || "",
           authorName: settings.author_name || "",
           authorAbout: settings.author_about || "",
+          wpUrl: settings.wp_url || "",
+          wpUsername: settings.wp_username || "",
+          wpAppPassword: settings.wp_app_password || "",
         });
       }
 
@@ -658,6 +667,9 @@ export default function Home() {
         site_about: settings.siteAbout,
         author_name: settings.authorName,
         author_about: settings.authorAbout,
+        wp_url: settings.wpUrl,
+        wp_username: settings.wpUsername,
+        wp_app_password: settings.wpAppPassword,
         updated_at: new Date().toISOString(),
       });
     },
@@ -977,12 +989,15 @@ export default function Home() {
         setFormError("Advanced settings JSON must be an object.");
         return false;
       }
-      const updated = {
+      const updated: AdvancedSettings = {
         domain: (parsed.domain || parsed.url || "").trim(),
         siteName: (parsed.siteName || parsed.site_name || parsed.blogName || "").trim(),
         siteAbout: (parsed.siteAbout || parsed.site_about || parsed.blogAbout || parsed.about || "").trim(),
         authorName: (parsed.authorName || parsed.author_name || parsed.author || "").trim(),
         authorAbout: (parsed.authorAbout || parsed.author_about || parsed.authorBio || parsed.bio || "").trim(),
+        wpUrl: (parsed.wpUrl || parsed.wp_url || "").trim(),
+        wpUsername: (parsed.wpUsername || parsed.wp_username || "").trim(),
+        wpAppPassword: (parsed.wpAppPassword || parsed.wp_app_password || "").trim(),
       };
       setAdvancedSettings(updated);
       saveSettingsToDb(updated);
@@ -1579,6 +1594,29 @@ export default function Home() {
               <input type="text" value={advancedSettings[field.key]} onChange={(e) => updateAdvanced(field.key, e.target.value)} placeholder={field.placeholder} className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none" style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }} onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }} onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }} />
             </div>
           ))}
+          <div className="mt-2 border-t pt-3" style={{ borderColor: "var(--card-border)" }}>
+            <div className="mb-2 flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                <path d="M2 17l10 5 10-5" />
+                <path d="M2 12l10 5 10-5" />
+              </svg>
+              <span className="text-xs font-medium" style={{ color: "var(--muted)" }}>WordPress Integration</span>
+            </div>
+          {[
+            { key: "wpUrl" as const, label: "WordPress URL", placeholder: "https://yourblog.com" },
+            { key: "wpUsername" as const, label: "Username", placeholder: "admin" },
+            { key: "wpAppPassword" as const, label: "Application Password", placeholder: "xxxx xxxx xxxx xxxx xxxx xxxx" },
+          ].map((field) => (
+            <div key={field.key}>
+              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--muted)" }}>{field.label}</label>
+              <input type={field.key === "wpAppPassword" ? "password" : "text"} value={advancedSettings[field.key]} onChange={(e) => updateAdvanced(field.key, e.target.value)} placeholder={field.placeholder} className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none" style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }} onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }} onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }} />
+            </div>
+          ))}
+            <p className="text-xs" style={{ color: "var(--muted)" }}>
+              Generate an Application Password in WordPress: Users &gt; Your Profile &gt; Application Passwords
+            </p>
+          </div>
         </div>
       )}
     </div>
@@ -4283,6 +4321,34 @@ export default function Home() {
                       )}
                       {activeSession.posted ? "Posted" : "Mark as Posted"}
                     </button>
+                    {advancedSettings.wpUrl && (
+                      <button
+                        onClick={() => router.push(`/app/publish/${activeSession.id}`)}
+                        className="flex flex-shrink-0 items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all duration-200"
+                        style={{
+                          borderColor: "var(--card-border)",
+                          background: "var(--card)",
+                          color: "var(--accent)",
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--accent)";
+                          (e.currentTarget as HTMLButtonElement).style.background = "var(--accent)";
+                          (e.currentTarget as HTMLButtonElement).style.color = "#fff";
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--card-border)";
+                          (e.currentTarget as HTMLButtonElement).style.background = "var(--card)";
+                          (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)";
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                          <path d="M2 17l10 5 10-5" />
+                          <path d="M2 12l10 5 10-5" />
+                        </svg>
+                        Publish to WordPress
+                      </button>
+                    )}
                   </div>
                   <p className="text-sm" style={{ color: "var(--muted)" }}>
                     Focus:{" "}

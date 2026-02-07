@@ -49,6 +49,9 @@ create table if not exists user_settings (
   site_about text default '',
   author_name text default '',
   author_about text default '',
+  wp_url text default '',
+  wp_username text default '',
+  wp_app_password text default '',
   updated_at timestamptz default now()
 );
 
