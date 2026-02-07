@@ -17,11 +17,13 @@ export async function POST(req: NextRequest) {
       allKeywords,
       targetWordCount,
       advancedSettings,
+      interlinking,
     } = await req.json();
 
     const wordCount = targetWordCount || 4000;
     const settings = advancedSettings || {};
     const today = new Date().toISOString().split("T")[0];
+    const links = interlinking || null;
 
     if (!topic || !articleContext || !title || !allKeywords) {
       return NextResponse.json(
@@ -84,7 +86,18 @@ REQUIREMENTS:
 16. Write in a natural, humanized tone. Vary sentence length and rhythm. Use contractions, rhetorical questions, and direct address ("you") to sound like a real person, not AI
 17. NEVER use em dashes (—) anywhere in the article. Use commas, periods, colons, or parentheses instead
 18. Avoid filler phrases like "In today's world", "It's important to note", "In this article we will", "Let's dive in", or similar AI-sounding cliches
-
+${links ? `
+INTERNAL LINKING REQUIREMENTS (CRITICAL - follow these exactly):
+${links.pillarUrl ? `- This is a CLUSTER article. You MUST include 2-3 contextual internal links back to the pillar page: [relevant anchor text](${links.pillarUrl})` : ""}
+${links.pillarUrl ? `- The pillar page is about: "${links.pillarTopic}". Use natural, keyword-rich anchor text when linking to it (not "click here" or "read more")` : ""}
+${links.isPillar && links.clusterUrls?.length ? `- This is the PILLAR page. You MUST include contextual internal links to these cluster articles throughout the content where relevant:
+${links.clusterUrls.map((c: { url: string; title: string; keyword: string }) => `  * [${c.keyword}](${c.url}) - about: ${c.title}`).join("\n")}
+- Distribute these internal links naturally throughout the article body. Use the cluster article's keyword or a natural variation as anchor text.` : ""}
+${links.siblingUrls?.length ? `- Also include 1-2 contextual links to these related cluster articles where naturally relevant:
+${links.siblingUrls.map((s: { url: string; title: string; keyword: string }) => `  * [${s.keyword}](${s.url}) - about: ${s.title}`).join("\n")}` : ""}
+- All internal links should use descriptive, keyword-rich anchor text
+- Place links within the body content naturally, not in a separate "related articles" section
+` : ""}
 The output should be pure markdown that can be directly pasted into a WordPress code editor.`,
           },
         ],

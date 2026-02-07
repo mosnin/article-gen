@@ -49,6 +49,26 @@ interface AdvancedSettings {
   authorAbout: string;
 }
 
+interface ClusterArticle {
+  id: string;
+  concept: string;
+  keyword: string;
+  relation: string;
+  session: ArticleSession | null;
+}
+
+interface TopicCluster {
+  id: string;
+  pillarTopic: string;
+  pillarKeyword: string;
+  pillarSession: ArticleSession | null;
+  clusterArticles: ClusterArticle[];
+  quality: "standard" | "premium";
+  generating: boolean;
+  generationPhase: "idle" | "planning" | "pillar" | "clusters" | "relinking" | "done";
+  expanded: boolean;
+}
+
 const STEPS = [
   "Organizing context & researching facts...",
   "Generating SEO metadata...",
@@ -429,7 +449,7 @@ export default function Home() {
   const [advancedJsonValue, setAdvancedJsonValue] = useState("");
 
   // Mode & batch state
-  const [mode, setMode] = useState<"single" | "batch">("single");
+  const [mode, setMode] = useState<"single" | "batch" | "cluster">("single");
   const [batchQuality, setBatchQuality] = useState<"standard" | "premium">(
     "premium"
   );
@@ -779,7 +799,23 @@ export default function Home() {
     );
   };
 
-  const showForm = activeSessionId === null && !showHelp && !showDashboard;
+  // ── Topic Cluster State ──
+  const [clusters, setClusters] = useState<TopicCluster[]>([]);
+  const [activeClusterId, setActiveClusterId] = useState<string | null>(null);
+  const [showClusterView, setShowClusterView] = useState(false);
+  const [clusterPillarTopic, setClusterPillarTopic] = useState("");
+  const [clusterPillarKeyword, setClusterPillarKeyword] = useState("");
+  const [clusterQuality, setClusterQuality] = useState<"standard" | "premium">("premium");
+  const [clusterActiveArticleId, setClusterActiveArticleId] = useState<string | null>(null);
+
+  const activeCluster = clusters.find((c) => c.id === activeClusterId) || null;
+  const activeClusterArticle = activeCluster
+    ? clusterActiveArticleId === "pillar"
+      ? activeCluster.pillarSession
+      : activeCluster.clusterArticles.find((a) => a.id === clusterActiveArticleId)?.session || null
+    : null;
+
+  const showForm = activeSessionId === null && !showHelp && !showDashboard && !showClusterView;
   const loadingCount = sessions.filter((s) => s.loading).length;
   const queuedCount = sessions.filter((s) => s.queued).length;
   const validBatchCount = batchItems.filter((i) => i.topic.trim()).length;
@@ -837,6 +873,345 @@ export default function Home() {
     setMode("batch");
     setShowIdeas(false);
     setIdeasResult([]);
+  };
+
+
+  const updateCluster = useCallback(
+    (id: string, updates: Partial<TopicCluster>) => {
+      setClusters((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, ...updates } : c))
+      );
+    },
+    []
+  );
+
+  const updateClusterArticle = useCallback(
+    (clusterId: string, articleId: string, session: Partial<ArticleSession>) => {
+      setClusters((prev) =>
+        prev.map((c) => {
+          if (c.id !== clusterId) return c;
+          if (articleId === "pillar" && c.pillarSession) {
+            return { ...c, pillarSession: { ...c.pillarSession, ...session } };
+          }
+          return {
+            ...c,
+            clusterArticles: c.clusterArticles.map((a) =>
+              a.id === articleId && a.session
+                ? { ...a, session: { ...a.session, ...session } }
+                : a
+            ),
+          };
+        })
+      );
+    },
+    []
+  );
+
+  const runClusterArticleGeneration = useCallback(
+    async (
+      clusterId: string,
+      articleId: string,
+      topic: string,
+      focusKeyword: string | undefined,
+      quality: "standard" | "premium",
+      interlinking?: Record<string, unknown>
+    ) => {
+      try {
+        const { data: researchData } = await safeFetch(
+          "/api/generate/research",
+          { topic, focusKeyword }
+        );
+
+        updateClusterArticle(clusterId, articleId, { currentStep: 1 });
+
+        const { data: metadataData } = await safeFetch(
+          "/api/generate/metadata",
+          {
+            topic,
+            focusKeyword,
+            articleContext: researchData.articleContext,
+            researchContext: researchData.researchContext,
+          }
+        );
+
+        const allKeywords = [
+          metadataData.focusKeyword as string,
+          ...((metadataData.keywords as string[]) || []),
+        ];
+
+        updateClusterArticle(clusterId, articleId, { currentStep: 2 });
+
+        const targetWordCount = quality === "standard" ? 2000 : 4000;
+
+        const { data: articleData } = await safeFetch(
+          "/api/generate/article",
+          {
+            topic,
+            articleContext: researchData.articleContext,
+            researchContext: researchData.researchContext,
+            title: metadataData.title,
+            metaDescription: metadataData.metaDescription,
+            focusKeyword: metadataData.focusKeyword,
+            allKeywords,
+            targetWordCount,
+            advancedSettings,
+            interlinking,
+          }
+        );
+
+        updateClusterArticle(clusterId, articleId, {
+          loading: false,
+          result: {
+            title: metadataData.title as string,
+            metaDescription: metadataData.metaDescription as string,
+            slug: metadataData.slug as string,
+            focusKeyword: metadataData.focusKeyword as string,
+            keywords: (metadataData.keywords as string[]) || [],
+            article: articleData.article as string,
+            imagePrompts: articleData.imagePrompts as ImagePrompt[],
+            schema: (articleData.schema as string) || "",
+          },
+        });
+
+        return metadataData.slug as string;
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "Something went wrong";
+        updateClusterArticle(clusterId, articleId, {
+          loading: false,
+          error: message,
+        });
+        return null;
+      }
+    },
+    [updateClusterArticle, advancedSettings]
+  );
+
+  const handleStartCluster = async () => {
+    if (!clusterPillarTopic.trim()) {
+      setFormError("Please enter a pillar page topic.");
+      return;
+    }
+    if (!advancedSettings.domain.trim()) {
+      setFormError("Domain is required for topic clusters (needed for internal links). Please fill in Advanced Settings.");
+      return;
+    }
+
+    setFormError("");
+    const clusterId = crypto.randomUUID();
+    const domain = advancedSettings.domain.replace(/\/$/, "");
+
+    const newCluster: TopicCluster = {
+      id: clusterId,
+      pillarTopic: clusterPillarTopic.trim(),
+      pillarKeyword: clusterPillarKeyword.trim(),
+      pillarSession: null,
+      clusterArticles: [],
+      quality: clusterQuality,
+      generating: true,
+      generationPhase: "planning",
+      expanded: true,
+    };
+
+    setClusters((prev) => [newCluster, ...prev]);
+    setActiveClusterId(clusterId);
+    setShowClusterView(true);
+    setClusterActiveArticleId(null);
+    setActiveSessionId(null);
+    setShowHelp(false);
+    setShowDashboard(false);
+    setSidebarOpen(false);
+
+    try {
+      // Phase 1: Generate 30 cluster article ideas
+      const res = await fetch("/api/generate/cluster", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pillarTopic: clusterPillarTopic.trim(),
+          pillarKeyword: clusterPillarKeyword.trim() || undefined,
+          count: 30,
+        }),
+      });
+      const data = await res.json();
+      if (!data.clusterArticles?.length) {
+        updateCluster(clusterId, { generating: false, generationPhase: "idle" });
+        return;
+      }
+
+      const clusterArticles: ClusterArticle[] = data.clusterArticles.map(
+        (a: { concept: string; keyword: string; relation: string }) => ({
+          id: crypto.randomUUID(),
+          concept: a.concept,
+          keyword: a.keyword,
+          relation: a.relation || "",
+          session: null,
+        })
+      );
+
+      updateCluster(clusterId, {
+        clusterArticles,
+        generationPhase: "pillar",
+      });
+
+      // Phase 2: Generate the pillar article first
+      const pillarSessionId = "pillar";
+      const pillarSession: ArticleSession = {
+        id: pillarSessionId,
+        topic: clusterPillarTopic.trim(),
+        focusKeyword: clusterPillarKeyword.trim(),
+        loading: true,
+        queued: false,
+        error: "",
+        result: null,
+        currentStep: 0,
+        quality: clusterQuality === "standard" ? "premium" : "premium",
+        posted: false,
+      };
+
+      updateCluster(clusterId, { pillarSession });
+
+      const pillarSlug = await runClusterArticleGeneration(
+        clusterId,
+        pillarSessionId,
+        clusterPillarTopic.trim(),
+        clusterPillarKeyword.trim() || undefined,
+        "premium",
+        undefined
+      );
+
+      if (!pillarSlug) {
+        updateCluster(clusterId, { generating: false, generationPhase: "idle" });
+        return;
+      }
+
+      const pillarUrl = `${domain}/${pillarSlug}`;
+
+      // Phase 3: Generate cluster articles in batches of 2 with 60s delay
+      updateCluster(clusterId, { generationPhase: "clusters" });
+
+      // Initialize all cluster sessions
+      const updatedArticles = clusterArticles.map((a) => ({
+        ...a,
+        session: {
+          id: a.id,
+          topic: a.concept,
+          focusKeyword: a.keyword,
+          loading: false,
+          queued: true,
+          error: "",
+          result: null,
+          currentStep: 0,
+          quality: clusterQuality,
+          posted: false,
+        } as ArticleSession,
+      }));
+
+      updateCluster(clusterId, { clusterArticles: updatedArticles });
+
+      // Process in batches of 2
+      const completedSlugs: Array<{ id: string; slug: string; title: string; keyword: string }> = [];
+
+      for (let i = 0; i < updatedArticles.length; i += 2) {
+        const batch = updatedArticles.slice(i, i + 2);
+
+        // Mark batch as loading
+        batch.forEach((a) => {
+          updateClusterArticle(clusterId, a.id, { queued: false, loading: true });
+        });
+
+        // Generate batch in parallel
+        const results = await Promise.all(
+          batch.map((a) => {
+            // Build sibling links from already-completed articles
+            const siblingUrls = completedSlugs.slice(-4).map((s) => ({
+              url: `${domain}/${s.slug}`,
+              title: s.title,
+              keyword: s.keyword,
+            }));
+
+            return runClusterArticleGeneration(
+              clusterId,
+              a.id,
+              a.concept,
+              a.keyword,
+              clusterQuality,
+              {
+                pillarUrl,
+                pillarTopic: clusterPillarTopic.trim(),
+                siblingUrls,
+              }
+            );
+          })
+        );
+
+        // Collect completed slugs for future sibling linking
+        results.forEach((slug, idx) => {
+          if (slug) {
+            completedSlugs.push({
+              id: batch[idx].id,
+              slug,
+              title: batch[idx].concept,
+              keyword: batch[idx].keyword,
+            });
+          }
+        });
+
+        // Wait 60s between batches if more remain
+        if (i + 2 < updatedArticles.length) {
+          await new Promise<void>((resolve) => {
+            let seconds = 60;
+            setBatchCountdown(seconds);
+            const timer = setInterval(() => {
+              seconds--;
+              setBatchCountdown(seconds);
+              if (seconds <= 0) {
+                clearInterval(timer);
+                setBatchCountdown(0);
+                resolve();
+              }
+            }, 1000);
+          });
+        }
+      }
+
+      // Phase 4: Re-generate pillar with all cluster links
+      updateCluster(clusterId, { generationPhase: "relinking" });
+      const allClusterUrls = completedSlugs.map((s) => ({
+        url: `${domain}/${s.slug}`,
+        title: s.title,
+        keyword: s.keyword,
+      }));
+
+      updateClusterArticle(clusterId, "pillar", {
+        loading: true,
+        currentStep: 0,
+        error: "",
+        result: null,
+      });
+
+      await runClusterArticleGeneration(
+        clusterId,
+        "pillar",
+        clusterPillarTopic.trim(),
+        clusterPillarKeyword.trim() || undefined,
+        "premium",
+        {
+          isPillar: true,
+          clusterUrls: allClusterUrls,
+        }
+      );
+
+      updateCluster(clusterId, {
+        generating: false,
+        generationPhase: "done",
+      });
+    } catch {
+      updateCluster(clusterId, {
+        generating: false,
+        generationPhase: "idle",
+      });
+    }
   };
 
   // Shared advanced settings panel JSX
@@ -995,6 +1370,10 @@ export default function Home() {
             onClick={() => {
               setActiveSessionId(null);
               setShowHelp(false);
+              setShowDashboard(false);
+              setShowClusterView(false);
+              setActiveClusterId(null);
+              setClusterActiveArticleId(null);
               setFormError("");
               setSidebarOpen(false);
             }}
@@ -1030,6 +1409,9 @@ export default function Home() {
                 setShowDashboard(true);
                 setShowHelp(false);
                 setActiveSessionId(null);
+                setShowClusterView(false);
+                setActiveClusterId(null);
+                setClusterActiveArticleId(null);
                 setSidebarOpen(false);
               }}
               className="mt-1.5 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
@@ -1069,14 +1451,180 @@ export default function Home() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 pb-3">
-          {sessions.length === 0 ? (
+          {/* Topic Clusters Section */}
+          {clusters.length > 0 && (
+            <div className="mb-3">
+              <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted)" }}>
+                Topic Clusters
+              </div>
+              <div className="space-y-0.5">
+                {clusters.map((cluster) => (
+                  <div key={cluster.id}>
+                    <button
+                      onClick={() => {
+                        const isExpanding = activeClusterId !== cluster.id;
+                        setActiveClusterId(cluster.id);
+                        setShowClusterView(true);
+                        setActiveSessionId(null);
+                        setShowHelp(false);
+                        setShowDashboard(false);
+                        setClusterActiveArticleId(null);
+                        if (!isExpanding) {
+                          updateCluster(cluster.id, { expanded: !cluster.expanded });
+                        } else {
+                          updateCluster(cluster.id, { expanded: true });
+                        }
+                        setSidebarOpen(false);
+                      }}
+                      className="group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors"
+                      style={{
+                        background: activeClusterId === cluster.id && showClusterView && !clusterActiveArticleId ? "var(--card)" : "transparent",
+                        color: "var(--foreground)",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!(activeClusterId === cluster.id && showClusterView && !clusterActiveArticleId))
+                          (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,0,0,0.04)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!(activeClusterId === cluster.id && showClusterView && !clusterActiveArticleId))
+                          (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                      }}
+                    >
+                      <svg
+                        width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                        style={{ transform: cluster.expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s", flexShrink: 0 }}
+                      >
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                      <span className="flex items-center gap-1.5 truncate">
+                        {cluster.generating ? (
+                          <span className="sidebar-pulse block h-2 w-2 flex-shrink-0 rounded-full" style={{ background: "var(--accent)" }} />
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                          </svg>
+                        )}
+                        <span className="truncate">{cluster.pillarKeyword || cluster.pillarTopic}</span>
+                      </span>
+                      {cluster.generating && (
+                        <span className="ml-auto flex-shrink-0 text-[10px] tabular-nums" style={{ color: "var(--muted)" }}>
+                          {cluster.generationPhase === "planning" ? "Planning..." :
+                           cluster.generationPhase === "pillar" ? "Pillar..." :
+                           cluster.generationPhase === "clusters" ? `${cluster.clusterArticles.filter((a) => a.session?.result).length}/${cluster.clusterArticles.length}` :
+                           cluster.generationPhase === "relinking" ? "Linking..." : ""}
+                        </span>
+                      )}
+                    </button>
+                    {cluster.expanded && (
+                      <div className="ml-4 space-y-0.5 border-l py-0.5 pl-2" style={{ borderColor: "var(--card-border)" }}>
+                        {/* Pillar page */}
+                        <button
+                          onClick={() => {
+                            setActiveClusterId(cluster.id);
+                            setShowClusterView(true);
+                            setClusterActiveArticleId("pillar");
+                            setActiveSessionId(null);
+                            setShowHelp(false);
+                            setShowDashboard(false);
+                            setSidebarOpen(false);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors"
+                          style={{
+                            background: clusterActiveArticleId === "pillar" && activeClusterId === cluster.id ? "var(--card)" : "transparent",
+                            color: "var(--foreground)",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!(clusterActiveArticleId === "pillar" && activeClusterId === cluster.id))
+                              (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,0,0,0.04)";
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!(clusterActiveArticleId === "pillar" && activeClusterId === cluster.id))
+                              (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                          }}
+                        >
+                          <span className="flex-shrink-0">
+                            {cluster.pillarSession?.loading ? (
+                              <span className="sidebar-pulse block h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent)" }} />
+                            ) : cluster.pillarSession?.error ? (
+                              <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--error)" }} />
+                            ) : cluster.pillarSession?.result ? (
+                              <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--success)" }} />
+                            ) : (
+                              <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--card-border)" }} />
+                            )}
+                          </span>
+                          <span className="truncate font-medium" style={{ color: "var(--accent)" }}>
+                            Pillar: {cluster.pillarSession?.result?.title || cluster.pillarTopic}
+                          </span>
+                        </button>
+                        {/* Cluster articles */}
+                        {cluster.clusterArticles.map((article) => (
+                          <button
+                            key={article.id}
+                            onClick={() => {
+                              setActiveClusterId(cluster.id);
+                              setShowClusterView(true);
+                              setClusterActiveArticleId(article.id);
+                              setActiveSessionId(null);
+                              setShowHelp(false);
+                              setShowDashboard(false);
+                              setSidebarOpen(false);
+                            }}
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors"
+                            style={{
+                              background: clusterActiveArticleId === article.id && activeClusterId === cluster.id ? "var(--card)" : "transparent",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!(clusterActiveArticleId === article.id && activeClusterId === cluster.id))
+                                (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,0,0,0.04)";
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!(clusterActiveArticleId === article.id && activeClusterId === cluster.id))
+                                (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                            }}
+                          >
+                            <span className="flex-shrink-0">
+                              {article.session?.loading ? (
+                                <span className="sidebar-pulse block h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent)" }} />
+                              ) : article.session?.error ? (
+                                <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--error)" }} />
+                              ) : article.session?.result ? (
+                                <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "#007aff" }} />
+                              ) : article.session?.queued ? (
+                                <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--card-border)" }} />
+                              ) : (
+                                <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--card-border)" }} />
+                              )}
+                            </span>
+                            <span className="truncate" style={{ color: "var(--foreground)" }}>
+                              {article.session?.result?.title || article.concept}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Articles section header */}
+          {(sessions.length > 0 || clusters.length > 0) && sessions.length > 0 && clusters.length > 0 && (
+            <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted)" }}>
+              Articles
+            </div>
+          )}
+
+          {sessions.length === 0 && clusters.length === 0 ? (
             <p
               className="px-3 py-6 text-center text-xs"
               style={{ color: "var(--muted)" }}
             >
               No articles yet. Start generating!
             </p>
-          ) : (
+          ) : sessions.length > 0 ? (
             <div className="space-y-1">
               {sessions.map((session) => (
                 <button
@@ -1084,6 +1632,10 @@ export default function Home() {
                   onClick={() => {
                     setActiveSessionId(session.id);
                     setShowHelp(false);
+                    setShowDashboard(false);
+                    setShowClusterView(false);
+                    setActiveClusterId(null);
+                    setClusterActiveArticleId(null);
                     setSidebarOpen(false);
                   }}
                   className="group flex w-full items-start gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors"
@@ -1191,7 +1743,7 @@ export default function Home() {
                 </button>
               ))}
             </div>
-          )}
+          ) : null}
         </div>
       </aside>
 
@@ -1950,6 +2502,22 @@ export default function Home() {
                   >
                     Batch
                   </button>
+                  <button
+                    onClick={() => {
+                      setMode("cluster");
+                      setFormError("");
+                    }}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium transition-colors"
+                    style={{
+                      background:
+                        mode === "cluster"
+                          ? "var(--accent)"
+                          : "var(--card)",
+                      color: mode === "cluster" ? "#fff" : "var(--foreground)",
+                    }}
+                  >
+                    Cluster
+                  </button>
                 </div>
 
                 {/* Single mode form */}
@@ -2536,6 +3104,438 @@ export default function Home() {
                       Articles generate 2 at a time with 60-second intervals
                       between batches to stay within rate limits.
                     </p>
+                  </div>
+                )}
+
+                {/* Cluster mode form */}
+                {mode === "cluster" && (
+                  <div className="space-y-5">
+                    <div
+                      className="rounded-xl border p-4"
+                      style={{
+                        background: "var(--card)",
+                        borderColor: "var(--card-border)",
+                      }}
+                    >
+                      <div className="mb-3 flex items-center gap-2">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="3" />
+                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                        </svg>
+                        <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                          Topic Cluster Generator
+                        </span>
+                      </div>
+                      <p className="mb-4 text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+                        Generate a comprehensive topic cluster: one pillar page plus 30 interlinked cluster articles.
+                        All articles will link back to the pillar page and cross-link to each other following SEO best practices.
+                        Advanced settings with your domain are required for internal linking.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium" style={{ color: "var(--muted)" }}>
+                        Article Quality
+                      </label>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setClusterQuality("standard")}
+                          className="flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-colors"
+                          style={{
+                            background: clusterQuality === "standard" ? "var(--accent)" : "var(--card)",
+                            color: clusterQuality === "standard" ? "#fff" : "var(--foreground)",
+                            borderColor: clusterQuality === "standard" ? "var(--accent)" : "var(--card-border)",
+                          }}
+                        >
+                          Standard
+                          <span className="block text-xs font-normal" style={{ opacity: 0.7 }}>~2,000 words</span>
+                        </button>
+                        <button
+                          onClick={() => setClusterQuality("premium")}
+                          className="flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-colors"
+                          style={{
+                            background: clusterQuality === "premium" ? "var(--accent)" : "var(--card)",
+                            color: clusterQuality === "premium" ? "#fff" : "var(--foreground)",
+                            borderColor: clusterQuality === "premium" ? "var(--accent)" : "var(--card-border)",
+                          }}
+                        >
+                          Premium
+                          <span className="block text-xs font-normal" style={{ opacity: 0.7 }}>~4,000 words</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium" style={{ color: "var(--muted)" }}>
+                        Pillar Page Topic
+                      </label>
+                      <textarea
+                        value={clusterPillarTopic}
+                        onChange={(e) => setClusterPillarTopic(e.target.value)}
+                        placeholder="e.g., The Complete Guide to Indoor Herb Gardening"
+                        rows={3}
+                        className="w-full resize-none rounded-xl border px-4 py-3 text-base transition-colors focus:outline-none"
+                        style={{
+                          background: "var(--card)",
+                          borderColor: "var(--card-border)",
+                          color: "var(--foreground)",
+                        }}
+                        onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--accent)"; }}
+                        onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--card-border)"; }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium" style={{ color: "var(--muted)" }}>
+                        Pillar Focus Keyword
+                      </label>
+                      <input
+                        type="text"
+                        value={clusterPillarKeyword}
+                        onChange={(e) => setClusterPillarKeyword(e.target.value)}
+                        placeholder="e.g., indoor herb gardening"
+                        className="w-full rounded-xl border px-4 py-3 text-base transition-colors focus:outline-none"
+                        style={{
+                          background: "var(--card)",
+                          borderColor: "var(--card-border)",
+                          color: "var(--foreground)",
+                        }}
+                        onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }}
+                        onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }}
+                      />
+                    </div>
+
+                    {advancedSettingsPanel}
+
+                    {!advancedSettings.domain.trim() && (
+                      <div
+                        className="rounded-xl border px-4 py-3 text-sm"
+                        style={{
+                          borderColor: "var(--accent)",
+                          background: "rgba(0, 122, 255, 0.06)",
+                          color: "var(--accent)",
+                        }}
+                      >
+                        Domain is required for topic clusters. Open Advanced Settings above to set your domain.
+                      </div>
+                    )}
+
+                    {formError && (
+                      <div
+                        className="rounded-xl border px-4 py-3 text-sm"
+                        style={{
+                          borderColor: "var(--error)",
+                          background: "rgba(239, 68, 68, 0.1)",
+                          color: "var(--error)",
+                        }}
+                      >
+                        {formError}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleStartCluster}
+                      disabled={!clusterPillarTopic.trim() || !advancedSettings.domain.trim()}
+                      className="w-full rounded-xl py-3.5 text-base font-semibold text-white transition-all duration-200 disabled:opacity-40"
+                      style={{ background: "var(--accent)" }}
+                      onMouseEnter={(e) => {
+                        if (clusterPillarTopic.trim() && advancedSettings.domain.trim())
+                          (e.currentTarget as HTMLButtonElement).style.background = "var(--accent-hover)";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background = "var(--accent)";
+                      }}
+                    >
+                      Generate Topic Cluster (31 Articles)
+                    </button>
+
+                    <p className="text-center text-xs" style={{ color: "var(--muted)" }}>
+                      Generates 1 pillar page + 30 cluster articles. Articles generate 2 at a time with 60-second intervals. The pillar page is regenerated at the end with links to all cluster articles.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Cluster View */}
+            {showClusterView && activeCluster && (
+              <div className="mx-auto max-w-4xl">
+                {/* Cluster header */}
+                <div className="mb-6">
+                  <div className="mb-2 flex items-center gap-2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                    </svg>
+                    <h2 className="text-2xl font-bold tracking-tight" style={{ color: "var(--foreground)" }}>
+                      Topic Cluster
+                    </h2>
+                    {activeCluster.generating && (
+                      <span className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "rgba(0, 122, 255, 0.1)", color: "var(--accent)" }}>
+                        {activeCluster.generationPhase === "planning" ? "Planning cluster..." :
+                         activeCluster.generationPhase === "pillar" ? "Generating pillar..." :
+                         activeCluster.generationPhase === "clusters" ? "Generating cluster articles..." :
+                         activeCluster.generationPhase === "relinking" ? "Re-linking pillar page..." : ""}
+                      </span>
+                    )}
+                    {activeCluster.generationPhase === "done" && (
+                      <span className="rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "rgba(52, 199, 89, 0.1)", color: "var(--success)" }}>
+                        Complete
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm" style={{ color: "var(--muted)" }}>
+                    {activeCluster.pillarKeyword || activeCluster.pillarTopic}
+                  </p>
+                </div>
+
+                {/* Not viewing a specific article - show overview */}
+                {!clusterActiveArticleId && (
+                  <div className="space-y-4">
+                    {/* Pillar card */}
+                    <div
+                      className="cursor-pointer rounded-xl border p-4 transition-colors"
+                      style={{ borderColor: "var(--accent)", background: "rgba(0, 122, 255, 0.04)" }}
+                      onClick={() => {
+                        if (activeCluster.pillarSession) setClusterActiveArticleId("pillar");
+                      }}
+                    >
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white" style={{ background: "var(--accent)" }}>
+                          Pillar
+                        </span>
+                        {activeCluster.pillarSession?.loading && (
+                          <svg className="progress-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                        )}
+                        {activeCluster.pillarSession?.result && (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        )}
+                        {activeCluster.pillarSession?.error && (
+                          <span className="text-xs" style={{ color: "var(--error)" }}>Failed</span>
+                        )}
+                      </div>
+                      <h3 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>
+                        {activeCluster.pillarSession?.result?.title || activeCluster.pillarTopic}
+                      </h3>
+                      <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+                        {activeCluster.pillarSession?.result?.focusKeyword || activeCluster.pillarKeyword}
+                      </p>
+                    </div>
+
+                    {/* Progress summary */}
+                    {activeCluster.clusterArticles.length > 0 && (
+                      <div className="flex items-center gap-3">
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ background: "var(--card-border)" }}>
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              background: "var(--accent)",
+                              width: `${(activeCluster.clusterArticles.filter((a) => a.session?.result).length / activeCluster.clusterArticles.length) * 100}%`,
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs tabular-nums" style={{ color: "var(--muted)" }}>
+                          {activeCluster.clusterArticles.filter((a) => a.session?.result).length}/{activeCluster.clusterArticles.length}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Cluster articles grid */}
+                    {activeCluster.clusterArticles.length > 0 && (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {activeCluster.clusterArticles.map((article, i) => (
+                          <div
+                            key={article.id}
+                            className="cursor-pointer rounded-xl border p-3 transition-all hover:shadow-sm"
+                            style={{
+                              borderColor: article.session?.result ? "var(--card-border)" : article.session?.loading ? "var(--accent)" : "var(--card-border)",
+                              background: article.session?.loading ? "rgba(0, 122, 255, 0.03)" : "var(--card)",
+                              opacity: article.session?.queued && !article.session?.loading ? 0.6 : 1,
+                            }}
+                            onClick={() => {
+                              if (article.session?.result || article.session?.error) setClusterActiveArticleId(article.id);
+                            }}
+                          >
+                            <div className="mb-1 flex items-center gap-2">
+                              <span className="text-[10px] font-bold tabular-nums" style={{ color: "var(--muted)" }}>
+                                #{i + 1}
+                              </span>
+                              {article.session?.loading && (
+                                <svg className="progress-spinner" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                              )}
+                              {article.session?.result && (
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                              )}
+                              {article.session?.error && (
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--error)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                              )}
+                              {article.session?.queued && (
+                                <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--card-border)" }} />
+                              )}
+                            </div>
+                            <h4 className="truncate text-sm font-medium" style={{ color: "var(--foreground)" }}>
+                              {article.session?.result?.title || article.concept}
+                            </h4>
+                            <p className="mt-0.5 truncate text-xs" style={{ color: "var(--muted)" }}>
+                              {article.keyword}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Planning state */}
+                    {activeCluster.generationPhase === "planning" && (
+                      <div className="flex flex-col items-center py-12">
+                        <svg className="progress-spinner mb-4" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                        <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Planning your topic cluster...</p>
+                        <p className="text-xs" style={{ color: "var(--muted)" }}>Generating 30 strategically interlinked article ideas</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Viewing a specific cluster article */}
+                {clusterActiveArticleId && activeClusterArticle && (
+                  <div>
+                    <button
+                      onClick={() => setClusterActiveArticleId(null)}
+                      className="mb-4 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+                      style={{ color: "var(--accent)" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--card)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                      Back to cluster overview
+                    </button>
+
+                    {clusterActiveArticleId === "pillar" && (
+                      <span className="mb-3 inline-block rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-white" style={{ background: "var(--accent)" }}>
+                        Pillar Page
+                      </span>
+                    )}
+
+                    {/* Reuse the same result display logic as regular articles */}
+                    {activeClusterArticle.loading && (
+                      <div className="flex flex-col items-center justify-center py-20">
+                        <div className="mb-6">
+                          <div className="relative flex items-center justify-center gap-2">
+                            {[0, 1, 2].map((i) => (
+                              <div key={i} className="loading-dot h-2 w-2 rounded-full" style={{ background: "var(--accent)", animationDelay: `${i * 0.15}s` }} />
+                            ))}
+                          </div>
+                        </div>
+                        <h2 className="mb-2 text-center text-xl font-semibold" style={{ color: "var(--foreground)" }}>
+                          {activeClusterArticle.topic}
+                        </h2>
+                        <div className="mt-6 w-full max-w-xs space-y-3">
+                          {STEPS.map((step, i) => (
+                            <div key={i} className="flex items-center gap-3 text-sm" style={{ color: i <= activeClusterArticle.currentStep ? "var(--foreground)" : "var(--muted)", opacity: i <= activeClusterArticle.currentStep ? 1 : 0.4 }}>
+                              {i < activeClusterArticle.currentStep ? (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                              ) : i === activeClusterArticle.currentStep ? (
+                                <svg className="progress-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                              ) : (
+                                <div className="h-4 w-4 rounded-full border" style={{ borderColor: "var(--card-border)" }} />
+                              )}
+                              <span>{step}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {activeClusterArticle.error && (
+                      <div className="flex flex-col items-center justify-center py-20">
+                        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full" style={{ background: "rgba(239, 68, 68, 0.1)" }}>
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--error)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        </div>
+                        <h2 className="mb-2 text-lg font-semibold" style={{ color: "var(--foreground)" }}>Generation Failed</h2>
+                        <p className="mb-6 max-w-sm text-center text-sm" style={{ color: "var(--muted)" }}>{activeClusterArticle.error}</p>
+                      </div>
+                    )}
+
+                    {activeClusterArticle.result && (
+                      <div className="space-y-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <h2 className="text-2xl font-bold tracking-tight" style={{ color: "var(--foreground)" }}>
+                            {activeClusterArticle.result.title}
+                          </h2>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setResultView("data")}
+                            className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+                            style={{
+                              background: resultView === "data" ? "var(--accent)" : "var(--card)",
+                              color: resultView === "data" ? "#fff" : "var(--foreground)",
+                            }}
+                          >
+                            Data
+                          </button>
+                          <button
+                            onClick={() => setResultView("preview")}
+                            className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+                            style={{
+                              background: resultView === "preview" ? "var(--accent)" : "var(--card)",
+                              color: resultView === "preview" ? "#fff" : "var(--foreground)",
+                            }}
+                          >
+                            Preview
+                          </button>
+                        </div>
+                        {resultView === "data" ? (
+                          <div className="space-y-4">
+                            <OutputCard label="Title" content={activeClusterArticle.result.title} />
+                            <OutputCard label="Meta Description" content={activeClusterArticle.result.metaDescription} />
+                            <OutputCard label="Slug" content={activeClusterArticle.result.slug} />
+                            <OutputCard label="Focus Keyword" content={activeClusterArticle.result.focusKeyword} />
+                            <OutputCard label="Keywords" content={activeClusterArticle.result.keywords.join(", ")} />
+                            <OutputCard label="Article (Markdown)" content={activeClusterArticle.result.article} large />
+                            {activeClusterArticle.result.imagePrompts.length > 0 && (
+                              <div>
+                                <h3 className="mb-3 text-sm font-semibold" style={{ color: "var(--foreground)" }}>Image Prompts</h3>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  {activeClusterArticle.result.imagePrompts.map((img, i) => (
+                                    <div key={i} className="rounded-xl border" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+                                      <div className="flex items-center justify-between border-b px-3 py-2" style={{ borderColor: "var(--card-border)" }}>
+                                        <span className="text-xs font-medium" style={{ color: "var(--muted)" }}>{img.type}</span>
+                                        <CopyButton text={img.prompt} label="Copy" />
+                                      </div>
+                                      <div className="space-y-2 px-3 py-2.5">
+                                        <div><span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wider" style={{ color: "var(--muted)" }}>Prompt</span><p className="text-xs leading-relaxed" style={{ color: "var(--foreground)" }}>{img.prompt}</p></div>
+                                        <div><span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wider" style={{ color: "var(--muted)" }}>Alt Text</span><p className="text-xs" style={{ color: "var(--foreground)" }}>{img.altText}</p></div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {activeClusterArticle.result.schema && (
+                              <OutputCard label="JSON-LD Schema" content={activeClusterArticle.result.schema} large />
+                            )}
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="mb-4 flex gap-2">
+                              <CopyButton
+                                text={activeClusterArticle.result.article.replace(/#{1,6}\s/g, "").replace(/\*\*/g, "").replace(/\*/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")}
+                                label="Copy Plain Text"
+                              />
+                              <CopyButton
+                                text={marked.parse(activeClusterArticle.result.article) as string}
+                                label="Copy HTML"
+                              />
+                            </div>
+                            <div
+                              className="article-preview rounded-xl border p-6 sm:p-8"
+                              style={{ background: "#fff", borderColor: "var(--card-border)" }}
+                              dangerouslySetInnerHTML={{ __html: marked.parse(activeClusterArticle.result.article) as string }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
