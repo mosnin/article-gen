@@ -4,6 +4,36 @@ import { marked } from "marked";
 
 export const maxDuration = 60;
 
+interface WpBlog {
+  id: string;
+  url: string;
+  username: string;
+  appPassword: string;
+}
+
+function getBlogCredentials(settings: Record<string, unknown>, blogId?: string): { wpUrl: string; auth: string } | null {
+  const blogs = settings.wp_blogs as WpBlog[] | null;
+
+  if (blogs && Array.isArray(blogs) && blogs.length > 0) {
+    const blog = blogId ? blogs.find((b) => b.id === blogId) : blogs[0];
+    if (blog?.url && blog?.username && blog?.appPassword) {
+      return {
+        wpUrl: blog.url.replace(/\/$/, ""),
+        auth: Buffer.from(`${blog.username}:${blog.appPassword}`).toString("base64"),
+      };
+    }
+  }
+
+  if (settings.wp_url && settings.wp_username && settings.wp_app_password) {
+    return {
+      wpUrl: (settings.wp_url as string).replace(/\/$/, ""),
+      auth: Buffer.from(`${settings.wp_username}:${settings.wp_app_password}`).toString("base64"),
+    };
+  }
+
+  return null;
+}
+
 interface ImageUploadResult {
   wpMediaId: number;
   wpUrl: string;
@@ -101,11 +131,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { articleId, categoryIds, status: postStatus, images } = await req.json() as {
+    const { articleId, categoryIds, status: postStatus, images, blogId } = await req.json() as {
       articleId: string;
       categoryIds?: number[];
       status?: string;
       images?: Array<{ type: string; altText: string; b64: string }>;
+      blogId?: string;
     };
 
     if (!articleId) {
@@ -115,18 +146,15 @@ export async function POST(req: NextRequest) {
     // Get WordPress credentials
     const { data: settings } = await supabase
       .from("user_settings")
-      .select("wp_url, wp_username, wp_app_password")
+      .select("wp_url, wp_username, wp_app_password, wp_blogs")
       .eq("user_id", user.id)
       .single();
 
-    if (!settings?.wp_url || !settings?.wp_username || !settings?.wp_app_password) {
-      return NextResponse.json(
-        { error: "WordPress not connected. Add your WordPress credentials in Settings." },
-        { status: 400 }
-      );
+    if (!settings) {
+      return NextResponse.json({ error: "No blogs connected. Add a blog in Settings." }, { status: 400 });
     }
 
-    // Get the article
+    // Get the article (also check for wp_blog_id to use that blog)
     const { data: article } = await supabase
       .from("articles")
       .select("*")
@@ -138,8 +166,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Article not found" }, { status: 404 });
     }
 
-    const wpUrl = settings.wp_url.replace(/\/$/, "");
-    const auth = Buffer.from(`${settings.wp_username}:${settings.wp_app_password}`).toString("base64");
+    const effectiveBlogId = blogId || article.wp_blog_id || undefined;
+    const creds = getBlogCredentials(settings, effectiveBlogId);
+    if (!creds) {
+      return NextResponse.json({ error: "No blogs connected. Add a blog in Settings." }, { status: 400 });
+    }
+
+    const wpUrl = creds.wpUrl;
+    const auth = creds.auth;
 
     // Upload images to WordPress media library if provided
     const uploadedImages: ImageUploadResult[] = [];

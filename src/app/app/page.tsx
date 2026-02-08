@@ -52,6 +52,15 @@ interface BatchQueueItem {
   focusKeyword: string | undefined;
   quality: "standard" | "premium";
   withImages: boolean;
+  blogId?: string;
+}
+
+interface WpBlog {
+  id: string;
+  name: string;
+  url: string;
+  username: string;
+  appPassword: string;
 }
 
 interface AdvancedSettings {
@@ -498,6 +507,10 @@ export default function Home() {
   const [showAdvancedJsonPaste, setShowAdvancedJsonPaste] = useState(false);
   const [advancedJsonValue, setAdvancedJsonValue] = useState("");
 
+  // WordPress blogs
+  const [wpBlogs, setWpBlogs] = useState<WpBlog[]>([]);
+  const [selectedBlogId, setSelectedBlogId] = useState<string>("");
+
   // AI Image generation toggles
   const [generateImages, setGenerateImages] = useState(false);
   const [batchGenerateImages, setBatchGenerateImages] = useState(false);
@@ -555,6 +568,24 @@ export default function Home() {
           wpUsername: settings.wp_username || "",
           wpAppPassword: settings.wp_app_password || "",
         });
+
+        // Load WordPress blogs
+        const blogs = settings.wp_blogs as WpBlog[] | null;
+        if (blogs && Array.isArray(blogs) && blogs.length > 0) {
+          setWpBlogs(blogs);
+          setSelectedBlogId(blogs[0].id);
+        } else if (settings.wp_url) {
+          // Migrate legacy single blog
+          const legacyBlog: WpBlog = {
+            id: "legacy",
+            name: new URL(settings.wp_url).hostname.replace("www.", ""),
+            url: settings.wp_url,
+            username: settings.wp_username || "",
+            appPassword: settings.wp_app_password || "",
+          };
+          setWpBlogs([legacyBlog]);
+          setSelectedBlogId(legacyBlog.id);
+        }
       }
 
       // Load credit info
@@ -672,7 +703,7 @@ export default function Home() {
 
   // Save article to Supabase
   const saveArticleToDb = useCallback(
-    async (session: ArticleSession, clusterId?: string, isPillar?: boolean) => {
+    async (session: ArticleSession, clusterId?: string, isPillar?: boolean, wpBlogId?: string) => {
       if (!user || !session.result) return;
       const { error } = await supabase.from("articles").upsert({
         id: session.id,
@@ -690,6 +721,7 @@ export default function Home() {
         posted: session.posted,
         cluster_id: clusterId || null,
         is_pillar: isPillar || false,
+        wp_blog_id: wpBlogId || null,
         updated_at: new Date().toISOString(),
       });
       if (error) console.error("Save article error:", error);
@@ -754,7 +786,8 @@ export default function Home() {
       topic: string,
       focusKeyword: string | undefined,
       quality: "standard" | "premium" = "premium",
-      withImages: boolean = false
+      withImages: boolean = false,
+      blogId?: string
     ) => {
       try {
         // Batch 1: Context + Research (parallel inside the route)
@@ -870,7 +903,7 @@ export default function Home() {
         saveArticleToDb({
           id, topic, focusKeyword: result.focusKeyword, loading: false, queued: false,
           error: "", result, currentStep: 0, quality, posted: false,
-        });
+        }, undefined, undefined, blogId);
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : "Something went wrong";
@@ -895,7 +928,7 @@ export default function Home() {
 
       await Promise.all(
         batch.map((item) =>
-          runGeneration(item.id, item.topic, item.focusKeyword, item.quality, item.withImages)
+          runGeneration(item.id, item.topic, item.focusKeyword, item.quality, item.withImages, item.blogId)
         )
       );
 
@@ -959,7 +992,7 @@ export default function Home() {
     setFormError("");
     setSidebarOpen(false);
 
-    runGeneration(id, topic, focusKeyword, "premium", generateImages);
+    runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined);
   };
 
   const handleBatchGenerate = () => {
@@ -999,6 +1032,7 @@ export default function Home() {
         focusKeyword: s.focusKeyword || undefined,
         quality: batchQuality,
         withImages: batchGenerateImages,
+        blogId: selectedBlogId || undefined,
       }))
     );
 
@@ -1390,7 +1424,7 @@ export default function Home() {
         saveArticleToDb({
           id: saveId, topic, focusKeyword: clusterResult.focusKeyword, loading: false, queued: false,
           error: "", result: clusterResult, currentStep: 0, quality, posted: false,
-        }, clusterId, isPillar);
+        }, clusterId, isPillar, selectedBlogId || undefined);
 
         return metadataData.slug as string;
       } catch (err: unknown) {
@@ -1403,7 +1437,7 @@ export default function Home() {
         return null;
       }
     },
-    [updateClusterArticle, advancedSettings, saveArticleToDb]
+    [updateClusterArticle, advancedSettings, saveArticleToDb, selectedBlogId]
   );
 
   const handleStartCluster = async () => {
@@ -1744,32 +1778,41 @@ export default function Home() {
               <input type="text" value={advancedSettings[field.key]} onChange={(e) => updateAdvanced(field.key, e.target.value)} placeholder={field.placeholder} className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none" style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }} onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }} onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }} />
             </div>
           ))}
-          <div className="mt-2 border-t pt-3" style={{ borderColor: "var(--card-border)" }}>
-            <div className="mb-2 flex items-center gap-2">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
-              <span className="text-xs font-medium" style={{ color: "var(--muted)" }}>WordPress Integration</span>
-            </div>
-          {[
-            { key: "wpUrl" as const, label: "WordPress URL", placeholder: "https://yourblog.com" },
-            { key: "wpUsername" as const, label: "Username", placeholder: "admin" },
-            { key: "wpAppPassword" as const, label: "Application Password", placeholder: "xxxx xxxx xxxx xxxx xxxx xxxx" },
-          ].map((field) => (
-            <div key={field.key}>
-              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--muted)" }}>{field.label}</label>
-              <input type={field.key === "wpAppPassword" ? "password" : "text"} value={advancedSettings[field.key]} onChange={(e) => updateAdvanced(field.key, e.target.value)} placeholder={field.placeholder} className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none" style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }} onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }} onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }} />
-            </div>
-          ))}
-            <p className="text-xs" style={{ color: "var(--muted)" }}>
-              Generate an Application Password in WordPress: Users &gt; Your Profile &gt; Application Passwords
-            </p>
-          </div>
         </div>
       )}
     </div>
+  );
+
+  const blogSelectorPanel = wpBlogs.length > 0 ? (
+    <div className="flex items-center justify-between rounded-xl border px-4 py-3" style={{ borderColor: "var(--card-border)", background: "var(--card)" }}>
+      <div>
+        <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Publish to</div>
+        <div className="text-xs" style={{ color: "var(--muted)" }}>Select a connected blog</div>
+      </div>
+      <select
+        value={selectedBlogId}
+        onChange={(e) => setSelectedBlogId(e.target.value)}
+        className="rounded-lg border px-3 py-1.5 text-sm font-medium"
+        style={{ borderColor: "var(--card-border)", background: "var(--background)", color: "var(--foreground)", outline: "none", maxWidth: 180 }}
+      >
+        <option value="">No blog</option>
+        {wpBlogs.map((blog) => (
+          <option key={blog.id} value={blog.id}>{blog.name || blog.url}</option>
+        ))}
+      </select>
+    </div>
+  ) : (
+    <button
+      onClick={() => router.push("/app/settings")}
+      className="flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left"
+      style={{ borderColor: "var(--card-border)", background: "var(--card)", cursor: "pointer" }}
+    >
+      <div>
+        <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Connect a WordPress Blog</div>
+        <div className="text-xs" style={{ color: "var(--muted)" }}>Set up publishing in Settings</div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+    </button>
   );
 
   return (
@@ -2276,29 +2319,22 @@ export default function Home() {
                 Billing & Credits
               </button>
               <button
-                onClick={() => {
-                  setShowAdvanced(true);
-                  setActiveSessionId(null);
-                  setShowDashboard(false);
-                  setShowClusterView(false);
-                  setShowHelp(false);
-                  setSidebarOpen(false);
-                }}
+                onClick={() => router.push("/app/settings")}
                 className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left text-xs font-medium transition-colors"
                 style={{ color: "var(--muted)" }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--foreground)"; (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
               >
-                <span>WordPress</span>
-                {advancedSettings.wpUrl ? (
+                <span>Settings</span>
+                {wpBlogs.length > 0 ? (
                   <span className="flex items-center gap-1 text-[10px]" style={{ color: "var(--success)" }}>
                     <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--success)" }} />
-                    Connected
+                    {wpBlogs.length} blog{wpBlogs.length > 1 ? "s" : ""}
                   </span>
                 ) : (
                   <span className="flex items-center gap-1 text-[10px]" style={{ color: "var(--muted)" }}>
                     <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--card-border)" }} />
-                    Not set up
+                    No blogs
                   </span>
                 )}
               </button>
@@ -3437,6 +3473,8 @@ export default function Home() {
                       </div>
                     )}
 
+                    {blogSelectorPanel}
+
                     {/* Generate AI Images toggle */}
                     <div
                       className="flex items-center justify-between rounded-xl border px-4 py-3"
@@ -3905,6 +3943,8 @@ export default function Home() {
                       </button>
                     )}
 
+                    {blogSelectorPanel}
+
                     {/* Generate AI Images Toggle */}
                     <div
                       className="flex items-center justify-between rounded-xl border p-4"
@@ -4177,6 +4217,8 @@ export default function Home() {
                         </div>
                       )}
                     </div>
+
+                    {blogSelectorPanel}
 
                     {/* Generate AI Images Toggle */}
                     <div

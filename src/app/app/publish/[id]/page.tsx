@@ -21,6 +21,13 @@ interface Article {
   meta_description: string;
   article_markdown: string;
   posted: boolean;
+  wp_blog_id?: string;
+}
+
+interface WpBlog {
+  id: string;
+  name: string;
+  url: string;
 }
 
 export default function PublishPage() {
@@ -43,6 +50,8 @@ export default function PublishPage() {
   const [previewHtml, setPreviewHtml] = useState("");
   const [generatedImages, setGeneratedImages] = useState<Array<{ type: string; altText: string; b64: string | null; success: boolean }>>([]);
   const [includeImages, setIncludeImages] = useState(true);
+  const [wpBlogs, setWpBlogs] = useState<WpBlog[]>([]);
+  const [activeBlogId, setActiveBlogId] = useState<string>("");
 
   const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -54,7 +63,7 @@ export default function PublishPage() {
     // Fetch article
     const { data: art } = await supabase
       .from("articles")
-      .select("id, title, topic, slug, meta_description, article_markdown, posted")
+      .select("id, title, topic, slug, meta_description, article_markdown, posted, wp_blog_id")
       .eq("id", articleId)
       .eq("user_id", user.id)
       .single();
@@ -69,18 +78,42 @@ export default function PublishPage() {
     const html = await marked(art.article_markdown || "");
     setPreviewHtml(html);
 
-    // Fetch categories
-    try {
-      const res = await fetch("/api/wordpress/categories");
-      const data = await res.json();
-      if (data.categories) {
-        setCategories(data.categories);
-        setWpConnected(true);
-      } else {
-        setError(data.error || "WordPress not connected");
+    // Load user's blogs
+    const { data: settings } = await supabase
+      .from("user_settings")
+      .select("wp_blogs, wp_url")
+      .eq("user_id", user.id)
+      .single();
+
+    const blogs: WpBlog[] = [];
+    if (settings?.wp_blogs && Array.isArray(settings.wp_blogs)) {
+      for (const b of settings.wp_blogs as WpBlog[]) {
+        if (b.url) blogs.push(b);
       }
-    } catch {
-      setError("Failed to connect to WordPress");
+    }
+    setWpBlogs(blogs);
+
+    // Use article's assigned blog, or first available
+    const blogId = art.wp_blog_id || (blogs.length > 0 ? blogs[0].id : "");
+    setActiveBlogId(blogId);
+
+    // Fetch categories for the selected blog
+    if (blogId || settings?.wp_url) {
+      try {
+        const catUrl = blogId ? `/api/wordpress/categories?blogId=${blogId}` : "/api/wordpress/categories";
+        const res = await fetch(catUrl);
+        const data = await res.json();
+        if (data.categories) {
+          setCategories(data.categories);
+          setWpConnected(true);
+        } else {
+          setError(data.error || "WordPress not connected");
+        }
+      } catch {
+        setError("Failed to connect to WordPress");
+      }
+    } else {
+      setError("No blogs connected. Add a blog in Settings.");
     }
 
     // Load generated images from sessionStorage
@@ -116,7 +149,7 @@ export default function PublishPage() {
       const res = await fetch("/api/wordpress/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newCategoryName.trim() }),
+        body: JSON.stringify({ name: newCategoryName.trim(), blogId: activeBlogId || undefined }),
       });
       const data = await res.json();
       if (data.category) {
@@ -151,6 +184,7 @@ export default function PublishPage() {
           categoryIds: selectedCategories,
           status: postStatus,
           images: imagesToSend,
+          blogId: activeBlogId || undefined,
         }),
       });
       const data = await res.json();
@@ -267,12 +301,12 @@ export default function PublishPage() {
             <div style={{ position: "sticky", top: 80 }}>
               {!wpConnected ? (
                 <div style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: 24 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>WordPress Not Connected</h3>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No Blog Connected</h3>
                   <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
-                    Add your WordPress URL, username, and application password in the Advanced Settings on the dashboard to enable publishing.
+                    Connect a WordPress blog in Settings to enable publishing.
                   </p>
                   <button
-                    onClick={() => router.push("/app")}
+                    onClick={() => router.push("/app/settings")}
                     style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer" }}
                   >
                     Go to Settings
@@ -280,6 +314,41 @@ export default function PublishPage() {
                 </div>
               ) : (
                 <div style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, overflow: "hidden" }}>
+                  {/* Blog Selector */}
+                  {wpBlogs.length > 1 && (
+                    <div style={{ padding: "20px 20px 0" }}>
+                      <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Blog</h3>
+                      <select
+                        value={activeBlogId}
+                        onChange={async (e) => {
+                          const newBlogId = e.target.value;
+                          setActiveBlogId(newBlogId);
+                          setCategories([]);
+                          setSelectedCategories([]);
+                          try {
+                            const res = await fetch(`/api/wordpress/categories?blogId=${newBlogId}`);
+                            const data = await res.json();
+                            if (data.categories) setCategories(data.categories);
+                          } catch { /* ignore */ }
+                        }}
+                        style={{
+                          width: "100%", padding: "8px 12px", borderRadius: 8,
+                          border: "1px solid var(--card-border)", background: "var(--background)",
+                          fontSize: 13, fontWeight: 500, outline: "none",
+                        }}
+                      >
+                        {wpBlogs.map((b) => (
+                          <option key={b.id} value={b.id}>{b.name || b.url}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {wpBlogs.length === 1 && (
+                    <div style={{ padding: "16px 20px 0", fontSize: 12, color: "var(--muted)", fontWeight: 500 }}>
+                      Publishing to <strong style={{ color: "var(--foreground)" }}>{wpBlogs[0].name || wpBlogs[0].url}</strong>
+                    </div>
+                  )}
+
                   {/* Post Status */}
                   <div style={{ padding: "20px 20px 0" }}>
                     <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>Post Status</h3>

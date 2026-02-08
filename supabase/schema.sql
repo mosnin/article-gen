@@ -18,6 +18,7 @@ create table if not exists articles (
   posted boolean default false,
   cluster_id uuid,
   is_pillar boolean default false,
+  wp_blog_id text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -52,6 +53,7 @@ create table if not exists user_settings (
   wp_url text default '',
   wp_username text default '',
   wp_app_password text default '',
+  wp_blogs jsonb default '[]',
   updated_at timestamptz default now()
 );
 

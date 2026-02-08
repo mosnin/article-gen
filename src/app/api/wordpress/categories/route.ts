@@ -1,7 +1,38 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 
-export async function GET() {
+interface WpBlog {
+  id: string;
+  url: string;
+  username: string;
+  appPassword: string;
+}
+
+function getBlogCredentials(settings: Record<string, unknown>, blogId?: string): { wpUrl: string; auth: string } | null {
+  const blogs = settings.wp_blogs as WpBlog[] | null;
+
+  if (blogs && Array.isArray(blogs) && blogs.length > 0) {
+    const blog = blogId ? blogs.find((b) => b.id === blogId) : blogs[0];
+    if (blog?.url && blog?.username && blog?.appPassword) {
+      return {
+        wpUrl: blog.url.replace(/\/$/, ""),
+        auth: Buffer.from(`${blog.username}:${blog.appPassword}`).toString("base64"),
+      };
+    }
+  }
+
+  // Fallback to legacy single-blog fields
+  if (settings.wp_url && settings.wp_username && settings.wp_app_password) {
+    return {
+      wpUrl: (settings.wp_url as string).replace(/\/$/, ""),
+      auth: Buffer.from(`${settings.wp_username}:${settings.wp_app_password}`).toString("base64"),
+    };
+  }
+
+  return null;
+}
+
+export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -10,46 +41,38 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const blogId = req.nextUrl.searchParams.get("blogId") || undefined;
+
     const { data: settings } = await supabase
       .from("user_settings")
-      .select("wp_url, wp_username, wp_app_password")
+      .select("wp_url, wp_username, wp_app_password, wp_blogs")
       .eq("user_id", user.id)
       .single();
 
-    if (!settings?.wp_url || !settings?.wp_username || !settings?.wp_app_password) {
-      return NextResponse.json(
-        { error: "WordPress not connected. Add your WordPress credentials in Settings." },
-        { status: 400 }
-      );
+    if (!settings) {
+      return NextResponse.json({ error: "No blogs connected. Add a blog in Settings." }, { status: 400 });
     }
 
-    const wpUrl = settings.wp_url.replace(/\/$/, "");
-    const auth = Buffer.from(`${settings.wp_username}:${settings.wp_app_password}`).toString("base64");
+    const creds = getBlogCredentials(settings, blogId);
+    if (!creds) {
+      return NextResponse.json({ error: "No blogs connected. Add a blog in Settings." }, { status: 400 });
+    }
 
-    const res = await fetch(`${wpUrl}/wp-json/wp/v2/categories?per_page=100`, {
-      headers: { Authorization: `Basic ${auth}` },
+    const res = await fetch(`${creds.wpUrl}/wp-json/wp/v2/categories?per_page=100`, {
+      headers: { Authorization: `Basic ${creds.auth}` },
     });
 
     if (!res.ok) {
       const text = await res.text();
       if (res.status === 401 || res.status === 403) {
-        return NextResponse.json(
-          { error: "WordPress authentication failed. Check your credentials." },
-          { status: 401 }
-        );
+        return NextResponse.json({ error: "WordPress authentication failed. Check your credentials." }, { status: 401 });
       }
-      return NextResponse.json(
-        { error: `WordPress error: ${text.slice(0, 200)}` },
-        { status: res.status }
-      );
+      return NextResponse.json({ error: `WordPress error: ${text.slice(0, 200)}` }, { status: res.status });
     }
 
     const categories = await res.json();
     const formatted = categories.map((c: { id: number; name: string; slug: string; count: number }) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      count: c.count,
+      id: c.id, name: c.name, slug: c.slug, count: c.count,
     }));
 
     return NextResponse.json({ categories: formatted });
@@ -59,7 +82,7 @@ export async function GET() {
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -68,7 +91,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name } = await req.json();
+    const { name, blogId } = await req.json();
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: "Category name is required" }, { status: 400 });
@@ -76,24 +99,23 @@ export async function POST(req: Request) {
 
     const { data: settings } = await supabase
       .from("user_settings")
-      .select("wp_url, wp_username, wp_app_password")
+      .select("wp_url, wp_username, wp_app_password, wp_blogs")
       .eq("user_id", user.id)
       .single();
 
-    if (!settings?.wp_url || !settings?.wp_username || !settings?.wp_app_password) {
-      return NextResponse.json(
-        { error: "WordPress not connected." },
-        { status: 400 }
-      );
+    if (!settings) {
+      return NextResponse.json({ error: "WordPress not connected." }, { status: 400 });
     }
 
-    const wpUrl = settings.wp_url.replace(/\/$/, "");
-    const auth = Buffer.from(`${settings.wp_username}:${settings.wp_app_password}`).toString("base64");
+    const creds = getBlogCredentials(settings, blogId);
+    if (!creds) {
+      return NextResponse.json({ error: "WordPress not connected." }, { status: 400 });
+    }
 
-    const res = await fetch(`${wpUrl}/wp-json/wp/v2/categories`, {
+    const res = await fetch(`${creds.wpUrl}/wp-json/wp/v2/categories`, {
       method: "POST",
       headers: {
-        Authorization: `Basic ${auth}`,
+        Authorization: `Basic ${creds.auth}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ name: name.trim() }),
@@ -101,10 +123,7 @@ export async function POST(req: Request) {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      return NextResponse.json(
-        { error: data.message || "Failed to create category" },
-        { status: res.status }
-      );
+      return NextResponse.json({ error: data.message || "Failed to create category" }, { status: res.status });
     }
 
     const category = await res.json();
