@@ -30,8 +30,6 @@ export default function SettingsPage() {
   const [domain, setDomain] = useState("");
   const [siteName, setSiteName] = useState("");
   const [siteAbout, setSiteAbout] = useState("");
-  const [authorName, setAuthorName] = useState("");
-  const [authorAbout, setAuthorAbout] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
 
   const fetchSettings = useCallback(async () => {
@@ -48,8 +46,6 @@ export default function SettingsPage() {
       setDomain(settings.domain || "");
       setSiteName(settings.site_name || "");
       setSiteAbout(settings.site_about || "");
-      setAuthorName(settings.author_name || "");
-      setAuthorAbout(settings.author_about || "");
 
       // Load blogs from wp_blogs JSON column or migrate from old single fields
       if (settings.wp_blogs && Array.isArray(settings.wp_blogs) && settings.wp_blogs.length > 0) {
@@ -89,8 +85,8 @@ export default function SettingsPage() {
       domain,
       site_name: siteName,
       site_about: siteAbout,
-      author_name: firstBlogWithAuthor?.authorName || authorName,
-      author_about: firstBlogWithAuthor?.authorAbout || authorAbout,
+      author_name: firstBlogWithAuthor?.authorName || "",
+      author_about: firstBlogWithAuthor?.authorAbout || "",
       wp_blogs: blogs.filter((b) => b.url.trim()),
       wp_url: firstBlog?.url || "",
       wp_username: firstBlog?.username || "",
@@ -99,7 +95,8 @@ export default function SettingsPage() {
     }, { onConflict: "user_id" });
 
     if (error) {
-      setSaveMessage("Failed to save settings");
+      console.error("Settings save error:", error);
+      setSaveMessage(`Failed to save: ${error.message}`);
     } else {
       setSaveMessage("Settings saved");
       setTimeout(() => setSaveMessage(""), 2500);

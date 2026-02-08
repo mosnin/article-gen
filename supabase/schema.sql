@@ -126,6 +126,18 @@ create table if not exists credit_transactions (
 alter table user_profiles enable row level security;
 alter table credit_transactions enable row level security;
 
+-- SECURITY DEFINER function to check admin role without triggering RLS recursion
+create or replace function is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from user_profiles where user_id = auth.uid() and role = 'admin'
+  );
+$$;
+
 -- Users can read their own profile
 create policy "Users can view own profile" on user_profiles
   for select using (auth.uid() = user_id);
@@ -138,17 +150,13 @@ create policy "Users can insert own profile" on user_profiles
 create policy "Users can update own profile" on user_profiles
   for update using (auth.uid() = user_id);
 
--- Admins can view all profiles
+-- Admins can view all profiles (uses SECURITY DEFINER function to avoid RLS recursion)
 create policy "Admins can view all profiles" on user_profiles
-  for select using (
-    exists (select 1 from user_profiles up where up.user_id = auth.uid() and up.role = 'admin')
-  );
+  for select using (is_admin());
 
 -- Admins can update all profiles (for granting credits, etc.)
 create policy "Admins can update all profiles" on user_profiles
-  for update using (
-    exists (select 1 from user_profiles up where up.user_id = auth.uid() and up.role = 'admin')
-  );
+  for update using (is_admin());
 
 -- Credit transaction policies
 create policy "Users can view own transactions" on credit_transactions
@@ -159,27 +167,19 @@ create policy "Users can insert own transactions" on credit_transactions
 
 -- Admins can view all transactions
 create policy "Admins can view all transactions" on credit_transactions
-  for select using (
-    exists (select 1 from user_profiles up where up.user_id = auth.uid() and up.role = 'admin')
-  );
+  for select using (is_admin());
 
 -- Admins can insert transactions for any user
 create policy "Admins can insert any transaction" on credit_transactions
-  for insert with check (
-    exists (select 1 from user_profiles up where up.user_id = auth.uid() and up.role = 'admin')
-  );
+  for insert with check (is_admin());
 
 -- Admin policies for articles (view all)
 create policy "Admins can view all articles" on articles
-  for select using (
-    exists (select 1 from user_profiles up where up.user_id = auth.uid() and up.role = 'admin')
-  );
+  for select using (is_admin());
 
 -- Admin policies for clusters (view all)
 create policy "Admins can view all clusters" on clusters
-  for select using (
-    exists (select 1 from user_profiles up where up.user_id = auth.uid() and up.role = 'admin')
-  );
+  for select using (is_admin());
 
 -- Index for faster queries
 create index if not exists idx_articles_user_id on articles(user_id);
