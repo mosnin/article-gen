@@ -11,6 +11,8 @@ interface WpBlog {
   url: string;
   username: string;
   appPassword: string;
+  authorName: string;
+  authorAbout: string;
 }
 
 export default function SettingsPage() {
@@ -60,6 +62,8 @@ export default function SettingsPage() {
           url: settings.wp_url,
           username: settings.wp_username || "",
           appPassword: settings.wp_app_password || "",
+          authorName: settings.author_name || "",
+          authorAbout: settings.author_about || "",
         }]);
       }
     }
@@ -77,19 +81,22 @@ export default function SettingsPage() {
     // Also update legacy fields with first blog for backwards compat
     const firstBlog = blogs.find((b) => b.url && b.username && b.appPassword);
 
+    // Use first blog's author as the global fallback for legacy compat
+    const firstBlogWithAuthor = blogs.find((b) => b.authorName?.trim());
+
     const { error } = await supabase.from("user_settings").upsert({
       user_id: user.id,
       domain,
       site_name: siteName,
       site_about: siteAbout,
-      author_name: authorName,
-      author_about: authorAbout,
+      author_name: firstBlogWithAuthor?.authorName || authorName,
+      author_about: firstBlogWithAuthor?.authorAbout || authorAbout,
       wp_blogs: blogs.filter((b) => b.url.trim()),
       wp_url: firstBlog?.url || "",
       wp_username: firstBlog?.username || "",
       wp_app_password: firstBlog?.appPassword || "",
       updated_at: new Date().toISOString(),
-    });
+    }, { onConflict: "user_id" });
 
     if (error) {
       setSaveMessage("Failed to save settings");
@@ -108,6 +115,8 @@ export default function SettingsPage() {
       url: "",
       username: "",
       appPassword: "",
+      authorName: "",
+      authorAbout: "",
     }]);
   };
 
@@ -269,6 +278,28 @@ export default function SettingsPage() {
                       </div>
                     </div>
                   </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>Author Name</label>
+                      <input
+                        type="text"
+                        value={blog.authorName || ""}
+                        onChange={(e) => updateBlog(blog.id, "authorName", e.target.value)}
+                        placeholder="John Doe"
+                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>About the Author</label>
+                      <input
+                        type="text"
+                        value={blog.authorAbout || ""}
+                        onChange={(e) => updateBlog(blog.id, "authorAbout", e.target.value)}
+                        placeholder="Expert in sustainable living with 10 years of experience"
+                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
+                      />
+                    </div>
+                  </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <p style={{ fontSize: 11, color: "var(--muted)" }}>
                       WordPress &gt; Users &gt; Profile &gt; Application Passwords
@@ -309,16 +340,14 @@ export default function SettingsPage() {
 
         {/* Site & Author Settings */}
         <section style={{ marginBottom: 40 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Site & Author</h2>
-          <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>Used to personalize generated articles with your brand and author info.</p>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Site Settings</h2>
+          <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>Used to personalize generated articles with your brand. Author info is set per blog above.</p>
 
           <div style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
             {[
               { label: "Domain", value: domain, set: setDomain, placeholder: "https://yourblog.com" },
               { label: "Site Name", value: siteName, set: setSiteName, placeholder: "Your Blog Name" },
               { label: "About the Blog", value: siteAbout, set: setSiteAbout, placeholder: "A blog about sustainable living and eco-friendly tips" },
-              { label: "Author Name", value: authorName, set: setAuthorName, placeholder: "John Doe" },
-              { label: "About the Author", value: authorAbout, set: setAuthorAbout, placeholder: "Expert in sustainable living with 10 years of experience" },
             ].map((field) => (
               <div key={field.label}>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>{field.label}</label>

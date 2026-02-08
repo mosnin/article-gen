@@ -61,6 +61,8 @@ interface WpBlog {
   url: string;
   username: string;
   appPassword: string;
+  authorName?: string;
+  authorAbout?: string;
 }
 
 interface AdvancedSettings {
@@ -744,7 +746,7 @@ export default function Home() {
         wp_username: settings.wpUsername,
         wp_app_password: settings.wpAppPassword,
         updated_at: new Date().toISOString(),
-      });
+      }, { onConflict: "user_id" });
     },
     [user, supabase]
   );
@@ -818,6 +820,12 @@ export default function Home() {
 
         const targetWordCount = quality === "standard" ? 2000 : 4000;
 
+        // Override author info with blog-specific author if a blog is selected
+        const selectedBlog = blogId ? wpBlogs.find((b) => b.id === blogId) : undefined;
+        const effectiveSettings = selectedBlog?.authorName
+          ? { ...advancedSettings, authorName: selectedBlog.authorName, authorAbout: selectedBlog.authorAbout || "" }
+          : advancedSettings;
+
         // Batch 3: Article + Images (parallel inside the route)
         const { data: articleData } = await safeFetch(
           "/api/generate/article",
@@ -830,7 +838,7 @@ export default function Home() {
             focusKeyword: metadataData.focusKeyword,
             allKeywords,
             targetWordCount,
-            advancedSettings,
+            advancedSettings: effectiveSettings,
           }
         );
 
@@ -910,7 +918,7 @@ export default function Home() {
         updateSession(id, { loading: false, error: message });
       }
     },
-    [updateSession, saveArticleToDb, advancedSettings]
+    [updateSession, saveArticleToDb, advancedSettings, wpBlogs]
   );
 
   // Batch queue processor: 2 at a time, 60s between batches
@@ -1343,6 +1351,12 @@ export default function Home() {
 
         const targetWordCount = quality === "standard" ? 2000 : 4000;
 
+        // Override author info with blog-specific author if a blog is selected
+        const clusterBlog = selectedBlogId ? wpBlogs.find((b) => b.id === selectedBlogId) : undefined;
+        const clusterSettings = clusterBlog?.authorName
+          ? { ...advancedSettings, authorName: clusterBlog.authorName, authorAbout: clusterBlog.authorAbout || "" }
+          : advancedSettings;
+
         const { data: articleData } = await safeFetch(
           "/api/generate/article",
           {
@@ -1354,7 +1368,7 @@ export default function Home() {
             focusKeyword: metadataData.focusKeyword,
             allKeywords,
             targetWordCount,
-            advancedSettings,
+            advancedSettings: clusterSettings,
             interlinking,
           }
         );
@@ -1437,7 +1451,7 @@ export default function Home() {
         return null;
       }
     },
-    [updateClusterArticle, advancedSettings, saveArticleToDb, selectedBlogId]
+    [updateClusterArticle, advancedSettings, saveArticleToDb, selectedBlogId, wpBlogs]
   );
 
   const handleStartCluster = async () => {

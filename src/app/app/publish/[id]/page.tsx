@@ -28,6 +28,8 @@ interface WpBlog {
   id: string;
   name: string;
   url: string;
+  authorName?: string;
+  authorAbout?: string;
 }
 
 export default function PublishPage() {
