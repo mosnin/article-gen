@@ -13,6 +13,14 @@ interface Category {
   count: number;
 }
 
+interface StoredImage {
+  type: string;
+  altText: string;
+  storagePath: string;
+  publicUrl: string;
+  success: boolean;
+}
+
 interface Article {
   id: string;
   title: string;
@@ -22,7 +30,7 @@ interface Article {
   article_markdown: string;
   posted: boolean;
   wp_blog_id?: string;
-  image_prompts?: Array<{ prompt: string; type: string; altText: string }>;
+  generated_images?: StoredImage[];
 }
 
 interface WpBlog {
@@ -51,12 +59,9 @@ export default function PublishPage() {
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [publishResult, setPublishResult] = useState<{ postUrl: string; editUrl: string; imagesUploaded?: number; imageErrors?: string[] } | null>(null);
   const [previewHtml, setPreviewHtml] = useState("");
-  const [generatedImages, setGeneratedImages] = useState<Array<{ type: string; altText: string; b64: string | null; success: boolean }>>([]);
   const [includeImages, setIncludeImages] = useState(true);
   const [wpBlogs, setWpBlogs] = useState<WpBlog[]>([]);
   const [activeBlogId, setActiveBlogId] = useState<string>("");
-  const [regenerating, setRegenerating] = useState(false);
-  const [regenerateProgress, setRegenerateProgress] = useState("");
 
   const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -65,10 +70,10 @@ export default function PublishPage() {
       return;
     }
 
-    // Fetch article
+    // Fetch article with generated_images
     const { data: art } = await supabase
       .from("articles")
-      .select("id, title, topic, slug, meta_description, article_markdown, posted, wp_blog_id, image_prompts")
+      .select("id, title, topic, slug, meta_description, article_markdown, posted, wp_blog_id, generated_images")
       .eq("id", articleId)
       .eq("user_id", user.id)
       .single();
@@ -79,7 +84,7 @@ export default function PublishPage() {
       return;
     }
 
-    setArticle(art);
+    setArticle(art as Article);
     const html = await marked(art.article_markdown || "");
     setPreviewHtml(html);
 
@@ -119,19 +124,6 @@ export default function PublishPage() {
       }
     } else {
       setError("No blogs connected. Add a blog in Settings.");
-    }
-
-    // Load generated images from sessionStorage
-    try {
-      const stored = sessionStorage.getItem(`images-${articleId}`);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setGeneratedImages(parsed);
-        }
-      }
-    } catch {
-      // ignore parse errors
     }
 
     setLoading(false);
@@ -174,13 +166,6 @@ export default function PublishPage() {
     setPublishing(true);
     setError("");
     try {
-      // Prepare images for upload if toggle is on and images exist
-      const imagesToSend = includeImages && generatedImages.length > 0
-        ? generatedImages
-            .filter((img) => img.success && img.b64)
-            .map((img) => ({ type: img.type, altText: img.altText, b64: img.b64 as string }))
-        : undefined;
-
       const res = await fetch("/api/wordpress/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -188,7 +173,7 @@ export default function PublishPage() {
           articleId,
           categoryIds: selectedCategories,
           status: postStatus,
-          images: imagesToSend,
+          includeImages,
           blogId: activeBlogId || undefined,
         }),
       });
@@ -196,8 +181,6 @@ export default function PublishPage() {
       if (data.success) {
         setPublishResult({ postUrl: data.postUrl, editUrl: data.editUrl, imagesUploaded: data.imagesUploaded, imageErrors: data.imageErrors });
         setArticle((prev) => prev ? { ...prev, posted: true } : prev);
-        // Clean up sessionStorage
-        try { sessionStorage.removeItem(`images-${articleId}`); } catch {}
       } else {
         setError(data.error || "Failed to publish");
       }
@@ -207,48 +190,8 @@ export default function PublishPage() {
     setPublishing(false);
   };
 
-  const handleRegenerateImages = async () => {
-    if (!article?.image_prompts || article.image_prompts.length === 0) return;
-    setRegenerating(true);
-    setError("");
-    const prompts = article.image_prompts;
-    const total = Math.min(prompts.length, 4);
-    const images: Array<{ type: string; altText: string; b64: string | null; success: boolean }> = [];
-
-    for (let i = 0; i < total; i++) {
-      const img = prompts[i];
-      setRegenerateProgress(`Generating image ${i + 1} of ${total}...`);
-      try {
-        const res = await fetch("/api/generate/images", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: img.prompt, type: img.type, altText: img.altText }),
-        });
-        const data = await res.json();
-        if (data.image && data.image.success) {
-          images.push(data.image);
-        } else {
-          images.push({ type: img.type, altText: img.altText, b64: null, success: false });
-        }
-      } catch {
-        images.push({ type: img.type, altText: img.altText, b64: null, success: false });
-      }
-    }
-
-    const successful = images.filter((i) => i.success && i.b64);
-    if (successful.length > 0) {
-      setGeneratedImages(images);
-      setIncludeImages(true);
-      try {
-        sessionStorage.setItem(`images-${articleId}`, JSON.stringify(images));
-      } catch { /* sessionStorage full */ }
-    } else {
-      setError("Failed to generate images. Please try again.");
-    }
-
-    setRegenerating(false);
-    setRegenerateProgress("");
-  };
+  // Get available images from the article's generated_images
+  const availableImages = article?.generated_images?.filter((i) => i.success && i.publicUrl) || [];
 
   if (loading) {
     return (
@@ -507,39 +450,11 @@ export default function PublishPage() {
                     </div>
                   </div>
 
-                  {/* Regenerate Images - shown when no images but prompts exist */}
-                  {generatedImages.length === 0 && article.image_prompts && article.image_prompts.length > 0 && (
-                    <div style={{ padding: "0 20px 16px" }}>
-                      <div style={{ padding: "16px", borderRadius: 10, border: "1px dashed var(--card-border)", background: "var(--background)", textAlign: "center" }}>
-                        <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 12 }}>
-                          No images available. Generate images to include with this article.
-                        </p>
-                        <button
-                          onClick={handleRegenerateImages}
-                          disabled={regenerating}
-                          style={{
-                            padding: "8px 18px",
-                            borderRadius: 8,
-                            fontSize: 13,
-                            fontWeight: 600,
-                            background: "var(--accent)",
-                            color: "#fff",
-                            border: "none",
-                            cursor: "pointer",
-                            opacity: regenerating ? 0.6 : 1,
-                          }}
-                        >
-                          {regenerating ? regenerateProgress || "Generating..." : "Generate Images"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
                   {/* AI Images */}
-                  {generatedImages.length > 0 && (
+                  {availableImages.length > 0 && (
                     <div style={{ padding: "0 20px 16px" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                        <h3 style={{ fontSize: 15, fontWeight: 700 }}>AI Images ({generatedImages.filter((i) => i.success).length})</h3>
+                        <h3 style={{ fontSize: 15, fontWeight: 700 }}>AI Images ({availableImages.length})</h3>
                         <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 500 }}>
                           <span style={{ color: "var(--muted)" }}>Include</span>
                           <div
@@ -570,10 +485,10 @@ export default function PublishPage() {
                         </label>
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, opacity: includeImages ? 1 : 0.4, transition: "opacity 0.2s" }}>
-                        {generatedImages.filter((i) => i.success && i.b64).map((img, idx) => (
+                        {availableImages.map((img, idx) => (
                           <div key={idx} style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--card-border)", position: "relative" }}>
                             <img
-                              src={`data:image/png;base64,${img.b64}`}
+                              src={img.publicUrl}
                               alt={img.altText}
                               style={{ width: "100%", height: 80, objectFit: "cover", display: "block" }}
                             />

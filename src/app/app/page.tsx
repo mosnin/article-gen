@@ -16,7 +16,8 @@ interface ImagePrompt {
 interface GeneratedImage {
   type: string;
   altText: string;
-  b64: string | null;
+  storagePath: string | null;
+  publicUrl: string | null;
   success: boolean;
 }
 
@@ -311,10 +312,10 @@ function ImagePromptCard({ image, generatedImage }: { image: ImagePrompt; genera
         </h3>
       </div>
       {/* Generated image preview */}
-      {generatedImage?.b64 && (
+      {generatedImage?.publicUrl && (
         <div className="border-b px-5 py-4" style={{ borderColor: "var(--card-border)" }}>
           <img
-            src={`data:image/png;base64,${generatedImage.b64}`}
+            src={generatedImage.publicUrl}
             alt={image.altText}
             className="w-full rounded-lg"
             style={{ aspectRatio: "1536/1024", objectFit: "cover" }}
@@ -612,42 +613,28 @@ export default function Home() {
         .order("created_at", { ascending: false });
 
       if (articles && articles.length > 0) {
-        const loaded: ArticleSession[] = articles.map((a) => {
-          // Restore generated images from sessionStorage if available
-          let generatedImages: GeneratedImage[] | undefined;
-          try {
-            const stored = sessionStorage.getItem(`images-${a.id}`);
-            if (stored) {
-              const parsed = JSON.parse(stored);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                generatedImages = parsed;
-              }
-            }
-          } catch { /* ignore */ }
-
-          return {
-            id: a.id,
-            topic: a.topic,
+        const loaded: ArticleSession[] = articles.map((a) => ({
+          id: a.id,
+          topic: a.topic,
+          focusKeyword: a.focus_keyword || "",
+          loading: false,
+          queued: false,
+          error: "",
+          result: a.article_markdown ? {
+            title: a.title || a.topic,
+            metaDescription: a.meta_description || "",
+            slug: a.slug || "",
             focusKeyword: a.focus_keyword || "",
-            loading: false,
-            queued: false,
-            error: "",
-            result: a.article_markdown ? {
-              title: a.title || a.topic,
-              metaDescription: a.meta_description || "",
-              slug: a.slug || "",
-              focusKeyword: a.focus_keyword || "",
-              keywords: a.keywords || [],
-              article: a.article_markdown,
-              imagePrompts: (a.image_prompts as ImagePrompt[]) || [],
-              schema: a.schema_json || "",
-              generatedImages,
-            } : null,
-            currentStep: 0,
-            quality: (a.quality as "standard" | "premium") || "premium",
-            posted: a.posted || false,
-          };
-        });
+            keywords: a.keywords || [],
+            article: a.article_markdown,
+            imagePrompts: (a.image_prompts as ImagePrompt[]) || [],
+            schema: a.schema_json || "",
+            generatedImages: (a.generated_images as GeneratedImage[]) || undefined,
+          } : null,
+          currentStep: 0,
+          quality: (a.quality as "standard" | "premium") || "premium",
+          posted: a.posted || false,
+        }));
         setSessions(loaded);
       }
 
@@ -670,42 +657,28 @@ export default function Home() {
           const pillarArticle = clusterArticles?.find((a) => a.is_pillar);
           const subArticles = clusterArticles?.filter((a) => !a.is_pillar) || [];
 
-          const mapArticle = (a: Record<string, unknown>): ArticleSession => {
-            // Restore generated images from sessionStorage if available
-            let generatedImages: GeneratedImage[] | undefined;
-            try {
-              const stored = sessionStorage.getItem(`images-${a.id as string}`);
-              if (stored) {
-                const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  generatedImages = parsed;
-                }
-              }
-            } catch { /* ignore */ }
-
-            return {
-              id: a.id as string,
-              topic: a.topic as string,
+          const mapArticle = (a: Record<string, unknown>): ArticleSession => ({
+            id: a.id as string,
+            topic: a.topic as string,
+            focusKeyword: (a.focus_keyword as string) || "",
+            loading: false,
+            queued: false,
+            error: "",
+            result: a.article_markdown ? {
+              title: (a.title as string) || (a.topic as string),
+              metaDescription: (a.meta_description as string) || "",
+              slug: (a.slug as string) || "",
               focusKeyword: (a.focus_keyword as string) || "",
-              loading: false,
-              queued: false,
-              error: "",
-              result: a.article_markdown ? {
-                title: (a.title as string) || (a.topic as string),
-                metaDescription: (a.meta_description as string) || "",
-                slug: (a.slug as string) || "",
-                focusKeyword: (a.focus_keyword as string) || "",
-                keywords: (a.keywords as string[]) || [],
-                article: a.article_markdown as string,
-                imagePrompts: (a.image_prompts as ImagePrompt[]) || [],
-                schema: (a.schema_json as string) || "",
-                generatedImages,
-              } : null,
-              currentStep: 0,
-              quality: ((a.quality as string) || "premium") as "standard" | "premium",
-              posted: (a.posted as boolean) || false,
-            };
-          };
+              keywords: (a.keywords as string[]) || [],
+              article: a.article_markdown as string,
+              imagePrompts: (a.image_prompts as ImagePrompt[]) || [],
+              schema: (a.schema_json as string) || "",
+              generatedImages: (a.generated_images as GeneratedImage[]) || undefined,
+            } : null,
+            currentStep: 0,
+            quality: ((a.quality as string) || "premium") as "standard" | "premium",
+            posted: (a.posted as boolean) || false,
+          });
 
           loadedClusters.push({
             id: c.id,
@@ -750,6 +723,7 @@ export default function Home() {
         article_markdown: session.result.article,
         image_prompts: session.result.imagePrompts,
         schema_json: session.result.schema,
+        generated_images: session.result.generatedImages?.filter((i) => i.success) || [],
         posted: session.posted,
         cluster_id: clusterId || null,
         is_pillar: isPillar || false,
@@ -909,27 +883,19 @@ export default function Home() {
             try {
               const { data: imageData } = await safeFetch(
                 "/api/generate/images",
-                { prompt: img.prompt, type: img.type, altText: img.altText }
+                { prompt: img.prompt, type: img.type, altText: img.altText, articleId: id, imageIndex: i }
               );
               if (imageData.image) {
                 images.push(imageData.image as GeneratedImage);
               } else {
-                images.push({ type: img.type, altText: img.altText, b64: null, success: false });
+                images.push({ type: img.type, altText: img.altText, storagePath: null, publicUrl: null, success: false });
               }
             } catch {
-              images.push({ type: img.type, altText: img.altText, b64: null, success: false });
+              images.push({ type: img.type, altText: img.altText, storagePath: null, publicUrl: null, success: false });
             }
           }
 
           result.generatedImages = images;
-
-          // Persist images to sessionStorage immediately so they survive page refreshes
-          try {
-            const successfulImages = images.filter((i) => i.success && i.b64);
-            if (successfulImages.length > 0) {
-              sessionStorage.setItem(`images-${id}`, JSON.stringify(images));
-            }
-          } catch { /* sessionStorage full or unavailable */ }
 
           // Deduct 1 credit for images if any succeeded
           const successCount = images.filter((i) => i.success).length;
@@ -1435,6 +1401,8 @@ export default function Home() {
         if (withImages && clusterResult.imagePrompts.length > 0) {
           const total = Math.min(clusterResult.imagePrompts.length, 4);
           const images: GeneratedImage[] = [];
+          const isPillarArticle = articleId === "pillar";
+          const saveId = isPillarArticle ? `${clusterId}-pillar` : articleId;
           updateClusterArticle(clusterId, articleId, { currentStep: 3, imageProgress: `Generating image 1 of ${total}...` });
 
           for (let i = 0; i < total; i++) {
@@ -1443,29 +1411,19 @@ export default function Home() {
             try {
               const { data: imageData } = await safeFetch(
                 "/api/generate/images",
-                { prompt: img.prompt, type: img.type, altText: img.altText }
+                { prompt: img.prompt, type: img.type, altText: img.altText, articleId: saveId, imageIndex: i }
               );
               if (imageData.image) {
                 images.push(imageData.image as GeneratedImage);
               } else {
-                images.push({ type: img.type, altText: img.altText, b64: null, success: false });
+                images.push({ type: img.type, altText: img.altText, storagePath: null, publicUrl: null, success: false });
               }
             } catch {
-              images.push({ type: img.type, altText: img.altText, b64: null, success: false });
+              images.push({ type: img.type, altText: img.altText, storagePath: null, publicUrl: null, success: false });
             }
           }
 
           clusterResult.generatedImages = images;
-
-          // Persist images to sessionStorage immediately
-          try {
-            const isPillarArticle = articleId === "pillar";
-            const saveImgId = isPillarArticle ? `${clusterId}-pillar` : articleId;
-            const successfulImgs = images.filter((i) => i.success && i.b64);
-            if (successfulImgs.length > 0) {
-              sessionStorage.setItem(`images-${saveImgId}`, JSON.stringify(images));
-            }
-          } catch { /* sessionStorage full or unavailable */ }
 
           if (images.filter((i) => i.success).length > 0) {
             try {
@@ -4902,11 +4860,6 @@ export default function Home() {
                     {wpBlogs.length > 0 && (
                       <button
                         onClick={() => {
-                          if (activeSession.result?.generatedImages) {
-                            try {
-                              sessionStorage.setItem(`images-${activeSession.id}`, JSON.stringify(activeSession.result.generatedImages));
-                            } catch { /* storage full, images won't be included */ }
-                          }
                           router.push(`/app/publish/${activeSession.id}`);
                         }}
                         className="flex flex-shrink-0 items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all duration-200"

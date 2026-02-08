@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
+import { uploadImage, getPublicUrl } from "@/lib/supabase-admin";
 
 export const maxDuration = 60;
 
@@ -13,10 +14,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { prompt, type, altText } = await req.json() as {
+    const { prompt, type, altText, articleId, imageIndex } = await req.json() as {
       prompt: string;
       type: string;
       altText: string;
+      articleId?: string;
+      imageIndex?: number;
     };
 
     if (!prompt || !type) {
@@ -39,20 +42,36 @@ export async function POST(req: NextRequest) {
     });
 
     const imageData = response.data?.[0];
-    if (imageData && imageData.b64_json) {
+    if (!imageData?.b64_json) {
       return NextResponse.json({
-        image: {
-          type,
-          altText,
-          b64: imageData.b64_json,
-          success: true,
-        },
+        image: { type, altText, storagePath: null, publicUrl: null, success: false },
+        error: "Image generation returned no data",
       });
     }
 
+    // Save to Supabase Storage if articleId is provided
+    let storagePath: string | null = null;
+    let publicUrl: string | null = null;
+
+    if (articleId) {
+      try {
+        const filename = imageIndex === 0 ? "featured" : `image-${imageIndex ?? 0}`;
+        const buffer = Buffer.from(imageData.b64_json, "base64");
+        storagePath = await uploadImage(user.id, articleId, filename, buffer);
+        publicUrl = getPublicUrl(storagePath);
+      } catch {
+        // Storage save failed - image was still generated, return what we can
+      }
+    }
+
     return NextResponse.json({
-      image: { type, altText, b64: null, success: false },
-      error: "Image generation returned no data",
+      image: {
+        type,
+        altText,
+        storagePath,
+        publicUrl,
+        success: true,
+      },
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unexpected error";

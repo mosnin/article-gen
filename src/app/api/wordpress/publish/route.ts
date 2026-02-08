@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
+import { downloadImage } from "@/lib/supabase-admin";
 import { marked } from "marked";
 
 export const maxDuration = 60;
@@ -9,6 +10,14 @@ interface WpBlog {
   url: string;
   username: string;
   appPassword: string;
+}
+
+interface StoredImage {
+  type: string;
+  altText: string;
+  storagePath: string;
+  publicUrl: string;
+  success: boolean;
 }
 
 function getBlogCredentials(settings: Record<string, unknown>, blogId?: string): { wpUrl: string; auth: string } | null {
@@ -44,13 +53,11 @@ interface ImageUploadResult {
 async function uploadImageToWP(
   wpUrl: string,
   auth: string,
-  b64: string,
+  imageBuffer: Buffer,
   filename: string,
   altText: string
-): Promise<{ mediaId: number; url: string; error?: string } | { mediaId: 0; url: ""; error: string }> {
+): Promise<{ mediaId: number; url: string } | { mediaId: 0; url: ""; error: string }> {
   try {
-    const buffer = Buffer.from(b64, "base64");
-
     const uploadRes = await fetch(`${wpUrl}/wp-json/wp/v2/media`, {
       method: "POST",
       headers: {
@@ -59,12 +66,12 @@ async function uploadImageToWP(
         "Content-Disposition": `attachment; filename="${filename}.png"`,
         "User-Agent": "ArticleSauce/1.0",
       },
-      body: buffer,
+      body: new Uint8Array(imageBuffer),
     });
 
     if (!uploadRes.ok) {
       const errBody = await uploadRes.text().catch(() => "");
-      return { mediaId: 0, url: "", error: `Image upload failed (${uploadRes.status}): ${errBody.slice(0, 200)}` };
+      return { mediaId: 0, url: "", error: `Upload failed (${uploadRes.status}): ${errBody.slice(0, 200)}` };
     }
 
     const media = await uploadRes.json();
@@ -136,11 +143,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { articleId, categoryIds, status: postStatus, images, blogId } = await req.json() as {
+    const { articleId, categoryIds, status: postStatus, includeImages, blogId } = await req.json() as {
       articleId: string;
       categoryIds?: number[];
       status?: string;
-      images?: Array<{ type: string; altText: string; b64: string }>;
+      includeImages?: boolean;
       blogId?: string;
     };
 
@@ -159,7 +166,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No blogs connected. Add a blog in Settings." }, { status: 400 });
     }
 
-    // Get the article (also check for wp_blog_id to use that blog)
+    // Get the article with generated_images
     const { data: article } = await supabase
       .from("articles")
       .select("*")
@@ -180,42 +187,47 @@ export async function POST(req: NextRequest) {
     const wpUrl = creds.wpUrl;
     const auth = creds.auth;
 
-    // Upload images to WordPress media library if provided
+    // Upload images from Supabase Storage to WordPress
     const uploadedImages: ImageUploadResult[] = [];
     let featuredMediaId: number | null = null;
     const imageErrors: string[] = [];
+    const storedImages = (article.generated_images as StoredImage[]) || [];
+    const imagesToProcess = includeImages !== false ? storedImages.filter((i) => i.success && i.storagePath) : [];
 
-    if (images && images.length > 0) {
+    if (imagesToProcess.length > 0) {
       const slug = article.slug || "article";
-      const uploadResults = await Promise.all(
-        images.map((img, i) =>
-          uploadImageToWP(
-            wpUrl,
-            auth,
-            img.b64,
-            `${slug}-${i === 0 ? "featured" : `image-${i}`}`,
-            img.altText
-          ).then((result) => {
-            if (result.mediaId && result.url) {
-              return { wpMediaId: result.mediaId, wpUrl: result.url, altText: img.altText, type: img.type };
-            }
-            if (result.error) imageErrors.push(`${img.type}: ${result.error}`);
-            return null;
-          })
-        )
-      );
 
-      for (const result of uploadResults) {
-        if (result) {
-          uploadedImages.push(result);
-          if (result.type === "Featured Image") {
-            featuredMediaId = result.wpMediaId;
+      for (let i = 0; i < imagesToProcess.length; i++) {
+        const img = imagesToProcess[i];
+        try {
+          // Download from Supabase Storage
+          const buffer = await downloadImage(img.storagePath);
+
+          // Upload to WordPress
+          const filename = `${slug}-${i === 0 ? "featured" : `image-${i}`}`;
+          const result = await uploadImageToWP(wpUrl, auth, buffer, filename, img.altText);
+
+          if (result.mediaId && result.url) {
+            const uploaded: ImageUploadResult = {
+              wpMediaId: result.mediaId,
+              wpUrl: result.url,
+              altText: img.altText,
+              type: img.type,
+            };
+            uploadedImages.push(uploaded);
+            if (img.type === "Featured Image") {
+              featuredMediaId = uploaded.wpMediaId;
+            }
+          } else if ("error" in result) {
+            imageErrors.push(`${img.type}: ${result.error}`);
           }
+        } catch (err) {
+          imageErrors.push(`${img.type}: ${err instanceof Error ? err.message : "Download failed"}`);
         }
       }
 
       // If all image uploads failed, return error
-      if (images.length > 0 && uploadedImages.length === 0) {
+      if (imagesToProcess.length > 0 && uploadedImages.length === 0) {
         return NextResponse.json(
           { error: `All image uploads failed. ${imageErrors[0] || "Check WordPress media upload permissions."}` },
           { status: 502 }

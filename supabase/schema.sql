@@ -14,6 +14,7 @@ create table if not exists articles (
   keywords text[] default '{}',
   article_markdown text,
   image_prompts jsonb default '[]',
+  generated_images jsonb default '[]',
   schema_json text,
   posted boolean default false,
   cluster_id uuid,
