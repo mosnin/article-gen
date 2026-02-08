@@ -47,7 +47,7 @@ async function uploadImageToWP(
   b64: string,
   filename: string,
   altText: string
-): Promise<{ mediaId: number; url: string } | null> {
+): Promise<{ mediaId: number; url: string; error?: string } | { mediaId: 0; url: ""; error: string }> {
   try {
     const buffer = Buffer.from(b64, "base64");
 
@@ -62,7 +62,10 @@ async function uploadImageToWP(
       body: buffer,
     });
 
-    if (!uploadRes.ok) return null;
+    if (!uploadRes.ok) {
+      const errBody = await uploadRes.text().catch(() => "");
+      return { mediaId: 0, url: "", error: `Image upload failed (${uploadRes.status}): ${errBody.slice(0, 200)}` };
+    }
 
     const media = await uploadRes.json();
 
@@ -80,8 +83,8 @@ async function uploadImageToWP(
     }
 
     return { mediaId: media.id, url: media.source_url };
-  } catch {
-    return null;
+  } catch (err) {
+    return { mediaId: 0, url: "", error: err instanceof Error ? err.message : "Unknown upload error" };
   }
 }
 
@@ -180,6 +183,7 @@ export async function POST(req: NextRequest) {
     // Upload images to WordPress media library if provided
     const uploadedImages: ImageUploadResult[] = [];
     let featuredMediaId: number | null = null;
+    const imageErrors: string[] = [];
 
     if (images && images.length > 0) {
       const slug = article.slug || "article";
@@ -191,11 +195,13 @@ export async function POST(req: NextRequest) {
             img.b64,
             `${slug}-${i === 0 ? "featured" : `image-${i}`}`,
             img.altText
-          ).then((result) =>
-            result
-              ? { wpMediaId: result.mediaId, wpUrl: result.url, altText: img.altText, type: img.type }
-              : null
-          )
+          ).then((result) => {
+            if (result.mediaId && result.url) {
+              return { wpMediaId: result.mediaId, wpUrl: result.url, altText: img.altText, type: img.type };
+            }
+            if (result.error) imageErrors.push(`${img.type}: ${result.error}`);
+            return null;
+          })
         )
       );
 
@@ -206,6 +212,14 @@ export async function POST(req: NextRequest) {
             featuredMediaId = result.wpMediaId;
           }
         }
+      }
+
+      // If all image uploads failed, return error
+      if (images.length > 0 && uploadedImages.length === 0) {
+        return NextResponse.json(
+          { error: `All image uploads failed. ${imageErrors[0] || "Check WordPress media upload permissions."}` },
+          { status: 502 }
+        );
       }
     }
 
@@ -272,6 +286,7 @@ export async function POST(req: NextRequest) {
       postUrl: post.link,
       editUrl: `${wpUrl}/wp-admin/post.php?post=${post.id}&action=edit`,
       imagesUploaded: uploadedImages.length,
+      imageErrors: imageErrors.length > 0 ? imageErrors : undefined,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unexpected error";

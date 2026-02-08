@@ -22,6 +22,7 @@ interface Article {
   article_markdown: string;
   posted: boolean;
   wp_blog_id?: string;
+  image_prompts?: Array<{ prompt: string; type: string; altText: string }>;
 }
 
 interface WpBlog {
@@ -48,12 +49,14 @@ export default function PublishPage() {
   const [wpConnected, setWpConnected] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [creatingCategory, setCreatingCategory] = useState(false);
-  const [publishResult, setPublishResult] = useState<{ postUrl: string; editUrl: string; imagesUploaded?: number } | null>(null);
+  const [publishResult, setPublishResult] = useState<{ postUrl: string; editUrl: string; imagesUploaded?: number; imageErrors?: string[] } | null>(null);
   const [previewHtml, setPreviewHtml] = useState("");
   const [generatedImages, setGeneratedImages] = useState<Array<{ type: string; altText: string; b64: string | null; success: boolean }>>([]);
   const [includeImages, setIncludeImages] = useState(true);
   const [wpBlogs, setWpBlogs] = useState<WpBlog[]>([]);
   const [activeBlogId, setActiveBlogId] = useState<string>("");
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenerateProgress, setRegenerateProgress] = useState("");
 
   const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -65,7 +68,7 @@ export default function PublishPage() {
     // Fetch article
     const { data: art } = await supabase
       .from("articles")
-      .select("id, title, topic, slug, meta_description, article_markdown, posted, wp_blog_id")
+      .select("id, title, topic, slug, meta_description, article_markdown, posted, wp_blog_id, image_prompts")
       .eq("id", articleId)
       .eq("user_id", user.id)
       .single();
@@ -191,7 +194,7 @@ export default function PublishPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setPublishResult({ postUrl: data.postUrl, editUrl: data.editUrl, imagesUploaded: data.imagesUploaded });
+        setPublishResult({ postUrl: data.postUrl, editUrl: data.editUrl, imagesUploaded: data.imagesUploaded, imageErrors: data.imageErrors });
         setArticle((prev) => prev ? { ...prev, posted: true } : prev);
         // Clean up sessionStorage
         try { sessionStorage.removeItem(`images-${articleId}`); } catch {}
@@ -202,6 +205,49 @@ export default function PublishPage() {
       setError("Failed to publish article");
     }
     setPublishing(false);
+  };
+
+  const handleRegenerateImages = async () => {
+    if (!article?.image_prompts || article.image_prompts.length === 0) return;
+    setRegenerating(true);
+    setError("");
+    const prompts = article.image_prompts;
+    const total = Math.min(prompts.length, 4);
+    const images: Array<{ type: string; altText: string; b64: string | null; success: boolean }> = [];
+
+    for (let i = 0; i < total; i++) {
+      const img = prompts[i];
+      setRegenerateProgress(`Generating image ${i + 1} of ${total}...`);
+      try {
+        const res = await fetch("/api/generate/images", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: img.prompt, type: img.type, altText: img.altText }),
+        });
+        const data = await res.json();
+        if (data.image && data.image.success) {
+          images.push(data.image);
+        } else {
+          images.push({ type: img.type, altText: img.altText, b64: null, success: false });
+        }
+      } catch {
+        images.push({ type: img.type, altText: img.altText, b64: null, success: false });
+      }
+    }
+
+    const successful = images.filter((i) => i.success && i.b64);
+    if (successful.length > 0) {
+      setGeneratedImages(images);
+      setIncludeImages(true);
+      try {
+        sessionStorage.setItem(`images-${articleId}`, JSON.stringify(images));
+      } catch { /* sessionStorage full */ }
+    } else {
+      setError("Failed to generate images. Please try again.");
+    }
+
+    setRegenerating(false);
+    setRegenerateProgress("");
   };
 
   if (loading) {
@@ -246,10 +292,20 @@ export default function PublishPage() {
             <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
               Published{postStatus === "draft" ? " as Draft" : ""}!
             </h1>
-            <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: 24 }}>
+            <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: publishResult.imageErrors ? 12 : 24 }}>
               &quot;{article.title}&quot; has been sent to your WordPress site.
               {publishResult.imagesUploaded ? ` ${publishResult.imagesUploaded} image${publishResult.imagesUploaded > 1 ? "s" : ""} uploaded.` : ""}
             </p>
+            {publishResult.imageErrors && publishResult.imageErrors.length > 0 && (
+              <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(239, 168, 68, 0.1)", color: "#b45309", fontSize: 13, marginBottom: 24, textAlign: "left", maxWidth: 400, margin: "0 auto 24px" }}>
+                <strong>Some images failed to upload:</strong>
+                <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                  {publishResult.imageErrors.map((err, i) => (
+                    <li key={i} style={{ fontSize: 12, marginBottom: 2 }}>{err}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
               <a
                 href={publishResult.postUrl}
@@ -450,6 +506,34 @@ export default function PublishPage() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Regenerate Images - shown when no images but prompts exist */}
+                  {generatedImages.length === 0 && article.image_prompts && article.image_prompts.length > 0 && (
+                    <div style={{ padding: "0 20px 16px" }}>
+                      <div style={{ padding: "16px", borderRadius: 10, border: "1px dashed var(--card-border)", background: "var(--background)", textAlign: "center" }}>
+                        <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 12 }}>
+                          No images available. Generate images to include with this article.
+                        </p>
+                        <button
+                          onClick={handleRegenerateImages}
+                          disabled={regenerating}
+                          style={{
+                            padding: "8px 18px",
+                            borderRadius: 8,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            background: "var(--accent)",
+                            color: "#fff",
+                            border: "none",
+                            cursor: "pointer",
+                            opacity: regenerating ? 0.6 : 1,
+                          }}
+                        >
+                          {regenerating ? regenerateProgress || "Generating..." : "Generate Images"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* AI Images */}
                   {generatedImages.length > 0 && (
