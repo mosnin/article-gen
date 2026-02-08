@@ -57,6 +57,7 @@ async function uploadImageToWP(
         Authorization: `Basic ${auth}`,
         "Content-Type": "image/png",
         "Content-Disposition": `attachment; filename="${filename}.png"`,
+        "User-Agent": "ArticleSauce/1.0",
       },
       body: buffer,
     });
@@ -72,6 +73,7 @@ async function uploadImageToWP(
         headers: {
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/json",
+          "User-Agent": "ArticleSauce/1.0",
         },
         body: JSON.stringify({ alt_text: altText }),
       });
@@ -237,6 +239,7 @@ export async function POST(req: NextRequest) {
       headers: {
         Authorization: `Basic ${auth}`,
         "Content-Type": "application/json",
+        "User-Agent": "ArticleSauce/1.0",
       },
       body: JSON.stringify(postPayload),
     });
@@ -245,7 +248,7 @@ export async function POST(req: NextRequest) {
       const data = await res.json().catch(() => ({}));
       if (res.status === 401 || res.status === 403) {
         return NextResponse.json(
-          { error: "WordPress authentication failed. Check your credentials." },
+          { error: `WordPress authentication failed (${res.status}). Check credentials in Settings for this blog.` },
           { status: 401 }
         );
       }

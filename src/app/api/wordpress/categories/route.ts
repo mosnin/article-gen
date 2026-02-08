@@ -59,15 +59,21 @@ export async function GET(req: NextRequest) {
     }
 
     const res = await fetch(`${creds.wpUrl}/wp-json/wp/v2/categories?per_page=100`, {
-      headers: { Authorization: `Basic ${creds.auth}` },
+      headers: {
+        Authorization: `Basic ${creds.auth}`,
+        "User-Agent": "ArticleSauce/1.0",
+        Accept: "application/json",
+      },
     });
 
     if (!res.ok) {
       const text = await res.text();
       if (res.status === 401 || res.status === 403) {
-        return NextResponse.json({ error: "WordPress authentication failed. Check your credentials." }, { status: 401 });
+        return NextResponse.json({
+          error: `WordPress authentication failed (${res.status}). Check credentials in Settings for this blog.`,
+        }, { status: 401 });
       }
-      return NextResponse.json({ error: `WordPress error: ${text.slice(0, 200)}` }, { status: res.status });
+      return NextResponse.json({ error: `WordPress error (${res.status}): ${text.slice(0, 200)}` }, { status: res.status });
     }
 
     const categories = await res.json();
@@ -117,6 +123,7 @@ export async function POST(req: NextRequest) {
       headers: {
         Authorization: `Basic ${creds.auth}`,
         "Content-Type": "application/json",
+        "User-Agent": "ArticleSauce/1.0",
       },
       body: JSON.stringify({ name: name.trim() }),
     });

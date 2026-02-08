@@ -4851,7 +4851,7 @@ export default function Home() {
                       )}
                       {activeSession.posted ? "Posted" : "Mark as Posted"}
                     </button>
-                    {advancedSettings.wpUrl && (
+                    {wpBlogs.length > 0 && (
                       <button
                         onClick={() => {
                           if (activeSession.result?.generatedImages) {
