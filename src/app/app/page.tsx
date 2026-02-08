@@ -2275,6 +2275,33 @@ export default function Home() {
               >
                 Billing & Credits
               </button>
+              <button
+                onClick={() => {
+                  setShowAdvanced(true);
+                  setActiveSessionId(null);
+                  setShowDashboard(false);
+                  setShowClusterView(false);
+                  setShowHelp(false);
+                  setSidebarOpen(false);
+                }}
+                className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left text-xs font-medium transition-colors"
+                style={{ color: "var(--muted)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--foreground)"; (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+              >
+                <span>WordPress</span>
+                {advancedSettings.wpUrl ? (
+                  <span className="flex items-center gap-1 text-[10px]" style={{ color: "var(--success)" }}>
+                    <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--success)" }} />
+                    Connected
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[10px]" style={{ color: "var(--muted)" }}>
+                    <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--card-border)" }} />
+                    Not set up
+                  </span>
+                )}
+              </button>
               {isAdmin && (
                 <button
                   onClick={() => router.push("/app/admin")}
