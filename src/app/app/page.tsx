@@ -735,8 +735,7 @@ export default function Home() {
   const saveSettingsToDb = useCallback(
     async (settings: AdvancedSettings) => {
       if (!user) return;
-      await supabase.from("user_settings").upsert({
-        user_id: user.id,
+      const payload = {
         domain: settings.domain,
         site_name: settings.siteName,
         site_about: settings.siteAbout,
@@ -746,7 +745,17 @@ export default function Home() {
         wp_username: settings.wpUsername,
         wp_app_password: settings.wpAppPassword,
         updated_at: new Date().toISOString(),
-      }, { onConflict: "user_id" });
+      };
+      const { data: existing } = await supabase
+        .from("user_settings")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+      if (existing) {
+        await supabase.from("user_settings").update(payload).eq("user_id", user.id);
+      } else {
+        await supabase.from("user_settings").insert({ user_id: user.id, ...payload });
+      }
     },
     [user, supabase]
   );
