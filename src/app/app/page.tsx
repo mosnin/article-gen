@@ -43,6 +43,7 @@ interface ArticleSession {
   currentStep: number;
   quality: "standard" | "premium";
   posted: boolean;
+  imageProgress?: string;
 }
 
 interface BatchQueueItem {
@@ -91,6 +92,20 @@ const STEPS = [
 ];
 
 const STEP_LABELS = ["Researching...", "Metadata...", "Writing...", "Images..."];
+
+function getStepLabel(session: ArticleSession): string {
+  if (session.currentStep === 3 && session.imageProgress) {
+    return session.imageProgress;
+  }
+  return STEP_LABELS[session.currentStep] || "";
+}
+
+function getStepText(session: ArticleSession, stepIndex: number): string {
+  if (stepIndex === 3 && session.currentStep === 3 && session.imageProgress) {
+    return session.imageProgress;
+  }
+  return STEPS[stepIndex];
+}
 
 async function safeFetch(
   url: string,
@@ -799,22 +814,51 @@ export default function Home() {
           setUserCredits(articleData.credits);
         }
 
-        // Generate AI images if toggle is on
+        // Generate AI images sequentially if toggle is on
         if (withImages && result.imagePrompts.length > 0) {
-          updateSession(id, { currentStep: 3 });
-          try {
-            const { data: imageData } = await safeFetch(
-              "/api/generate/images",
-              { prompts: result.imagePrompts }
-            );
-            result.generatedImages = (imageData.images as GeneratedImage[]) || [];
-            if (typeof imageData.credits === "number") {
-              setUserCredits(imageData.credits);
+          const total = Math.min(result.imagePrompts.length, 4);
+          const images: GeneratedImage[] = [];
+          updateSession(id, { currentStep: 3, imageProgress: `Generating image 1 of ${total}...` });
+
+          for (let i = 0; i < total; i++) {
+            const img = result.imagePrompts[i];
+            updateSession(id, { imageProgress: `Generating image ${i + 1} of ${total}...` });
+            try {
+              const { data: imageData } = await safeFetch(
+                "/api/generate/images",
+                { prompt: img.prompt, type: img.type, altText: img.altText }
+              );
+              if (imageData.image) {
+                images.push(imageData.image as GeneratedImage);
+              } else {
+                images.push({ type: img.type, altText: img.altText, b64: null, success: false });
+              }
+            } catch {
+              images.push({ type: img.type, altText: img.altText, b64: null, success: false });
             }
-          } catch (imgErr) {
-            console.error("Image generation failed:", imgErr);
-            // Continue without images - article is still valid
           }
+
+          result.generatedImages = images;
+
+          // Deduct 1 credit for images if any succeeded
+          const successCount = images.filter((i) => i.success).length;
+          if (successCount > 0) {
+            try {
+              const creditRes = await fetch("/api/credits/deduct", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ description: "AI image generation" }),
+              });
+              const creditData = await creditRes.json();
+              if (typeof creditData.credits === "number") {
+                setUserCredits(creditData.credits);
+              }
+            } catch {
+              // Credit deduction failed silently - images still valid
+            }
+          }
+
+          updateSession(id, { imageProgress: undefined });
         }
 
         updateSession(id, { loading: false, result });
@@ -2095,7 +2139,7 @@ export default function Home() {
                         className="block truncate text-xs"
                         style={{ color: "var(--muted)" }}
                       >
-                        {STEP_LABELS[session.currentStep]}
+                        {getStepLabel(session)}
                       </span>
                     )}
                     {session.error && (
@@ -2846,7 +2890,7 @@ export default function Home() {
                                 style={{ color: "var(--muted)" }}
                               >
                                 {session.loading
-                                  ? STEP_LABELS[session.currentStep]
+                                  ? getStepLabel(session)
                                   : "Queued"}
                               </span>
                             </span>
@@ -4244,7 +4288,7 @@ export default function Home() {
                         : i === activeSession.currentStep
                         ? "\u25CB "
                         : "  "}
-                      {step}
+                      {getStepText(activeSession, i)}
                     </p>
                   ))}
                 </div>
