@@ -2367,6 +2367,15 @@ export default function Home() {
                   </span>
                 )}
               </button>
+              <button
+                onClick={() => router.push("/app/schedule")}
+                className="w-full rounded-lg px-3 py-1.5 text-left text-xs font-medium transition-colors"
+                style={{ color: "var(--muted)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--foreground)"; (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+              >
+                Schedule
+              </button>
               {isAdmin && (
                 <button
                   onClick={() => router.push("/app/admin")}
