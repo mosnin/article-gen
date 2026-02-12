@@ -122,9 +122,9 @@ function BillingContent() {
     <div style={{ background: "var(--background)", minHeight: "100vh" }}>
       {/* Header */}
       <header
+        className="glass"
         style={{
           borderBottom: "1px solid var(--card-border)",
-          background: "var(--background)",
           position: "sticky",
           top: 0,
           zIndex: 50,
@@ -136,7 +136,7 @@ function BillingContent() {
               style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}
               onClick={() => router.push("/app")}
             >
-              <Image src="/logo.png" alt="Article Sauce" width={28} height={28} />
+              <Image src="/logo.png" alt="Article Sauce" width={28} height={28} className="rounded-lg" style={{ boxShadow: "var(--shadow-sm)" }} />
               <span style={{ fontWeight: 700, fontSize: 17 }}>Article Sauce</span>
             </div>
             <span style={{ color: "var(--muted)", fontSize: 13 }}>/</span>
@@ -159,15 +159,11 @@ function BillingContent() {
             </button>
             <button
               onClick={handleLogout}
+              className="btn-accent"
               style={{
                 padding: "6px 14px",
                 borderRadius: 8,
                 fontSize: 13,
-                fontWeight: 500,
-                background: "var(--accent)",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
               }}
             >
               Sign Out
@@ -208,6 +204,7 @@ function BillingContent() {
             border: "1px solid var(--card-border)",
             borderRadius: 12,
             padding: "24px",
+            boxShadow: "var(--shadow-sm)",
           }}>
             <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 4 }}>Current Plan</div>
             <div style={{ fontSize: 24, fontWeight: 700, textTransform: "capitalize" }}>
@@ -220,6 +217,7 @@ function BillingContent() {
             border: "1px solid var(--card-border)",
             borderRadius: 12,
             padding: "24px",
+            boxShadow: "var(--shadow-sm)",
           }}>
             <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 4 }}>Credits Remaining</div>
             <div style={{ fontSize: 24, fontWeight: 700 }}>

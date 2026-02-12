@@ -1863,8 +1863,9 @@ export default function Home() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{
-          background: "var(--sidebar-bg)",
+          background: "var(--card)",
           borderColor: "var(--card-border)",
+          boxShadow: "var(--shadow-sm)",
         }}
       >
         <div
@@ -1872,7 +1873,7 @@ export default function Home() {
           style={{ borderColor: "var(--card-border)" }}
         >
           <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Article Sauce" width={28} height={28} className="rounded" />
+            <Image src="/logo.png" alt="Article Sauce" width={28} height={28} className="rounded-lg" style={{ boxShadow: "var(--shadow-sm)" }} />
             <h1 className="gradient-text text-lg font-bold tracking-tight">
               Article Sauce
             </h1>
@@ -1942,16 +1943,7 @@ export default function Home() {
               setFormError("");
               setSidebarOpen(false);
             }}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200"
-            style={{ background: "var(--accent)", color: "#fff" }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background =
-                "var(--accent-hover)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background =
-                "var(--accent)";
-            }}
+            className="btn-accent flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium"
           >
             <svg
               width="16"
@@ -3544,18 +3536,7 @@ export default function Home() {
 
                     <button
                       onClick={handleGenerate}
-                      className="w-full rounded-xl py-3.5 text-base font-semibold text-white transition-all duration-200"
-                      style={{ background: "var(--accent)" }}
-                      onMouseEnter={(e) => {
-                        (
-                          e.currentTarget as HTMLButtonElement
-                        ).style.background = "var(--accent-hover)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (
-                          e.currentTarget as HTMLButtonElement
-                        ).style.background = "var(--accent)";
-                      }}
+                      className="btn-accent w-full rounded-xl py-3.5 text-base"
                     >
                       Generate Article{generateImages ? " (2 credits)" : " (1 credit)"}
                     </button>
@@ -5073,7 +5054,7 @@ export default function Home() {
               onClick={() => setProgressMinimized(false)}
               className="progress-fab fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95"
               style={{
-                background: "#1d1d1f",
+                background: "var(--gradient-dark)",
                 boxShadow:
                   "0 4px 24px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.08)",
               }}
@@ -5102,7 +5083,7 @@ export default function Home() {
             <div
               className="progress-pill fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full shadow-2xl transition-all duration-300"
               style={{
-                background: "#1d1d1f",
+                background: "var(--gradient-dark)",
                 boxShadow:
                   "0 4px 30px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.06)",
                 minWidth: "320px",

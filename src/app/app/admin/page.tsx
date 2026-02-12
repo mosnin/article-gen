@@ -107,9 +107,9 @@ export default function AdminDashboard() {
     <div style={{ background: "var(--background)", minHeight: "100vh" }}>
       {/* Header */}
       <header
+        className="glass"
         style={{
           borderBottom: "1px solid var(--card-border)",
-          background: "var(--background)",
           position: "sticky",
           top: 0,
           zIndex: 50,
@@ -121,7 +121,7 @@ export default function AdminDashboard() {
               style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}
               onClick={() => router.push("/app")}
             >
-              <Image src="/logo.png" alt="Article Sauce" width={28} height={28} />
+              <Image src="/logo.png" alt="Article Sauce" width={28} height={28} className="rounded-lg" style={{ boxShadow: "var(--shadow-sm)" }} />
               <span style={{ fontWeight: 700, fontSize: 17 }}>Article Sauce</span>
             </div>
             <span style={{ color: "var(--muted)", fontSize: 13 }}>/</span>

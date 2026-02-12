@@ -232,11 +232,11 @@ export default function SchedulePage() {
   return (
     <div style={{ background: "var(--background)", minHeight: "100vh" }}>
       {/* Header */}
-      <header style={{ borderBottom: "1px solid var(--card-border)", background: "var(--background)", position: "sticky", top: 0, zIndex: 50 }}>
+      <header className="glass" style={{ borderBottom: "1px solid var(--card-border)", position: "sticky", top: 0, zIndex: 50 }}>
         <div style={{ maxWidth: 960, margin: "0 auto", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <div style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }} onClick={() => router.push("/app")}>
-              <Image src="/logo.png" alt="Article Sauce" width={28} height={28} />
+              <Image src="/logo.png" alt="Article Sauce" width={28} height={28} className="rounded-lg" style={{ boxShadow: "var(--shadow-sm)" }} />
               <span style={{ fontWeight: 700, fontSize: 17 }}>Article Sauce</span>
             </div>
             <span style={{ color: "var(--muted)", fontSize: 13 }}>/</span>
@@ -268,9 +268,9 @@ export default function SchedulePage() {
           </div>
           <button
             onClick={() => { setShowForm(!showForm); setShowBulk(false); setFormError(""); }}
+            className="btn-accent"
             style={{
-              padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 700,
-              background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer",
+              padding: "10px 20px", borderRadius: 10, fontSize: 14,
               display: "flex", alignItems: "center", gap: 8,
             }}
           >
