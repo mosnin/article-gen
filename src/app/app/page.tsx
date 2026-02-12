@@ -739,63 +739,6 @@ export default function Home() {
     [user, supabase]
   );
 
-  // Publish all "need to post" articles to WordPress
-  const handlePublishAll = useCallback(async () => {
-    if (publishingAll) return;
-    const needToPost = sessions.filter(
-      (s) => s.result && !s.posted && !s.loading && !s.queued
-    );
-    if (needToPost.length === 0) return;
-
-    // Must have at least one blog connected
-    if (wpBlogs.length === 0) return;
-
-    const blogId = selectedBlogId || wpBlogs[0]?.id || undefined;
-    setPublishingAll(true);
-    setPublishAllProgress({ done: 0, total: needToPost.length, failed: 0 });
-
-    // Track which IDs we started with to prevent double-posting
-    const articlesToPublish = needToPost.map((s) => s.id);
-    let done = 0;
-    let failed = 0;
-
-    for (const articleId of articlesToPublish) {
-      // Re-check the session is still unposted before publishing
-      const current = sessions.find((s) => s.id === articleId);
-      if (!current || current.posted) {
-        done++;
-        setPublishAllProgress({ done, total: articlesToPublish.length, failed });
-        continue;
-      }
-
-      try {
-        const res = await fetch("/api/wordpress/publish", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            articleId,
-            status: "draft",
-            includeImages: true,
-            blogId,
-          }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          updateSession(articleId, { posted: true });
-        } else {
-          failed++;
-        }
-      } catch {
-        failed++;
-      }
-      done++;
-      setPublishAllProgress({ done, total: articlesToPublish.length, failed });
-    }
-
-    setPublishingAll(false);
-    setPublishAllProgress(null);
-  }, [publishingAll, sessions, wpBlogs, selectedBlogId, updateSession]);
-
   // Save advanced settings to DB
   const saveSettingsToDb = useCallback(
     async (settings: AdvancedSettings) => {
@@ -855,6 +798,63 @@ export default function Home() {
     },
     []
   );
+
+  // Publish all "need to post" articles to WordPress
+  const handlePublishAll = useCallback(async () => {
+    if (publishingAll) return;
+    const needToPost = sessions.filter(
+      (s) => s.result && !s.posted && !s.loading && !s.queued
+    );
+    if (needToPost.length === 0) return;
+
+    // Must have at least one blog connected
+    if (wpBlogs.length === 0) return;
+
+    const blogId = selectedBlogId || wpBlogs[0]?.id || undefined;
+    setPublishingAll(true);
+    setPublishAllProgress({ done: 0, total: needToPost.length, failed: 0 });
+
+    // Track which IDs we started with to prevent double-posting
+    const articlesToPublish = needToPost.map((s) => s.id);
+    let done = 0;
+    let failed = 0;
+
+    for (const articleId of articlesToPublish) {
+      // Re-check the session is still unposted before publishing
+      const current = sessions.find((s) => s.id === articleId);
+      if (!current || current.posted) {
+        done++;
+        setPublishAllProgress({ done, total: articlesToPublish.length, failed });
+        continue;
+      }
+
+      try {
+        const res = await fetch("/api/wordpress/publish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            articleId,
+            status: "draft",
+            includeImages: true,
+            blogId,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          updateSession(articleId, { posted: true });
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+      done++;
+      setPublishAllProgress({ done, total: articlesToPublish.length, failed });
+    }
+
+    setPublishingAll(false);
+    setPublishAllProgress(null);
+  }, [publishingAll, sessions, wpBlogs, selectedBlogId, updateSession]);
 
   const runGeneration = useCallback(
     async (

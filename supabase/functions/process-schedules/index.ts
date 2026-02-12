@@ -33,6 +33,7 @@ interface ScheduledArticle {
   recurrence_day: number | null;
   scheduled_for: string;
   attempts: number;
+  article_id: string | null;
 }
 
 interface ImagePromptItem {
@@ -551,6 +552,77 @@ Deno.serve(async (req: Request) => {
       .eq("id", item.id);
 
     try {
+      // Get user settings (needed for both generation and publish-only)
+      const { data: settings } = await supabase
+        .from("user_settings")
+        .select("domain, site_name, site_about, author_name, author_about, wp_blogs, wp_url, wp_username, wp_app_password")
+        .eq("user_id", item.user_id)
+        .single();
+
+      const blogs = (settings?.wp_blogs as WpBlog[]) || [];
+
+      // Check if this is a publish-only schedule (article already exists)
+      const existingArticleId = item.article_id;
+      if (existingArticleId) {
+        // Publish-only: skip generation, just publish the existing article
+        const { data: existingArticle } = await supabase
+          .from("articles")
+          .select("*")
+          .eq("id", existingArticleId)
+          .single();
+
+        if (!existingArticle) throw new Error("Article not found");
+        if (existingArticle.posted) {
+          // Already posted, just mark as completed
+          await supabase
+            .from("scheduled_articles")
+            .update({ status: "completed", updated_at: new Date().toISOString() })
+            .eq("id", item.id);
+          results.push({ id: item.id, status: "completed" });
+          continue;
+        }
+
+        if (!item.wp_blog_id) throw new Error("No blog selected for publishing");
+
+        const blog = blogs.find((b) => b.id === item.wp_blog_id);
+        if (!blog?.url || !blog?.username || !blog?.appPassword) {
+          throw new Error("Blog credentials not found");
+        }
+
+        const wpUrl = blog.url.replace(/\/$/, "");
+        const auth = btoa(`${blog.username}:${blog.appPassword}`);
+        const htmlContent = markdownToHtml(existingArticle.article_markdown || "");
+        const generatedImages: GeneratedImage[] = (existingArticle.generated_images || []).filter((i: GeneratedImage) => i.success);
+
+        const publishResult = await publishToWordPress(wpUrl, auth, {
+          title: existingArticle.title || existingArticle.topic,
+          htmlContent,
+          slug: existingArticle.slug || "",
+          metaDescription: existingArticle.meta_description || "",
+          categoryIds: item.category_ids || [],
+          generatedImages,
+        });
+
+        if (publishResult.success) {
+          await supabase
+            .from("articles")
+            .update({ posted: true, updated_at: new Date().toISOString() })
+            .eq("id", existingArticleId);
+
+          await supabase
+            .from("scheduled_articles")
+            .update({ status: "completed", updated_at: new Date().toISOString() })
+            .eq("id", item.id);
+
+          results.push({ id: item.id, status: "completed" });
+        } else {
+          throw new Error(publishResult.error || "WordPress publish failed");
+        }
+        continue;
+      }
+
+      // Standard flow: generate article then optionally publish
+
       // Check credits
       const { data: profile } = await supabase
         .from("user_profiles")
@@ -566,15 +638,7 @@ Deno.serve(async (req: Request) => {
         throw new Error(`Insufficient credits (need ${creditsNeeded}, have ${profile.credits})`);
       }
 
-      // Get user settings for author info
-      const { data: settings } = await supabase
-        .from("user_settings")
-        .select("domain, site_name, site_about, author_name, author_about, wp_blogs, wp_url, wp_username, wp_app_password")
-        .eq("user_id", item.user_id)
-        .single();
-
       // Get blog-specific author info
-      const blogs = (settings?.wp_blogs as WpBlog[]) || [];
       const selectedBlog = item.wp_blog_id ? blogs.find((b) => b.id === item.wp_blog_id) : undefined;
       const effectiveSettings = {
         domain: settings?.domain || "",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
@@ -34,7 +34,24 @@ interface ScheduledArticle {
   articles?: { title: string; posted: boolean } | null;
 }
 
+interface ExistingArticle {
+  id: string;
+  topic: string;
+  title: string;
+  focus_keyword: string;
+  posted: boolean;
+  quality: string;
+}
+
+interface BatchItem {
+  id: string;
+  topic: string;
+  keyword: string;
+}
+
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+type FormMode = "single" | "batch" | "existing";
 
 function formatDateTime(iso: string) {
   const d = new Date(iso);
@@ -56,9 +73,13 @@ function statusBadge(status: string) {
   return { background: c.bg, color: c.text, padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: 0.5 };
 }
 
+const inputStyle = { width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" } as const;
+const labelStyle = { display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 } as const;
+
 export default function AutomatePage() {
   const router = useRouter();
   const supabase = createClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(true);
   const [schedules, setSchedules] = useState<ScheduledArticle[]>([]);
@@ -68,6 +89,7 @@ export default function AutomatePage() {
 
   // Form state
   const [showForm, setShowForm] = useState(false);
+  const [formMode, setFormMode] = useState<FormMode>("single");
   const [formTopic, setFormTopic] = useState("");
   const [formKeyword, setFormKeyword] = useState("");
   const [formQuality, setFormQuality] = useState<"standard" | "premium">("premium");
@@ -77,13 +99,19 @@ export default function AutomatePage() {
   const [formDate, setFormDate] = useState("");
   const [formTime, setFormTime] = useState("09:00");
   const [formRecurrence, setFormRecurrence] = useState<"one_time" | "daily" | "weekly">("one_time");
-  const [formRecurrenceDay, setFormRecurrenceDay] = useState(1); // Monday
+  const [formRecurrenceDay, setFormRecurrenceDay] = useState(1);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
 
-  // Bulk form state
-  const [bulkTopics, setBulkTopics] = useState("");
-  const [showBulk, setShowBulk] = useState(false);
+  // Batch mode state
+  const [batchItems, setBatchItems] = useState<BatchItem[]>([{ id: crypto.randomUUID(), topic: "", keyword: "" }]);
+  const [showJsonPaste, setShowJsonPaste] = useState(false);
+  const [jsonPasteValue, setJsonPasteValue] = useState("");
+
+  // Existing articles mode state
+  const [existingArticles, setExistingArticles] = useState<ExistingArticle[]>([]);
+  const [selectedArticleIds, setSelectedArticleIds] = useState<Set<string>>(new Set());
+  const [loadingArticles, setLoadingArticles] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -121,6 +149,113 @@ export default function AutomatePage() {
     setFormDate(tomorrow.toISOString().split("T")[0]);
   }, []);
 
+  // Fetch existing unposted articles when switching to existing mode
+  const fetchExistingArticles = useCallback(async () => {
+    setLoadingArticles(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("articles")
+        .select("id, topic, title, focus_keyword, posted, quality")
+        .eq("user_id", user.id)
+        .eq("posted", false)
+        .order("created_at", { ascending: false });
+
+      if (data) setExistingArticles(data);
+    } catch {
+      setFormError("Failed to load articles");
+    } finally {
+      setLoadingArticles(false);
+    }
+  }, [supabase]);
+
+  useEffect(() => {
+    if (showForm && formMode === "existing") {
+      fetchExistingArticles();
+    }
+  }, [showForm, formMode, fetchExistingArticles]);
+
+  // --- Batch helpers ---
+
+  const addBatchItem = () => {
+    if (batchItems.length >= 25) return;
+    setBatchItems((prev) => [...prev, { id: crypto.randomUUID(), topic: "", keyword: "" }]);
+  };
+
+  const removeBatchItem = (id: string) => {
+    setBatchItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const updateBatchItem = (id: string, field: "topic" | "keyword", value: string) => {
+    setBatchItems((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
+  };
+
+  const parseAndLoadJson = (text: string): boolean => {
+    try {
+      const parsed = JSON.parse(text);
+      const items = Array.isArray(parsed) ? parsed : [];
+      if (items.length === 0) {
+        setFormError("JSON is empty or not an array.");
+        return false;
+      }
+      const mapped = items.slice(0, 25).map((item: Record<string, string>) => ({
+        id: crypto.randomUUID(),
+        topic: (item.concept || item.topic || "").trim(),
+        keyword: (item.keyword || item.focusKeyword || "").trim(),
+      }));
+      const valid = mapped.filter((m: { topic: string }) => m.topic);
+      if (valid.length === 0) {
+        setFormError('No valid articles found. Each item needs a "concept" field.');
+        return false;
+      }
+      setBatchItems(valid);
+      setFormError("");
+      return true;
+    } catch {
+      setFormError("Invalid JSON. Please check the format.");
+      return false;
+    }
+  };
+
+  const handleImportJsonFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => { parseAndLoadJson(evt.target?.result as string); };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const handlePasteJsonSubmit = () => {
+    if (parseAndLoadJson(jsonPasteValue)) {
+      setJsonPasteValue("");
+      setShowJsonPaste(false);
+    }
+  };
+
+  // --- Existing articles helpers ---
+
+  const toggleArticleSelection = (id: string) => {
+    setSelectedArticleIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedArticleIds.size === existingArticles.length) {
+      setSelectedArticleIds(new Set());
+    } else {
+      setSelectedArticleIds(new Set(existingArticles.map((a) => a.id)));
+    }
+  };
+
+  // --- Submit handlers ---
+
   const handleSubmit = async () => {
     setFormError("");
     if (!formTopic.trim()) { setFormError("Topic is required"); return; }
@@ -150,7 +285,6 @@ export default function AutomatePage() {
       const data = await res.json();
       if (!res.ok) { setFormError(data.error || "Failed to schedule"); return; }
 
-      // Reset form
       setFormTopic("");
       setFormKeyword("");
       setShowForm(false);
@@ -162,10 +296,10 @@ export default function AutomatePage() {
     }
   };
 
-  const handleBulkSubmit = async () => {
+  const handleBatchSubmit = async () => {
     setFormError("");
-    const topics = bulkTopics.split("\n").map((t) => t.trim()).filter(Boolean);
-    if (topics.length === 0) { setFormError("Enter at least one topic"); return; }
+    const validItems = batchItems.filter((item) => item.topic.trim());
+    if (validItems.length === 0) { setFormError("Add at least one article with a topic"); return; }
     if (!formDate) { setFormError("Date is required"); return; }
 
     setFormSubmitting(true);
@@ -173,15 +307,15 @@ export default function AutomatePage() {
       const baseDate = new Date(`${formDate}T${formTime}:00`);
       let successCount = 0;
 
-      for (let i = 0; i < topics.length; i++) {
-        // Space articles 30 minutes apart
+      for (let i = 0; i < validItems.length; i++) {
         const scheduledFor = new Date(baseDate.getTime() + i * 30 * 60 * 1000).toISOString();
 
         const res = await fetch("/api/schedules", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            topic: topics[i],
+            topic: validItems[i].topic.trim(),
+            focusKeyword: validItems[i].keyword.trim() || undefined,
             quality: formQuality,
             generateImages: formImages,
             autoPublish: formAutoPublish,
@@ -194,12 +328,53 @@ export default function AutomatePage() {
         if (res.ok) successCount++;
       }
 
-      setBulkTopics("");
-      setShowBulk(false);
+      setBatchItems([{ id: crypto.randomUUID(), topic: "", keyword: "" }]);
       setShowForm(false);
       fetchData();
-      if (successCount < topics.length) {
-        setFormError(`Scheduled ${successCount} of ${topics.length} articles. Some may have failed due to insufficient credits.`);
+      if (successCount < validItems.length) {
+        setFormError(`Scheduled ${successCount} of ${validItems.length} articles. Some may have failed due to insufficient credits.`);
+      }
+    } catch {
+      setFormError("Failed to schedule articles");
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
+
+  const handleExistingSubmit = async () => {
+    setFormError("");
+    if (selectedArticleIds.size === 0) { setFormError("Select at least one article"); return; }
+    if (!formBlogId) { setFormError("Select a blog to publish to"); return; }
+    if (!formDate) { setFormError("Date is required"); return; }
+
+    setFormSubmitting(true);
+    try {
+      const baseDate = new Date(`${formDate}T${formTime}:00`);
+      const articleIds = Array.from(selectedArticleIds);
+      let successCount = 0;
+
+      for (let i = 0; i < articleIds.length; i++) {
+        const scheduledFor = new Date(baseDate.getTime() + i * 5 * 60 * 1000).toISOString();
+
+        const res = await fetch("/api/schedules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            articleId: articleIds[i],
+            wpBlogId: formBlogId,
+            publishStatus: "draft",
+            scheduledFor,
+          }),
+        });
+
+        if (res.ok) successCount++;
+      }
+
+      setSelectedArticleIds(new Set());
+      setShowForm(false);
+      fetchData();
+      if (successCount < articleIds.length) {
+        setFormError(`Scheduled ${successCount} of ${articleIds.length} articles. Some may have failed.`);
       }
     } catch {
       setFormError("Failed to schedule articles");
@@ -220,6 +395,21 @@ export default function AutomatePage() {
   const pendingSchedules = schedules.filter((s) => s.status === "pending");
   const activeSchedules = schedules.filter((s) => s.status === "processing");
   const completedSchedules = schedules.filter((s) => s.status === "completed" || s.status === "failed" || s.status === "cancelled");
+
+  const validBatchCount = batchItems.filter((item) => item.topic.trim()).length;
+
+  // Determine which submit handler and label to use
+  const getSubmitHandler = () => {
+    if (formMode === "batch") return handleBatchSubmit;
+    if (formMode === "existing") return handleExistingSubmit;
+    return handleSubmit;
+  };
+
+  const getSubmitLabel = () => {
+    if (formMode === "batch") return `Schedule ${validBatchCount} Article${validBatchCount !== 1 ? "s" : ""}`;
+    if (formMode === "existing") return `Schedule ${selectedArticleIds.size} Article${selectedArticleIds.size !== 1 ? "s" : ""}`;
+    return "Schedule";
+  };
 
   if (loading) {
     return (
@@ -267,7 +457,7 @@ export default function AutomatePage() {
             </p>
           </div>
           <button
-            onClick={() => { setShowForm(!showForm); setShowBulk(false); setFormError(""); }}
+            onClick={() => { setShowForm(!showForm); setFormError(""); }}
             className="btn-accent"
             style={{
               padding: "10px 20px", borderRadius: 10, fontSize: 14,
@@ -282,56 +472,55 @@ export default function AutomatePage() {
         {/* Schedule Form */}
         {showForm && (
           <div style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 14, padding: 24, marginBottom: 28 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700 }}>
-                {showBulk ? "Bulk Schedule" : "New Scheduled Article"}
-              </h2>
-              <button
-                onClick={() => setShowBulk(!showBulk)}
-                style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", background: "none", border: "none", cursor: "pointer" }}
-              >
-                {showBulk ? "Single article" : "Bulk schedule"}
-              </button>
+            {/* Mode Selector */}
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 20, background: "var(--background)", borderRadius: 10, padding: 3, border: "1px solid var(--card-border)" }}>
+              {([
+                { key: "single" as FormMode, label: "Single", icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg> },
+                { key: "batch" as FormMode, label: "Batch", icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></svg> },
+                { key: "existing" as FormMode, label: "Existing Articles", icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg> },
+              ]).map(({ key, label, icon }) => (
+                <button
+                  key={key}
+                  onClick={() => { setFormMode(key); setFormError(""); }}
+                  style={{
+                    flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    background: formMode === key ? "var(--accent)" : "transparent",
+                    color: formMode === key ? "#fff" : "var(--foreground)",
+                    border: "none", transition: "all 0.15s",
+                  }}
+                >
+                  {icon}
+                  {label}
+                </button>
+              ))}
             </div>
 
-            {showBulk ? (
-              /* Bulk: textarea for multiple topics */
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Topics (one per line)</label>
-                <textarea
-                  value={bulkTopics}
-                  onChange={(e) => setBulkTopics(e.target.value)}
-                  placeholder={"Best hiking trails in Colorado\nHow to start a vegetable garden\nBeginner's guide to sourdough bread"}
-                  rows={6}
-                  style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none", resize: "vertical", fontFamily: "inherit" }}
-                />
-                <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>Articles will be spaced 30 minutes apart starting from the scheduled time.</p>
-              </div>
-            ) : (
-              /* Single article fields */
+            {/* SINGLE MODE */}
+            {formMode === "single" && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Topic</label>
+                  <label style={labelStyle}>Topic</label>
                   <input
                     type="text"
                     value={formTopic}
                     onChange={(e) => setFormTopic(e.target.value)}
                     placeholder="Best hiking trails in Colorado"
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
+                    style={inputStyle}
                   />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Focus Keyword (optional)</label>
+                  <label style={labelStyle}>Focus Keyword (optional)</label>
                   <input
                     type="text"
                     value={formKeyword}
                     onChange={(e) => setFormKeyword(e.target.value)}
                     placeholder="hiking trails Colorado"
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
+                    style={inputStyle}
                   />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Quality</label>
+                  <label style={labelStyle}>Quality</label>
                   <div style={{ display: "flex", gap: 8 }}>
                     {(["standard", "premium"] as const).map((q) => (
                       <button
@@ -353,141 +542,369 @@ export default function AutomatePage() {
               </div>
             )}
 
-            {/* Shared scheduling fields */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Date</label>
-                <input
-                  type="date"
-                  value={formDate}
-                  onChange={(e) => setFormDate(e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
-                  style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
-                />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Time</label>
-                <input
-                  type="time"
-                  value={formTime}
-                  onChange={(e) => setFormTime(e.target.value)}
-                  style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
-                />
-              </div>
-            </div>
-
-            {!showBulk && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
-                <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Recurrence</label>
-                  <select
-                    value={formRecurrence}
-                    onChange={(e) => setFormRecurrence(e.target.value as "one_time" | "daily" | "weekly")}
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
-                  >
-                    <option value="one_time">One-time</option>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                  </select>
+            {/* BATCH MODE */}
+            {formMode === "batch" && (
+              <div style={{ marginBottom: 16 }}>
+                {/* Quality selector */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={labelStyle}>Quality</label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {(["standard", "premium"] as const).map((q) => (
+                      <button
+                        key={q}
+                        onClick={() => setFormQuality(q)}
+                        style={{
+                          flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                          background: formQuality === q ? "var(--accent)" : "var(--background)",
+                          color: formQuality === q ? "#fff" : "var(--foreground)",
+                          border: `1px solid ${formQuality === q ? "var(--accent)" : "var(--card-border)"}`,
+                          cursor: "pointer", textTransform: "capitalize",
+                        }}
+                      >
+                        {q} {q === "standard" ? "(~2k words)" : "(~4k words)"}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                {formRecurrence === "weekly" && (
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Day of Week</label>
-                    <select
-                      value={formRecurrenceDay}
-                      onChange={(e) => setFormRecurrenceDay(Number(e.target.value))}
-                      style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
-                    >
-                      {DAY_NAMES.map((day, i) => <option key={i} value={i}>{day}</option>)}
-                    </select>
-                  </div>
-                )}
-              </div>
-            )}
 
-            {/* Blog selection + toggles */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 6 }}>Publish to Blog</label>
-                <select
-                  value={formBlogId}
-                  onChange={(e) => { setFormBlogId(e.target.value); if (e.target.value) setFormAutoPublish(true); }}
-                  style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
-                >
-                  <option value="">Don&apos;t auto-publish</option>
-                  {blogs.map((blog) => (
-                    <option key={blog.id} value={blog.id}>{blog.name || blog.url}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, justifyContent: "center" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                  <div
-                    onClick={() => setFormImages(!formImages)}
-                    style={{
-                      width: 40, height: 22, borderRadius: 12, position: "relative", cursor: "pointer",
-                      background: formImages ? "var(--success)" : "var(--card-border)", transition: "background 0.2s",
-                    }}
-                  >
-                    <div style={{
-                      width: 18, height: 18, borderRadius: 10, background: "#fff", position: "absolute", top: 2,
-                      transform: formImages ? "translateX(20px)" : "translateX(2px)", transition: "transform 0.2s",
-                    }} />
+                {/* Article count + import buttons */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  <label style={{ ...labelStyle, marginBottom: 0 }}>Articles ({batchItems.length}/25)</label>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input
+                      type="file"
+                      accept=".json"
+                      ref={fileInputRef}
+                      onChange={handleImportJsonFile}
+                      style={{ display: "none" }}
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "rgba(99,102,241,0.08)", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
+                    >
+                      Upload JSON
+                    </button>
+                    <button
+                      onClick={() => setShowJsonPaste(!showJsonPaste)}
+                      style={{ fontSize: 11, fontWeight: 600, color: showJsonPaste ? "#fff" : "var(--accent)", background: showJsonPaste ? "var(--accent)" : "rgba(99,102,241,0.08)", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
+                    >
+                      Paste JSON
+                    </button>
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 600 }}>Generate images (+1 credit)</span>
-                </label>
-                {formBlogId && (
-                  <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                    <div
-                      onClick={() => setFormAutoPublish(!formAutoPublish)}
+                </div>
+
+                {/* JSON Paste textarea */}
+                {showJsonPaste && (
+                  <div style={{ marginBottom: 12, background: "var(--background)", borderRadius: 10, border: "1px solid var(--card-border)", padding: 12 }}>
+                    <textarea
+                      value={jsonPasteValue}
+                      onChange={(e) => setJsonPasteValue(e.target.value)}
+                      placeholder={`[\n  { "concept": "Article topic here", "keyword": "focus keyword" },\n  { "concept": "Another article topic", "keyword": "another keyword" }\n]`}
+                      rows={6}
+                      style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--card-border)", background: "var(--card)", fontSize: 12, outline: "none", resize: "vertical", fontFamily: "monospace" }}
+                    />
+                    <button
+                      onClick={handlePasteJsonSubmit}
+                      disabled={!jsonPasteValue.trim()}
                       style={{
-                        width: 40, height: 22, borderRadius: 12, position: "relative", cursor: "pointer",
-                        background: formAutoPublish ? "var(--success)" : "var(--card-border)", transition: "background 0.2s",
+                        marginTop: 8, fontSize: 12, fontWeight: 600, color: "#fff", background: "var(--accent)",
+                        border: "none", borderRadius: 8, padding: "7px 16px", cursor: "pointer",
+                        opacity: !jsonPasteValue.trim() ? 0.5 : 1,
                       }}
                     >
-                      <div style={{
-                        width: 18, height: 18, borderRadius: 10, background: "#fff", position: "absolute", top: 2,
-                        transform: formAutoPublish ? "translateX(20px)" : "translateX(2px)", transition: "transform 0.2s",
-                      }} />
-                    </div>
-                    <span style={{ fontSize: 12, fontWeight: 600 }}>Auto-publish as draft</span>
-                  </label>
+                      Load Articles
+                    </button>
+                  </div>
                 )}
-              </div>
-            </div>
 
-            {formError && (
-              <div style={{ background: "rgba(239,68,68,0.1)", color: "rgb(220,38,38)", padding: "10px 14px", borderRadius: 8, marginBottom: 16, fontSize: 12, fontWeight: 500 }}>
-                {formError}
+                {/* Batch items list */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {batchItems.map((item, index) => (
+                    <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", width: 20, textAlign: "right", flexShrink: 0 }}>{index + 1}</span>
+                      <input
+                        type="text"
+                        value={item.topic}
+                        onChange={(e) => updateBatchItem(item.id, "topic", e.target.value)}
+                        placeholder="Article topic / concept"
+                        style={{ ...inputStyle, flex: 1, padding: "8px 12px", fontSize: 12 }}
+                      />
+                      <input
+                        type="text"
+                        value={item.keyword}
+                        onChange={(e) => updateBatchItem(item.id, "keyword", e.target.value)}
+                        placeholder="Keyword"
+                        style={{ ...inputStyle, width: 140, flexShrink: 0, padding: "8px 12px", fontSize: 12 }}
+                      />
+                      {batchItems.length > 1 && (
+                        <button
+                          onClick={() => removeBatchItem(item.id)}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: 4, flexShrink: 0 }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {batchItems.length < 25 && (
+                  <button
+                    onClick={addBatchItem}
+                    style={{
+                      marginTop: 8, width: "100%", padding: "8px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                      color: "var(--muted)", background: "transparent",
+                      border: "1px dashed var(--card-border)", cursor: "pointer",
+                    }}
+                  >
+                    + Add Article
+                  </button>
+                )}
+
+                <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 8 }}>Articles will be spaced 30 minutes apart starting from the scheduled time.</p>
               </div>
             )}
 
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <button
-                onClick={() => { setShowForm(false); setFormError(""); }}
-                style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 500, background: "var(--background)", border: "1px solid var(--card-border)", cursor: "pointer" }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={showBulk ? handleBulkSubmit : handleSubmit}
-                disabled={formSubmitting}
-                className="btn-accent"
-                style={{
-                  padding: "10px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700,
-                  opacity: formSubmitting ? 0.6 : 1, display: "flex", alignItems: "center", gap: 8,
-                }}
-              >
-                {formSubmitting ? (
-                  <><svg className="progress-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg> Scheduling...</>
+            {/* EXISTING ARTICLES MODE */}
+            {formMode === "existing" && (
+              <div style={{ marginBottom: 16 }}>
+                {blogs.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "24px 16px", background: "var(--background)", borderRadius: 10 }}>
+                    <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 12 }}>You need a connected WordPress blog to schedule existing articles for publishing.</p>
+                    <button
+                      onClick={() => router.push("/app/settings")}
+                      className="btn-accent"
+                      style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 600 }}
+                    >
+                      Go to Settings
+                    </button>
+                  </div>
+                ) : loadingArticles ? (
+                  <div style={{ display: "flex", justifyContent: "center", padding: 24 }}>
+                    <svg className="progress-spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                  </div>
+                ) : existingArticles.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "24px 16px", background: "var(--background)", borderRadius: 10 }}>
+                    <p style={{ fontSize: 13, color: "var(--muted)" }}>No unposted articles found. Generate some articles first.</p>
+                  </div>
                 ) : (
                   <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                    {showBulk ? `Schedule ${bulkTopics.split("\n").filter((t) => t.trim()).length} Articles` : "Schedule"}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <label style={{ ...labelStyle, marginBottom: 0 }}>
+                        Select articles to schedule ({selectedArticleIds.size}/{existingArticles.length})
+                      </label>
+                      <button
+                        onClick={toggleSelectAll}
+                        style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "none", border: "none", cursor: "pointer" }}
+                      >
+                        {selectedArticleIds.size === existingArticles.length ? "Deselect all" : "Select all"}
+                      </button>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 320, overflowY: "auto", borderRadius: 10, border: "1px solid var(--card-border)", background: "var(--background)" }}>
+                      {existingArticles.map((article) => (
+                        <label
+                          key={article.id}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", cursor: "pointer",
+                            background: selectedArticleIds.has(article.id) ? "rgba(99,102,241,0.06)" : "transparent",
+                            transition: "background 0.1s",
+                          }}
+                        >
+                          <div
+                            onClick={(e) => { e.preventDefault(); toggleArticleSelection(article.id); }}
+                            style={{
+                              width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                              border: `2px solid ${selectedArticleIds.has(article.id) ? "var(--accent)" : "var(--card-border)"}`,
+                              background: selectedArticleIds.has(article.id) ? "var(--accent)" : "transparent",
+                              display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                              transition: "all 0.15s",
+                            }}
+                          >
+                            {selectedArticleIds.has(article.id) && (
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            )}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {article.title || article.topic}
+                            </div>
+                            {article.focus_keyword && (
+                              <div style={{ fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {article.focus_keyword}
+                              </div>
+                            )}
+                          </div>
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, textTransform: "uppercase", padding: "2px 8px", borderRadius: 6, flexShrink: 0,
+                            background: "rgba(0,122,255,0.1)", color: "#007aff",
+                          }}>
+                            {article.quality}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 8 }}>Selected articles will be published to WordPress as drafts, spaced 5 minutes apart. No credits needed.</p>
                   </>
                 )}
-              </button>
-            </div>
+              </div>
+            )}
+
+            {/* Shared scheduling fields (all modes) */}
+            {(formMode !== "existing" || (blogs.length > 0 && existingArticles.length > 0)) && (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+                  <div>
+                    <label style={labelStyle}>Date</label>
+                    <input
+                      type="date"
+                      value={formDate}
+                      onChange={(e) => setFormDate(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Time</label>
+                    <input
+                      type="time"
+                      value={formTime}
+                      onChange={(e) => setFormTime(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+
+                {formMode === "single" && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+                    <div>
+                      <label style={labelStyle}>Recurrence</label>
+                      <select
+                        value={formRecurrence}
+                        onChange={(e) => setFormRecurrence(e.target.value as "one_time" | "daily" | "weekly")}
+                        style={inputStyle}
+                      >
+                        <option value="one_time">One-time</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                      </select>
+                    </div>
+                    {formRecurrence === "weekly" && (
+                      <div>
+                        <label style={labelStyle}>Day of Week</label>
+                        <select
+                          value={formRecurrenceDay}
+                          onChange={(e) => setFormRecurrenceDay(Number(e.target.value))}
+                          style={inputStyle}
+                        >
+                          {DAY_NAMES.map((day, i) => <option key={i} value={i}>{day}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Blog selection + toggles */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
+                  <div>
+                    <label style={labelStyle}>{formMode === "existing" ? "Publish to Blog" : "Publish to Blog"}</label>
+                    <select
+                      value={formBlogId}
+                      onChange={(e) => { setFormBlogId(e.target.value); if (e.target.value) setFormAutoPublish(true); }}
+                      style={inputStyle}
+                    >
+                      {formMode === "existing" ? (
+                        <>
+                          <option value="">Select a blog</option>
+                          {blogs.map((blog) => (
+                            <option key={blog.id} value={blog.id}>{blog.name || blog.url}</option>
+                          ))}
+                        </>
+                      ) : (
+                        <>
+                          <option value="">Don&apos;t auto-publish</option>
+                          {blogs.map((blog) => (
+                            <option key={blog.id} value={blog.id}>{blog.name || blog.url}</option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                  </div>
+                  {formMode !== "existing" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, justifyContent: "center" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                        <div
+                          onClick={() => setFormImages(!formImages)}
+                          style={{
+                            width: 40, height: 22, borderRadius: 12, position: "relative", cursor: "pointer",
+                            background: formImages ? "var(--success)" : "var(--card-border)", transition: "background 0.2s",
+                          }}
+                        >
+                          <div style={{
+                            width: 18, height: 18, borderRadius: 10, background: "#fff", position: "absolute", top: 2,
+                            transform: formImages ? "translateX(20px)" : "translateX(2px)", transition: "transform 0.2s",
+                          }} />
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>Generate images (+1 credit)</span>
+                      </label>
+                      {formBlogId && (
+                        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                          <div
+                            onClick={() => setFormAutoPublish(!formAutoPublish)}
+                            style={{
+                              width: 40, height: 22, borderRadius: 12, position: "relative", cursor: "pointer",
+                              background: formAutoPublish ? "var(--success)" : "var(--card-border)", transition: "background 0.2s",
+                            }}
+                          >
+                            <div style={{
+                              width: 18, height: 18, borderRadius: 10, background: "#fff", position: "absolute", top: 2,
+                              transform: formAutoPublish ? "translateX(20px)" : "translateX(2px)", transition: "transform 0.2s",
+                            }} />
+                          </div>
+                          <span style={{ fontSize: 12, fontWeight: 600 }}>Auto-publish as draft</span>
+                        </label>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {formError && (
+                  <div style={{ background: "rgba(239,68,68,0.1)", color: "rgb(220,38,38)", padding: "10px 14px", borderRadius: 8, marginBottom: 16, fontSize: 12, fontWeight: 500 }}>
+                    {formError}
+                  </div>
+                )}
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <button
+                    onClick={() => { setShowForm(false); setFormError(""); }}
+                    style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 500, background: "var(--background)", border: "1px solid var(--card-border)", cursor: "pointer" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={getSubmitHandler()}
+                    disabled={formSubmitting}
+                    className="btn-accent"
+                    style={{
+                      padding: "10px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700,
+                      opacity: formSubmitting ? 0.6 : 1, display: "flex", alignItems: "center", gap: 8,
+                    }}
+                  >
+                    {formSubmitting ? (
+                      <><svg className="progress-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg> Scheduling...</>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                        {getSubmitLabel()}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -502,8 +919,15 @@ export default function AutomatePage() {
                 <div key={s.id} style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.topic}</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {s.articles?.title || s.topic}
+                      </span>
                       <span style={statusBadge(s.status)}>{s.status}</span>
+                      {s.article_id && !s.generate_images && (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: "rgb(22,163,74)", background: "rgba(34,197,94,0.1)", padding: "2px 8px", borderRadius: 10, textTransform: "uppercase" }}>
+                          publish only
+                        </span>
+                      )}
                       {s.recurrence !== "one_time" && (
                         <span style={{ fontSize: 10, fontWeight: 600, color: "var(--accent)", background: "rgba(99,102,241,0.1)", padding: "2px 8px", borderRadius: 10, textTransform: "uppercase" }}>
                           {s.recurrence}{s.recurrence === "weekly" && s.recurrence_day !== null ? ` (${DAY_NAMES[s.recurrence_day].slice(0, 3)})` : ""}
@@ -549,7 +973,7 @@ export default function AutomatePage() {
                 <div key={s.id} style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0.75 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.topic}</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.articles?.title || s.topic}</span>
                       <span style={statusBadge(s.status)}>{s.status}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 12, color: "var(--muted)" }}>
