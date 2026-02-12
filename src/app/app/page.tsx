@@ -514,6 +514,10 @@ export default function Home() {
   const [wpBlogs, setWpBlogs] = useState<WpBlog[]>([]);
   const [selectedBlogId, setSelectedBlogId] = useState<string>("");
 
+  // Publish All state
+  const [publishingAll, setPublishingAll] = useState(false);
+  const [publishAllProgress, setPublishAllProgress] = useState<{ done: number; total: number; failed: number } | null>(null);
+
   // AI Image generation toggles
   const [generateImages, setGenerateImages] = useState(false);
   const [batchGenerateImages, setBatchGenerateImages] = useState(false);
@@ -734,6 +738,63 @@ export default function Home() {
     },
     [user, supabase]
   );
+
+  // Publish all "need to post" articles to WordPress
+  const handlePublishAll = useCallback(async () => {
+    if (publishingAll) return;
+    const needToPost = sessions.filter(
+      (s) => s.result && !s.posted && !s.loading && !s.queued
+    );
+    if (needToPost.length === 0) return;
+
+    // Must have at least one blog connected
+    if (wpBlogs.length === 0) return;
+
+    const blogId = selectedBlogId || wpBlogs[0]?.id || undefined;
+    setPublishingAll(true);
+    setPublishAllProgress({ done: 0, total: needToPost.length, failed: 0 });
+
+    // Track which IDs we started with to prevent double-posting
+    const articlesToPublish = needToPost.map((s) => s.id);
+    let done = 0;
+    let failed = 0;
+
+    for (const articleId of articlesToPublish) {
+      // Re-check the session is still unposted before publishing
+      const current = sessions.find((s) => s.id === articleId);
+      if (!current || current.posted) {
+        done++;
+        setPublishAllProgress({ done, total: articlesToPublish.length, failed });
+        continue;
+      }
+
+      try {
+        const res = await fetch("/api/wordpress/publish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            articleId,
+            status: "draft",
+            includeImages: true,
+            blogId,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          updateSession(articleId, { posted: true });
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+      done++;
+      setPublishAllProgress({ done, total: articlesToPublish.length, failed });
+    }
+
+    setPublishingAll(false);
+    setPublishAllProgress(null);
+  }, [publishingAll, sessions, wpBlogs, selectedBlogId, updateSession]);
 
   // Save advanced settings to DB
   const saveSettingsToDb = useCallback(
@@ -3028,16 +3089,50 @@ export default function Home() {
                   (s) => s.result && !s.posted && !s.loading && !s.queued
                 ).length > 0 && (
                   <div className="mb-8">
-                    <h3
-                      className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{ background: "#007aff" }}
-                      />
-                      Need to Post
-                    </h3>
+                    <div className="mb-3 flex items-center justify-between">
+                      <h3
+                        className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
+                        style={{ color: "var(--muted)" }}
+                      >
+                        <span
+                          className="inline-block h-2 w-2 rounded-full"
+                          style={{ background: "#007aff" }}
+                        />
+                        Need to Post
+                      </h3>
+                      {wpBlogs.length > 0 && (
+                        <button
+                          onClick={handlePublishAll}
+                          disabled={publishingAll}
+                          className="btn-accent flex items-center gap-2"
+                          style={{
+                            padding: "6px 14px",
+                            borderRadius: 8,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            opacity: publishingAll ? 0.7 : 1,
+                          }}
+                        >
+                          {publishingAll ? (
+                            <>
+                              <svg className="progress-spinner" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                              {publishAllProgress
+                                ? `Publishing ${publishAllProgress.done}/${publishAllProgress.total}${publishAllProgress.failed > 0 ? ` (${publishAllProgress.failed} failed)` : ""}`
+                                : "Publishing..."}
+                            </>
+                          ) : (
+                            <>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                                <path d="M2 17l10 5 10-5" />
+                                <path d="M2 12l10 5 10-5" />
+                              </svg>
+                              Publish All
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
                     <div className="space-y-2">
                       {sessions
                         .filter(
