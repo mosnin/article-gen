@@ -45,6 +45,7 @@ interface ArticleSession {
   quality: "standard" | "premium";
   posted: boolean;
   imageProgress?: string;
+  blogId?: string;
 }
 
 interface BatchQueueItem {
@@ -638,6 +639,7 @@ export default function Home() {
           currentStep: 0,
           quality: (a.quality as "standard" | "premium") || "premium",
           posted: a.posted || false,
+          blogId: (a.wp_blog_id as string) || undefined,
         }));
         setSessions(loaded);
       }
@@ -682,6 +684,7 @@ export default function Home() {
             currentStep: 0,
             quality: ((a.quality as string) || "premium") as "standard" | "premium",
             posted: (a.posted as boolean) || false,
+            blogId: (a.wp_blog_id as string) || undefined,
           });
 
           loadedClusters.push({
@@ -1053,6 +1056,7 @@ export default function Home() {
     const topic = formTopic.trim();
     const focusKeyword = formKeyword.trim() || undefined;
 
+    const blogId = selectedBlogId || undefined;
     setSessions((prev) => [
       {
         id,
@@ -1065,6 +1069,7 @@ export default function Home() {
         currentStep: 0,
         quality: "premium",
         posted: false,
+        blogId,
       },
       ...prev,
     ]);
@@ -1074,7 +1079,7 @@ export default function Home() {
     setFormError("");
     setSidebarOpen(false);
 
-    runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined);
+    runGeneration(id, topic, focusKeyword, "premium", generateImages, blogId);
   };
 
   const handleBatchGenerate = () => {
@@ -1091,6 +1096,7 @@ export default function Home() {
       return;
     }
 
+    const batchBlogId = selectedBlogId || undefined;
     const newSessions: ArticleSession[] = validItems.map((item) => ({
       id: crypto.randomUUID(),
       topic: item.topic.trim(),
@@ -1102,6 +1108,7 @@ export default function Home() {
       currentStep: 0,
       quality: batchQuality,
       posted: false,
+      blogId: batchBlogId,
     }));
 
     setSessions((prev) => [...newSessions, ...prev]);
@@ -1550,6 +1557,7 @@ export default function Home() {
     const useExisting = clusterUseExistingPillar && clusterExistingPillarUrl.trim();
     const articleCount = Math.min(Math.max(clusterCount, 1), 30);
     const withImages = clusterGenerateImages;
+    const clusterBlogId = selectedBlogId || undefined;
 
     const newCluster: TopicCluster = {
       id: clusterId,
@@ -1653,6 +1661,7 @@ export default function Home() {
           currentStep: 0,
           quality: "premium",
           posted: false,
+          blogId: clusterBlogId,
         };
 
         updateCluster(clusterId, { pillarSession });
@@ -1694,6 +1703,7 @@ export default function Home() {
           currentStep: 0,
           quality: clusterQuality,
           posted: false,
+          blogId: clusterBlogId,
         } as ArticleSession,
       }));
 
@@ -2021,6 +2031,37 @@ export default function Home() {
             </svg>
             New Article
           </button>
+          {/* Blog Selector */}
+          <div
+            className="mt-2 rounded-lg px-1 py-1.5"
+            style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}
+          >
+            <label className="mb-1 block px-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted)" }}>
+              Blog
+            </label>
+            <select
+              value={selectedBlogId}
+              onChange={(e) => setSelectedBlogId(e.target.value)}
+              className="w-full rounded-md border-0 bg-transparent px-2 py-1 text-xs font-medium"
+              style={{ color: "var(--foreground)", outline: "none", cursor: "pointer" }}
+            >
+              <option value="">General (No Blog)</option>
+              {wpBlogs.map((blog) => (
+                <option key={blog.id} value={blog.id}>{blog.name || blog.url}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => router.push("/app/settings")}
+              className="mt-1 flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-medium transition-colors"
+              style={{ color: "var(--accent)" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(99,102,241,0.06)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+              {wpBlogs.length === 0 ? "Connect a Blog" : `Manage Blogs (${wpBlogs.length})`}
+            </button>
+          </div>
+
           {sessions.filter((s) => s.result).length > 0 && (
             <button
               onClick={() => {
