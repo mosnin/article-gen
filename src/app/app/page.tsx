@@ -2005,6 +2005,45 @@ export default function Home() {
               Dashboard
             </button>
           )}
+
+          {/* Automate button */}
+          <button
+            onClick={() => router.push("/app/automate")}
+            className="mt-1.5 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+            style={{
+              background: "transparent",
+              color: "var(--foreground)",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                "rgba(0,0,0,0.04)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                "transparent";
+            }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 2v4" />
+              <path d="m16.2 7.8 2.9-2.9" />
+              <path d="M18 12h4" />
+              <path d="m16.2 16.2 2.9 2.9" />
+              <path d="M12 18v4" />
+              <path d="m4.9 19.1 2.9-2.9" />
+              <path d="M2 12h4" />
+              <path d="m4.9 4.9 2.9 2.9" />
+            </svg>
+            Automate
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 pb-3">
@@ -2358,15 +2397,6 @@ export default function Home() {
                     No blogs
                   </span>
                 )}
-              </button>
-              <button
-                onClick={() => router.push("/app/schedule")}
-                className="w-full rounded-lg px-3 py-1.5 text-left text-xs font-medium transition-colors"
-                style={{ color: "var(--muted)" }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--foreground)"; (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
-              >
-                Schedule
               </button>
               {isAdmin && (
                 <button
