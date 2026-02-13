@@ -37,6 +37,7 @@ interface ArticleSession {
   id: string;
   topic: string;
   focusKeyword: string;
+  wpBlogId?: string | null;
   loading: boolean;
   queued: boolean;
   error: string;
@@ -89,6 +90,7 @@ interface TopicCluster {
   id: string;
   pillarTopic: string;
   pillarKeyword: string;
+  wpBlogId?: string | null;
   pillarSession: ArticleSession | null;
   clusterArticles: ClusterArticle[];
   quality: "standard" | "premium";
@@ -540,8 +542,41 @@ export default function Home() {
   const batchQueueRef = useRef<BatchQueueItem[]>([]);
   const batchRunningRef = useRef(false);
 
+
+  const selectedBlog = useMemo(
+    () => wpBlogs.find((blog) => blog.id === selectedBlogId) || null,
+    [wpBlogs, selectedBlogId]
+  );
+  const inGeneralMode = !selectedBlogId;
+
+  const normalizeScopeKey = useCallback((value?: string | null) => {
+    if (!value) return "";
+    return value.trim().replace(/\/$/, "");
+  }, []);
+
+  const selectedScopeKeys = useMemo(() => {
+    if (inGeneralMode || !selectedBlog) return [] as string[];
+    return [selectedBlog.id, selectedBlog.url]
+      .map((value) => normalizeScopeKey(value))
+      .filter(Boolean);
+  }, [inGeneralMode, selectedBlog, normalizeScopeKey]);
+
+  const isInSelectedScope = useCallback(
+    (wpBlogId?: string | null) => {
+      if (inGeneralMode) return true;
+      const articleKey = normalizeScopeKey(wpBlogId);
+      return !!articleKey && selectedScopeKeys.includes(articleKey);
+    },
+    [inGeneralMode, normalizeScopeKey, selectedScopeKeys]
+  );
+
+  const scopedSessions = useMemo(
+    () => sessions.filter((session) => isInSelectedScope(session.wpBlogId)),
+    [sessions, isInSelectedScope]
+  );
+
   const activeSession =
-    sessions.find((s) => s.id === activeSessionId) || null;
+    scopedSessions.find((session) => session.id === activeSessionId) || null;
 
   // Auth check and data loading
   useEffect(() => {
@@ -575,8 +610,15 @@ export default function Home() {
         // Load WordPress blogs
         const blogs = settings.wp_blogs as WpBlog[] | null;
         if (blogs && Array.isArray(blogs) && blogs.length > 0) {
-          setWpBlogs(blogs);
-          setSelectedBlogId(blogs[0].id);
+          const normalizedBlogs = blogs
+            .filter((blog) => blog?.url)
+            .map((blog, index) => ({
+              ...blog,
+              id: blog.id || `blog-${index}-${blog.url.replace(/[^a-z0-9]/gi, "-").toLowerCase()}`,
+            }));
+
+          setWpBlogs(normalizedBlogs);
+          setSelectedBlogId(normalizedBlogs[0]?.id || "");
         } else if (settings.wp_url) {
           // Migrate legacy single blog
           const legacyBlog: WpBlog = {
@@ -617,6 +659,7 @@ export default function Home() {
           id: a.id,
           topic: a.topic,
           focusKeyword: a.focus_keyword || "",
+          wpBlogId: a.wp_blog_id || null,
           loading: false,
           queued: false,
           error: "",
@@ -656,11 +699,16 @@ export default function Home() {
 
           const pillarArticle = clusterArticles?.find((a) => a.is_pillar);
           const subArticles = clusterArticles?.filter((a) => !a.is_pillar) || [];
+          const clusterBlogId =
+            (pillarArticle?.wp_blog_id as string | undefined) ||
+            (subArticles.find((a) => a.wp_blog_id)?.wp_blog_id as string | undefined) ||
+            null;
 
           const mapArticle = (a: Record<string, unknown>): ArticleSession => ({
             id: a.id as string,
             topic: a.topic as string,
             focusKeyword: (a.focus_keyword as string) || "",
+            wpBlogId: (a.wp_blog_id as string) || null,
             loading: false,
             queued: false,
             error: "",
@@ -684,6 +732,7 @@ export default function Home() {
             id: c.id,
             pillarTopic: c.pillar_topic,
             pillarKeyword: c.pillar_keyword || "",
+            wpBlogId: clusterBlogId,
             pillarSession: pillarArticle ? mapArticle(pillarArticle) : null,
             clusterArticles: subArticles.map((a) => ({
               id: a.id,
@@ -727,7 +776,7 @@ export default function Home() {
         posted: session.posted,
         cluster_id: clusterId || null,
         is_pillar: isPillar || false,
-        wp_blog_id: wpBlogId || null,
+        wp_blog_id: wpBlogId ?? session.wpBlogId ?? null,
         updated_at: new Date().toISOString(),
       });
       if (error) console.error("Save article error:", error);
@@ -997,6 +1046,7 @@ export default function Home() {
         id,
         topic,
         focusKeyword: formKeyword.trim(),
+        wpBlogId: selectedBlogId || null,
         loading: true,
         queued: false,
         error: "",
@@ -1034,6 +1084,7 @@ export default function Home() {
       id: crypto.randomUUID(),
       topic: item.topic.trim(),
       focusKeyword: item.keyword.trim(),
+      wpBlogId: selectedBlogId || null,
       loading: false,
       queued: true,
       error: "",
@@ -1228,20 +1279,61 @@ export default function Home() {
   const [clusterExistingPillarSummary, setClusterExistingPillarSummary] = useState("");
   const [clusterActiveArticleId, setClusterActiveArticleId] = useState<string | null>(null);
 
-  const activeCluster = clusters.find((c) => c.id === activeClusterId) || null;
+  const scopedClusters = useMemo(
+    () => clusters.filter((cluster) => isInSelectedScope(cluster.wpBlogId)),
+    [clusters, isInSelectedScope]
+  );
+
+  const activeCluster = scopedClusters.find((c) => c.id === activeClusterId) || null;
   const activeClusterArticle = activeCluster
     ? clusterActiveArticleId === "pillar"
       ? activeCluster.pillarSession
       : activeCluster.clusterArticles.find((a) => a.id === clusterActiveArticleId)?.session || null
     : null;
 
+  const handleScopeChange = (nextBlogId: string) => {
+    setSelectedBlogId(nextBlogId);
+
+    const selectedNextBlog = wpBlogs.find((blog) => blog.id === nextBlogId) || null;
+    const nextScopeKeys = nextBlogId && selectedNextBlog
+      ? [selectedNextBlog.id, selectedNextBlog.url]
+          .map((value) => normalizeScopeKey(value))
+          .filter(Boolean)
+      : [];
+
+    const inNextScope = (scopeValue?: string | null) => {
+      if (!nextBlogId) return true;
+      const key = normalizeScopeKey(scopeValue);
+      return !!key && nextScopeKeys.includes(key);
+    };
+
+    if (activeSessionId) {
+      const nextActiveSession = sessions.find(
+        (session) => session.id === activeSessionId && inNextScope(session.wpBlogId)
+      );
+      if (!nextActiveSession) setActiveSessionId(null);
+    }
+
+    if (activeClusterId) {
+      const nextActiveCluster = clusters.find(
+        (cluster) => cluster.id === activeClusterId && inNextScope(cluster.wpBlogId)
+      );
+      if (!nextActiveCluster) {
+        setActiveClusterId(null);
+        setShowClusterView(false);
+        setClusterActiveArticleId(null);
+      }
+    }
+  };
+
+
   const showForm = activeSessionId === null && !showHelp && !showDashboard && !showClusterView;
-  const loadingCount = sessions.filter((s) => s.loading).length;
-  const queuedCount = sessions.filter((s) => s.queued).length;
+  const loadingCount = scopedSessions.filter((s) => s.loading).length;
+  const queuedCount = scopedSessions.filter((s) => s.queued).length;
   const validBatchCount = batchItems.filter((i) => i.topic.trim()).length;
   const [progressMinimized, setProgressMinimized] = useState(false);
   const activeCount = loadingCount + queuedCount;
-  const completedInBatch = sessions.filter(
+  const completedInBatch = scopedSessions.filter(
     (s) => !s.loading && !s.queued && (s.result || s.error)
   ).length;
   const totalInProgress = activeCount + completedInBatch;
@@ -1494,6 +1586,7 @@ export default function Home() {
       id: clusterId,
       pillarTopic: clusterPillarTopic.trim(),
       pillarKeyword: clusterPillarKeyword.trim(),
+      wpBlogId: selectedBlogId || null,
       pillarSession: null,
       clusterArticles: [],
       quality: clusterQuality,
@@ -1550,6 +1643,7 @@ export default function Home() {
           id: "pillar",
           topic: clusterPillarTopic.trim(),
           focusKeyword: clusterPillarKeyword.trim(),
+          wpBlogId: selectedBlogId || null,
           loading: false,
           queued: false,
           error: "",
@@ -1585,6 +1679,7 @@ export default function Home() {
           id: pillarSessionId,
           topic: clusterPillarTopic.trim(),
           focusKeyword: clusterPillarKeyword.trim(),
+          wpBlogId: selectedBlogId || null,
           loading: true,
           queued: false,
           error: "",
@@ -1626,6 +1721,7 @@ export default function Home() {
           id: a.id,
           topic: a.concept,
           focusKeyword: a.keyword,
+          wpBlogId: selectedBlogId || null,
           loading: false,
           queued: true,
           error: "",
@@ -1816,15 +1912,15 @@ export default function Home() {
     <div className="flex items-center justify-between rounded-xl border px-4 py-3" style={{ borderColor: "var(--card-border)", background: "var(--card)" }}>
       <div>
         <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Publish to</div>
-        <div className="text-xs" style={{ color: "var(--muted)" }}>Select a connected blog</div>
+        <div className="text-xs" style={{ color: "var(--muted)" }}>Choose blog-specific or general mode</div>
       </div>
       <select
         value={selectedBlogId}
-        onChange={(e) => setSelectedBlogId(e.target.value)}
+        onChange={(e) => handleScopeChange(e.target.value)}
         className="rounded-lg border px-3 py-1.5 text-sm font-medium"
         style={{ borderColor: "var(--card-border)", background: "var(--background)", color: "var(--foreground)", outline: "none", maxWidth: 180 }}
       >
-        <option value="">No blog</option>
+        <option value="">General mode (all blogs)</option>
         {wpBlogs.map((blog) => (
           <option key={blog.id} value={blog.id}>{blog.name || blog.url}</option>
         ))}
@@ -1968,7 +2064,37 @@ export default function Home() {
             </svg>
             New Article
           </button>
-          {sessions.filter((s) => s.result).length > 0 && (
+
+          {wpBlogs.length > 0 && (
+            <div
+              className="mt-2 rounded-lg border px-3 py-2"
+              style={{ borderColor: "var(--card-border)", background: "var(--card)" }}
+            >
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted)" }}>
+                Scope
+              </div>
+              <select
+                value={selectedBlogId}
+                onChange={(e) => handleScopeChange(e.target.value)}
+                className="w-full rounded-md border px-2 py-1.5 text-xs font-medium"
+                style={{
+                  borderColor: "var(--card-border)",
+                  background: "var(--background)",
+                  color: "var(--foreground)",
+                  outline: "none",
+                }}
+              >
+                <option value="">General mode (all blogs)</option>
+                {wpBlogs.map((blog) => (
+                  <option key={blog.id} value={blog.id}>
+                    {blog.name || blog.url}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {(scopedSessions.filter((s) => s.result).length > 0 || scopedClusters.length > 0) && (
             <button
               onClick={() => {
                 setShowDashboard(true);
@@ -2017,13 +2143,13 @@ export default function Home() {
 
         <div className="flex-1 overflow-y-auto px-3 pb-3">
           {/* Topic Clusters Section */}
-          {clusters.length > 0 && (
+          {scopedClusters.length > 0 && (
             <div className="mb-3">
               <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted)" }}>
                 Topic Clusters
               </div>
               <div className="space-y-0.5">
-                {clusters.map((cluster) => (
+                {scopedClusters.map((cluster) => (
                   <div key={cluster.id}>
                     <button
                       onClick={() => {
@@ -2176,22 +2302,22 @@ export default function Home() {
           )}
 
           {/* Articles section header */}
-          {(sessions.length > 0 || clusters.length > 0) && sessions.length > 0 && clusters.length > 0 && (
+          {(scopedSessions.length > 0 || scopedClusters.length > 0) && scopedSessions.length > 0 && scopedClusters.length > 0 && (
             <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted)" }}>
               Articles
             </div>
           )}
 
-          {sessions.length === 0 && clusters.length === 0 ? (
+          {scopedSessions.length === 0 && scopedClusters.length === 0 ? (
             <p
               className="px-3 py-6 text-center text-xs"
               style={{ color: "var(--muted)" }}
             >
               No articles yet. Start generating!
             </p>
-          ) : sessions.length > 0 ? (
+          ) : scopedSessions.length > 0 ? (
             <div className="space-y-1">
-              {sessions.map((session) => (
+              {scopedSessions.map((session) => (
                 <button
                   key={session.id}
                   onClick={() => {
@@ -2817,10 +2943,13 @@ export default function Home() {
                   >
                     Dashboard
                   </h2>
+                  <p className="mb-1 text-xs" style={{ color: "var(--muted)" }}>
+                    Scope: {selectedBlog ? selectedBlog.name || selectedBlog.url : "General mode (all blogs)"}
+                  </p>
                   <p className="text-sm" style={{ color: "var(--muted)" }}>
-                    {sessions.filter((s) => s.result && !s.posted).length} need
+                    {scopedSessions.filter((s) => s.result && !s.posted).length} need
                     to post &middot;{" "}
-                    {sessions.filter((s) => s.posted).length} posted
+                    {scopedSessions.filter((s) => s.posted).length} posted
                   </p>
                 </div>
 
@@ -2828,32 +2957,32 @@ export default function Home() {
                 <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <div className="rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
                     <div className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
-                      {sessions.filter((s) => s.result).length}
+                      {scopedSessions.filter((s) => s.result).length}
                     </div>
                     <div className="text-xs font-medium" style={{ color: "var(--muted)" }}>Articles Generated</div>
                   </div>
                   <div className="rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
                     <div className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
-                      {clusters.length}
+                      {scopedClusters.length}
                     </div>
                     <div className="text-xs font-medium" style={{ color: "var(--muted)" }}>Topic Clusters</div>
                   </div>
                   <div className="rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
                     <div className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
-                      {clusters.reduce((sum, c) => sum + c.clusterArticles.filter((a) => a.session?.result).length + (c.pillarSession?.result ? 1 : 0), 0)}
+                      {scopedClusters.reduce((sum, c) => sum + c.clusterArticles.filter((a) => a.session?.result).length + (c.pillarSession?.result ? 1 : 0), 0)}
                     </div>
                     <div className="text-xs font-medium" style={{ color: "var(--muted)" }}>Cluster Articles</div>
                   </div>
                   <div className="rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
                     <div className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
-                      {sessions.filter((s) => s.result && !s.posted).length + clusters.reduce((sum, c) => sum + c.clusterArticles.filter((a) => a.session?.result && !a.session.posted).length + (c.pillarSession?.result && !c.pillarSession.posted ? 1 : 0), 0)}
+                      {scopedSessions.filter((s) => s.result && !s.posted).length + scopedClusters.reduce((sum, c) => sum + c.clusterArticles.filter((a) => a.session?.result && !a.session.posted).length + (c.pillarSession?.result && !c.pillarSession.posted ? 1 : 0), 0)}
                     </div>
                     <div className="text-xs font-medium" style={{ color: "var(--muted)" }}>Ready to Post</div>
                   </div>
                 </div>
 
                 {/* Topic Clusters Visual */}
-                {clusters.length > 0 && (
+                {scopedClusters.length > 0 && (
                   <div className="mb-8">
                     <h3
                       className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
@@ -2866,7 +2995,7 @@ export default function Home() {
                       Topic Clusters
                     </h3>
                     <div className="space-y-3">
-                      {clusters.map((cluster) => {
+                      {scopedClusters.map((cluster) => {
                         const completedArticles = cluster.clusterArticles.filter((a) => a.session?.result).length;
                         const totalArticles = cluster.clusterArticles.length;
                         const hasPillar = !!cluster.pillarSession?.result;
@@ -2993,7 +3122,7 @@ export default function Home() {
                 )}
 
                 {/* Need to Post */}
-                {sessions.filter(
+                {scopedSessions.filter(
                   (s) => s.result && !s.posted && !s.loading && !s.queued
                 ).length > 0 && (
                   <div className="mb-8">
@@ -3008,7 +3137,7 @@ export default function Home() {
                       Need to Post
                     </h3>
                     <div className="space-y-2">
-                      {sessions
+                      {scopedSessions
                         .filter(
                           (s) =>
                             s.result &&
@@ -3098,7 +3227,7 @@ export default function Home() {
                 )}
 
                 {/* Posted */}
-                {sessions.filter((s) => s.posted).length > 0 && (
+                {scopedSessions.filter((s) => s.posted).length > 0 && (
                   <div className="mb-8">
                     <h3
                       className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
@@ -3111,7 +3240,7 @@ export default function Home() {
                       Posted
                     </h3>
                     <div className="space-y-2">
-                      {sessions
+                      {scopedSessions
                         .filter((s) => s.posted)
                         .map((session) => (
                           <div
@@ -3196,7 +3325,7 @@ export default function Home() {
                 )}
 
                 {/* In Progress / Queued */}
-                {sessions.filter(
+                {scopedSessions.filter(
                   (s) => (s.loading || s.queued) && !s.error
                 ).length > 0 && (
                   <div className="mb-8">
@@ -3211,7 +3340,7 @@ export default function Home() {
                       In Progress
                     </h3>
                     <div className="space-y-2">
-                      {sessions
+                      {scopedSessions
                         .filter(
                           (s) => (s.loading || s.queued) && !s.error
                         )
@@ -3255,7 +3384,7 @@ export default function Home() {
                 )}
 
                 {/* Failed */}
-                {sessions.filter(
+                {scopedSessions.filter(
                   (s) => s.error && !s.loading && !s.queued
                 ).length > 0 && (
                   <div className="mb-8">
@@ -3270,7 +3399,7 @@ export default function Home() {
                       Failed
                     </h3>
                     <div className="space-y-2">
-                      {sessions
+                      {scopedSessions
                         .filter(
                           (s) => s.error && !s.loading && !s.queued
                         )
