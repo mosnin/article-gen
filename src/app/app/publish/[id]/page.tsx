@@ -123,7 +123,7 @@ export default function PublishPage() {
         setError("Failed to connect to WordPress");
       }
     } else {
-      setError("No blogs connected. Add a blog in Settings.");
+      setError("No blogs connected. Add a blog in Connected Blogs.");
     }
 
     setLoading(false);
@@ -304,13 +304,13 @@ export default function PublishPage() {
                 <div style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: 24 }}>
                   <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No Blog Connected</h3>
                   <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
-                    Connect a WordPress blog in Settings to enable publishing.
+                    Connect a WordPress blog in Connected Blogs to enable publishing.
                   </p>
                   <button
-                    onClick={() => router.push("/app/settings")}
+                    onClick={() => router.push("/app/connected-blogs")}
                     style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer" }}
                   >
-                    Go to Settings
+                    Go to Connected Blogs
                   </button>
                 </div>
               ) : (

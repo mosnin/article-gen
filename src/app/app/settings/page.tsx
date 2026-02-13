@@ -1,195 +1,120 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import AppShell from "@/components/app-shell";
-
-interface WpBlog {
-  id: string;
-  name: string;
-  url: string;
-  username: string;
-  appPassword: string;
-  authorName: string;
-  authorAbout: string;
-}
 
 export default function SettingsPage() {
   const router = useRouter();
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [blogs, setBlogs] = useState<WpBlog[]>([]);
-  const [testingBlogId, setTestingBlogId] = useState<string | null>(null);
-  const [testResults, setTestResults] = useState<Record<string, { ok: boolean; message: string }>>({});
-  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [email, setEmail] = useState("");
 
-  // Site settings
-  const [domain, setDomain] = useState("");
-  const [siteName, setSiteName] = useState("");
-  const [siteAbout, setSiteAbout] = useState("");
-  const [saveMessage, setSaveMessage] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-  const fetchSettings = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.replace("/?auth=login"); return; }
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-    const { data: settings } = await supabase
-      .from("user_settings")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
+  const loadUser = useCallback(async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (settings) {
-      setDomain(settings.domain || "");
-      setSiteName(settings.site_name || "");
-      setSiteAbout(settings.site_about || "");
-
-      // Load blogs from wp_blogs JSON column or migrate from old single fields
-      if (settings.wp_blogs && Array.isArray(settings.wp_blogs) && settings.wp_blogs.length > 0) {
-        setBlogs(settings.wp_blogs);
-      } else if (settings.wp_url) {
-        // Migrate old single blog to new format
-        setBlogs([{
-          id: crypto.randomUUID(),
-          name: new URL(settings.wp_url).hostname.replace("www.", ""),
-          url: settings.wp_url,
-          username: settings.wp_username || "",
-          appPassword: settings.wp_app_password || "",
-          authorName: settings.author_name || "",
-          authorAbout: settings.author_about || "",
-        }]);
-      }
+    if (!user) {
+      router.replace("/?auth=login");
+      return;
     }
+
+    setEmail(user.email || "");
     setLoading(false);
   }, [router, supabase]);
 
-  useEffect(() => { fetchSettings(); }, [fetchSettings]);
-
-  const handleSave = async () => {
-    setSaving(true);
-    setSaveMessage("");
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setSaveMessage("Failed to save: not logged in");
-        setSaving(false);
-        return;
-      }
-
-      // Also update legacy fields with first blog for backwards compat
-      const firstBlog = blogs.find((b) => b.url && b.username && b.appPassword);
-      const firstBlogWithAuthor = blogs.find((b) => b.authorName?.trim());
-
-      const settingsPayload = {
-        domain,
-        site_name: siteName,
-        site_about: siteAbout,
-        author_name: firstBlogWithAuthor?.authorName || "",
-        author_about: firstBlogWithAuthor?.authorAbout || "",
-        wp_blogs: blogs.filter((b) => b.url.trim()),
-        wp_url: firstBlog?.url || "",
-        wp_username: firstBlog?.username || "",
-        wp_app_password: firstBlog?.appPassword || "",
-        updated_at: new Date().toISOString(),
-      };
-
-      // Check if row exists first, then insert or update
-      const { data: existing } = await supabase
-        .from("user_settings")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
-      let error;
-      if (existing) {
-        // Update existing row
-        const result = await supabase
-          .from("user_settings")
-          .update(settingsPayload)
-          .eq("user_id", user.id);
-        error = result.error;
-      } else {
-        // Insert new row
-        const result = await supabase
-          .from("user_settings")
-          .insert({ user_id: user.id, ...settingsPayload });
-        error = result.error;
-      }
-
-      if (error) {
-        console.error("Settings save error:", error);
-        setSaveMessage(`Failed to save: ${error.message}`);
-      } else {
-        setSaveMessage("Settings saved");
-        setTimeout(() => setSaveMessage(""), 2500);
-      }
-    } catch (err) {
-      console.error("Settings save exception:", err);
-      setSaveMessage(`Failed to save: ${err instanceof Error ? err.message : "unexpected error"}`);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const addBlog = () => {
-    if (blogs.length >= 3) return;
-    setBlogs((prev) => [...prev, {
-      id: crypto.randomUUID(),
-      name: "",
-      url: "",
-      username: "",
-      appPassword: "",
-      authorName: "",
-      authorAbout: "",
-    }]);
-  };
-
-  const removeBlog = (id: string) => {
-    setBlogs((prev) => prev.filter((b) => b.id !== id));
-    setTestResults((prev) => { const next = { ...prev }; delete next[id]; return next; });
-  };
-
-  const updateBlog = (id: string, field: keyof WpBlog, value: string) => {
-    setBlogs((prev) => prev.map((b) => b.id === id ? { ...b, [field]: value } : b));
-    // Clear test result when editing
-    if (testResults[id]) {
-      setTestResults((prev) => { const next = { ...prev }; delete next[id]; return next; });
-    }
-  };
-
-  const testConnection = async (blog: WpBlog) => {
-    setTestingBlogId(blog.id);
-    setTestResults((prev) => ({ ...prev, [blog.id]: { ok: false, message: "Testing..." } }));
-
-    try {
-      const wpUrl = blog.url.replace(/\/$/, "");
-      const auth = btoa(`${blog.username}:${blog.appPassword}`);
-
-      const res = await fetch(`${wpUrl}/wp-json/wp/v2/categories?per_page=1`, {
-        headers: { Authorization: `Basic ${auth}` },
-      });
-
-      if (res.ok) {
-        setTestResults((prev) => ({ ...prev, [blog.id]: { ok: true, message: "Connected!" } }));
-      } else if (res.status === 401 || res.status === 403) {
-        setTestResults((prev) => ({ ...prev, [blog.id]: { ok: false, message: "Authentication failed. Check credentials." } }));
-      } else {
-        setTestResults((prev) => ({ ...prev, [blog.id]: { ok: false, message: `Error: ${res.status}` } }));
-      }
-    } catch {
-      setTestResults((prev) => ({ ...prev, [blog.id]: { ok: false, message: "Could not connect. Check the URL." } }));
-    }
-
-    setTestingBlogId(null);
-  };
+  useEffect(() => {
+    loadUser();
+  }, [loadUser]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.replace("/");
+  };
+
+  const handleChangePassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setMessage(null);
+
+    if (!email) {
+      setMessage({ type: "error", text: "Could not verify your account email." });
+      return;
+    }
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setMessage({ type: "error", text: "Please fill in all password fields." });
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setMessage({ type: "error", text: "New password must be at least 8 characters." });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setMessage({ type: "error", text: "New password and confirm password do not match." });
+      return;
+    }
+
+    setChangingPassword(true);
+
+    const verify = await supabase.auth.signInWithPassword({
+      email,
+      password: currentPassword,
+    });
+
+    if (verify.error) {
+      setChangingPassword(false);
+      setMessage({ type: "error", text: "Current password is incorrect." });
+      return;
+    }
+
+    const update = await supabase.auth.updateUser({ password: newPassword });
+
+    if (update.error) {
+      setMessage({ type: "error", text: update.error.message || "Unable to update password." });
+    } else {
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setMessage({ type: "success", text: "Password updated successfully." });
+    }
+
+    setChangingPassword(false);
+  };
+
+  const handleSendPasswordReset = async () => {
+    setMessage(null);
+
+    if (!email) {
+      setMessage({ type: "error", text: "Could not verify your account email." });
+      return;
+    }
+
+    setSendingReset(true);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/?auth=reset`,
+    });
+
+    if (error) {
+      setMessage({ type: "error", text: error.message || "Unable to send reset email." });
+    } else {
+      setMessage({ type: "success", text: "Password reset email sent. Check your inbox." });
+    }
+
+    setSendingReset(false);
   };
 
   if (loading) {
@@ -202,202 +127,91 @@ export default function SettingsPage() {
 
   return (
     <AppShell title="Settings" onSignOut={handleLogout}>
-        {/* WordPress Blogs */}
-        <section style={{ marginBottom: 40 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+      <section className="mb-8 rounded-xl border p-5 md:p-6" style={{ borderColor: "var(--card-border)", background: "var(--card)" }}>
+        <h2 className="text-xl font-bold">Account</h2>
+        <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>Manage your login credentials and password.</p>
+
+        <div className="mt-5 rounded-lg border p-4" style={{ borderColor: "var(--card-border)", background: "var(--background)" }}>
+          <div className="text-xs font-semibold" style={{ color: "var(--muted)" }}>Email</div>
+          <div className="mt-1 text-sm font-medium break-all">{email}</div>
+        </div>
+      </section>
+
+      <section className="mb-8 rounded-xl border p-5 md:p-6" style={{ borderColor: "var(--card-border)", background: "var(--card)" }}>
+        <h2 className="text-xl font-bold">Change Password</h2>
+        <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>For security, confirm your current password before setting a new one.</p>
+
+        <form className="mt-5 grid gap-4" onSubmit={handleChangePassword}>
+          <div>
+            <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--muted)" }}>Current Password</label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              style={{ borderColor: "var(--card-border)", background: "var(--background)" }}
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>WordPress Blogs</h2>
-              <p style={{ fontSize: 13, color: "var(--muted)" }}>Connect up to 3 WordPress sites for publishing. Articles won&apos;t auto-publish &mdash; you choose when to publish.</p>
+              <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--muted)" }}>New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{ borderColor: "var(--card-border)", background: "var(--background)" }}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold" style={{ color: "var(--muted)" }}>Confirm New Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                style={{ borderColor: "var(--card-border)", background: "var(--background)" }}
+              />
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {blogs.map((blog, idx) => (
-              <div key={blog.id} style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, overflow: "hidden" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "1px solid var(--card-border)", gap: 8, flexWrap: "wrap" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <span style={{ width: 24, height: 24, borderRadius: 6, background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>
-                      {idx + 1}
-                    </span>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>{blog.name || `Blog ${idx + 1}`}</span>
-                    {testResults[blog.id] && (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: testResults[blog.id].ok ? "var(--success)" : "var(--error)", marginLeft: 4 }}>
-                        {testResults[blog.id].message}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => removeBlog(blog.id)}
-                    style={{ padding: "4px 8px", borderRadius: 6, fontSize: 12, fontWeight: 500, background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer" }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}
-                  >
-                    Remove
-                  </button>
-                </div>
-                <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>Blog Name</label>
-                      <input
-                        type="text"
-                        value={blog.name}
-                        onChange={(e) => updateBlog(blog.id, "name", e.target.value)}
-                        placeholder="My Blog"
-                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>WordPress URL</label>
-                      <input
-                        type="text"
-                        value={blog.url}
-                        onChange={(e) => updateBlog(blog.id, "url", e.target.value)}
-                        placeholder="https://yourblog.com"
-                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>Username</label>
-                      <input
-                        type="text"
-                        value={blog.username}
-                        onChange={(e) => updateBlog(blog.id, "username", e.target.value)}
-                        placeholder="admin"
-                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>Application Password</label>
-                      <div style={{ position: "relative" }}>
-                        <input
-                          type={showPasswords[blog.id] ? "text" : "password"}
-                          value={blog.appPassword}
-                          onChange={(e) => updateBlog(blog.id, "appPassword", e.target.value)}
-                          placeholder="xxxx xxxx xxxx xxxx"
-                          style={{ width: "100%", padding: "8px 12px", paddingRight: 36, borderRadius: 8, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
-                        />
-                        <button
-                          onClick={() => setShowPasswords((prev) => ({ ...prev, [blog.id]: !prev[blog.id] }))}
-                          style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: 2 }}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            {showPasswords[blog.id] ? (
-                              <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>
-                            ) : (
-                              <><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></>
-                            )}
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>Author Name</label>
-                      <input
-                        type="text"
-                        value={blog.authorName || ""}
-                        onChange={(e) => updateBlog(blog.id, "authorName", e.target.value)}
-                        placeholder="John Doe"
-                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>About the Author</label>
-                      <input
-                        type="text"
-                        value={blog.authorAbout || ""}
-                        onChange={(e) => updateBlog(blog.id, "authorAbout", e.target.value)}
-                        placeholder="Expert in sustainable living with 10 years of experience"
-                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
-                      />
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                    <p style={{ fontSize: 11, color: "var(--muted)" }}>
-                      WordPress &gt; Users &gt; Profile &gt; Application Passwords
-                    </p>
-                    <button
-                      onClick={() => testConnection(blog)}
-                      disabled={!blog.url || !blog.username || !blog.appPassword || testingBlogId === blog.id}
-                      style={{
-                        padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        background: "var(--background)", border: "1px solid var(--card-border)",
-                        cursor: "pointer", opacity: (!blog.url || !blog.username || !blog.appPassword) ? 0.4 : 1,
-                      }}
-                    >
-                      {testingBlogId === blog.id ? "Testing..." : "Test Connection"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {blogs.length < 3 && (
-              <button
-                onClick={addBlog}
-                style={{
-                  padding: "14px", borderRadius: 12, border: "2px dashed var(--card-border)",
-                  background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: 600,
-                  color: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--accent)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--card-border)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                Add WordPress Blog ({blogs.length}/3)
-              </button>
-            )}
-          </div>
-        </section>
-
-        {/* Site & Author Settings */}
-        <section style={{ marginBottom: 40 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Site Settings</h2>
-          <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>Used to personalize generated articles with your brand. Author info is set per blog above.</p>
-
-          <div style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
-            {[
-              { label: "Domain", value: domain, set: setDomain, placeholder: "https://yourblog.com" },
-              { label: "Site Name", value: siteName, set: setSiteName, placeholder: "Your Blog Name" },
-              { label: "About the Blog", value: siteAbout, set: setSiteAbout, placeholder: "A blog about sustainable living and eco-friendly tips" },
-            ].map((field) => (
-              <div key={field.label}>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>{field.label}</label>
-                <input
-                  type="text"
-                  value={field.value}
-                  onChange={(e) => field.set(e.target.value)}
-                  placeholder={field.placeholder}
-                  style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Save */}
-        <div style={{ position: "sticky", bottom: 0, padding: "16px 0", background: "var(--background)", borderTop: "1px solid var(--card-border)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: saveMessage === "Settings saved" ? "var(--success)" : "var(--error)" }}>
-              {saveMessage}
-            </span>
+          <div>
             <button
-              onClick={handleSave}
-              disabled={saving}
-              style={{
-                padding: "10px 28px", borderRadius: 10, fontSize: 14, fontWeight: 700,
-                background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer",
-                opacity: saving ? 0.6 : 1,
-              }}
+              type="submit"
+              disabled={changingPassword}
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-white"
+              style={{ background: "var(--accent)", opacity: changingPassword ? 0.7 : 1 }}
             >
-              {saving ? "Saving..." : "Save Settings"}
+              {changingPassword ? "Updating..." : "Update Password"}
             </button>
           </div>
+        </form>
+      </section>
+
+      <section className="rounded-xl border p-5 md:p-6" style={{ borderColor: "var(--card-border)", background: "var(--card)" }}>
+        <h2 className="text-xl font-bold">Reset Password by Email</h2>
+        <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>If you forgot your password, request a reset link.</p>
+
+        <button
+          onClick={handleSendPasswordReset}
+          disabled={sendingReset}
+          className="mt-4 rounded-lg border px-4 py-2 text-sm font-semibold"
+          style={{ borderColor: "var(--card-border)", background: "var(--background)", opacity: sendingReset ? 0.7 : 1 }}
+        >
+          {sendingReset ? "Sending..." : "Send Password Reset Email"}
+        </button>
+      </section>
+
+      {message && (
+        <div className="mt-6 rounded-lg border px-4 py-3 text-sm font-medium" style={{
+          borderColor: message.type === "success" ? "#86efac" : "#fca5a5",
+          background: message.type === "success" ? "#f0fdf4" : "#fef2f2",
+          color: message.type === "success" ? "#166534" : "#991b1b",
+        }}>
+          {message.text}
         </div>
+      )}
     </AppShell>
   );
 }

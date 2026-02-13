@@ -13,6 +13,7 @@ interface AppShellProps {
 const NAV_ITEMS = [
   { label: "Generator", href: "/app" },
   { label: "Billing", href: "/app/billing" },
+  { label: "Connected Blogs", href: "/app/connected-blogs" },
   { label: "Settings", href: "/app/settings" },
 ];
 
