@@ -1268,27 +1268,15 @@ export default function Home() {
       : activeCluster.clusterArticles.find((a) => a.id === clusterActiveArticleId)?.session || null
     : null;
 
-  const handleScopeChange = (nextBlogId: string) => {
+  const handleScopeChange = useCallback((nextBlogId: string) => {
+    if (nextBlogId === selectedBlogId) return;
+
     setSelectedBlogId(nextBlogId);
-
-    if (activeSessionId) {
-      const nextActiveSession = sessions.find((session) =>
-        session.id === activeSessionId && (nextBlogId ? session.wpBlogId === nextBlogId : true)
-      );
-      if (!nextActiveSession) setActiveSessionId(null);
-    }
-
-    if (activeClusterId) {
-      const nextActiveCluster = clusters.find((cluster) =>
-        cluster.id === activeClusterId && (nextBlogId ? cluster.wpBlogId === nextBlogId : true)
-      );
-      if (!nextActiveCluster) {
-        setActiveClusterId(null);
-        setShowClusterView(false);
-        setClusterActiveArticleId(null);
-      }
-    }
-  };
+    setActiveSessionId(null);
+    setActiveClusterId(null);
+    setClusterActiveArticleId(null);
+    setShowClusterView(false);
+  }, [selectedBlogId]);
 
 
   const showForm = activeSessionId === null && !showHelp && !showDashboard && !showClusterView;
@@ -1872,23 +1860,48 @@ export default function Home() {
     </div>
   );
 
-  const blogSelectorPanel = wpBlogs.length > 0 ? (
-    <div className="flex items-center justify-between rounded-xl border px-4 py-3" style={{ borderColor: "var(--card-border)", background: "var(--card)" }}>
-      <div>
-        <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Publish to</div>
-        <div className="text-xs" style={{ color: "var(--muted)" }}>Choose blog-specific or general mode</div>
-      </div>
+  const scopeSelectControl = (
+    <div className="relative">
       <select
         value={selectedBlogId}
         onChange={(e) => handleScopeChange(e.target.value)}
-        className="rounded-lg border px-3 py-1.5 text-sm font-medium"
-        style={{ borderColor: "var(--card-border)", background: "var(--background)", color: "var(--foreground)", outline: "none", maxWidth: 180 }}
+        className="w-full appearance-none rounded-lg border px-3 py-2 pr-9 text-sm font-medium transition-colors focus:outline-none"
+        style={{
+          borderColor: "var(--card-border)",
+          background: "var(--background)",
+          color: "var(--foreground)",
+        }}
       >
         <option value="">General mode (all blogs)</option>
         {wpBlogs.map((blog) => (
           <option key={blog.id} value={blog.id}>{blog.name || blog.url}</option>
         ))}
       </select>
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="var(--muted)"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
+      >
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </div>
+  );
+
+  const blogSelectorPanel = wpBlogs.length > 0 ? (
+    <div className="flex items-center justify-between rounded-xl border px-4 py-3" style={{ borderColor: "var(--card-border)", background: "var(--card)" }}>
+      <div>
+        <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Publish to</div>
+        <div className="text-xs" style={{ color: "var(--muted)" }}>Choose blog-specific or general mode</div>
+      </div>
+      <div style={{ minWidth: 210 }}>
+        {scopeSelectControl}
+      </div>
     </div>
   ) : (
     <button
@@ -2037,24 +2050,7 @@ export default function Home() {
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted)" }}>
                 Scope
               </div>
-              <select
-                value={selectedBlogId}
-                onChange={(e) => handleScopeChange(e.target.value)}
-                className="w-full rounded-md border px-2 py-1.5 text-xs font-medium"
-                style={{
-                  borderColor: "var(--card-border)",
-                  background: "var(--background)",
-                  color: "var(--foreground)",
-                  outline: "none",
-                }}
-              >
-                <option value="">General mode (all blogs)</option>
-                {wpBlogs.map((blog) => (
-                  <option key={blog.id} value={blog.id}>
-                    {blog.name || blog.url}
-                  </option>
-                ))}
-              </select>
+              {scopeSelectControl}
             </div>
           )}
 
