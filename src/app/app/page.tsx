@@ -552,7 +552,7 @@ export default function Home() {
   const inGeneralMode = !selectedBlogId;
   const isInSelectedScope = useCallback(
     (wpBlogId?: string | null) =>
-      inGeneralMode ? !wpBlogId : wpBlogId === selectedBlogId,
+      inGeneralMode ? true : wpBlogId === selectedBlogId,
     [inGeneralMode, selectedBlogId]
   );
 
@@ -1860,7 +1860,7 @@ export default function Home() {
         className="rounded-lg border px-3 py-1.5 text-sm font-medium"
         style={{ borderColor: "var(--card-border)", background: "var(--background)", color: "var(--foreground)", outline: "none", maxWidth: 180 }}
       >
-        <option value="">General mode (no specific blog)</option>
+        <option value="">General mode (all blogs)</option>
         {wpBlogs.map((blog) => (
           <option key={blog.id} value={blog.id}>{blog.name || blog.url}</option>
         ))}
@@ -2024,7 +2024,7 @@ export default function Home() {
                   outline: "none",
                 }}
               >
-                <option value="">General mode (no specific blog)</option>
+                <option value="">General mode (all blogs)</option>
                 {wpBlogs.map((blog) => (
                   <option key={blog.id} value={blog.id}>
                     {blog.name || blog.url}
@@ -2884,7 +2884,7 @@ export default function Home() {
                     Dashboard
                   </h2>
                   <p className="mb-1 text-xs" style={{ color: "var(--muted)" }}>
-                    Scope: {selectedBlog ? selectedBlog.name || selectedBlog.url : "General mode (no specific blog)"}
+                    Scope: {selectedBlog ? selectedBlog.name || selectedBlog.url : "General mode (all blogs)"}
                   </p>
                   <p className="text-sm" style={{ color: "var(--muted)" }}>
                     {scopedSessions.filter((s) => s.result && !s.posted).length} need
