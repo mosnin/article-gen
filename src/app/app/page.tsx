@@ -1892,13 +1892,13 @@ export default function Home() {
     </div>
   ) : (
     <button
-      onClick={() => router.push("/app/settings")}
+      onClick={() => router.push("/app/connected-blogs")}
       className="flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left"
       style={{ borderColor: "var(--card-border)", background: "var(--card)", cursor: "pointer" }}
     >
       <div>
         <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Connect a WordPress Blog</div>
-        <div className="text-xs" style={{ color: "var(--muted)" }}>Set up publishing in Settings</div>
+        <div className="text-xs" style={{ color: "var(--muted)" }}>Set up publishing in Connected Blogs</div>
       </div>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
     </button>
@@ -2438,13 +2438,13 @@ export default function Home() {
                 Billing & Credits
               </button>
               <button
-                onClick={() => router.push("/app/settings")}
+                onClick={() => router.push("/app/connected-blogs")}
                 className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left text-xs font-medium transition-colors"
                 style={{ color: "var(--muted)" }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--foreground)"; (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
               >
-                <span>Settings</span>
+                <span>Connected Blogs</span>
                 {wpBlogs.length > 0 ? (
                   <span className="flex items-center gap-1 text-[10px]" style={{ color: "var(--success)" }}>
                     <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--success)" }} />
@@ -2456,6 +2456,15 @@ export default function Home() {
                     No blogs
                   </span>
                 )}
+              </button>
+              <button
+                onClick={() => router.push("/app/settings")}
+                className="w-full rounded-lg px-3 py-1.5 text-left text-xs font-medium transition-colors"
+                style={{ color: "var(--muted)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--foreground)"; (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+              >
+                Account Settings
               </button>
               {isAdmin && (
                 <button
