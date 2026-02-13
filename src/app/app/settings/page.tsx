@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
+import AppShell from "@/components/app-shell";
 
 interface WpBlog {
   id: string;
@@ -187,6 +187,11 @@ export default function SettingsPage() {
     setTestingBlogId(null);
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.replace("/");
+  };
+
   if (loading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", background: "var(--background)" }}>
@@ -196,24 +201,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div style={{ background: "var(--background)", minHeight: "100vh" }}>
-      <header style={{ borderBottom: "1px solid var(--card-border)", background: "var(--background)", position: "sticky", top: 0, zIndex: 50 }}>
-        <div style={{ maxWidth: 720, margin: "0 auto", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }} onClick={() => router.push("/app")}>
-              <Image src="/logo.png" alt="Article Sauce" width={28} height={28} />
-              <span style={{ fontWeight: 700, fontSize: 17 }}>Article Sauce</span>
-            </div>
-            <span style={{ color: "var(--muted)", fontSize: 13 }}>/</span>
-            <span style={{ fontWeight: 600, fontSize: 14 }}>Settings</span>
-          </div>
-          <button onClick={() => router.push("/app")} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, background: "var(--card)", border: "1px solid var(--card-border)", cursor: "pointer" }}>
-            Back to App
-          </button>
-        </div>
-      </header>
-
-      <main style={{ maxWidth: 720, margin: "0 auto", padding: "32px 24px" }}>
+    <AppShell title="Settings" onSignOut={handleLogout}>
         {/* WordPress Blogs */}
         <section style={{ marginBottom: 40 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -226,8 +214,8 @@ export default function SettingsPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {blogs.map((blog, idx) => (
               <div key={blog.id} style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, overflow: "hidden" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "1px solid var(--card-border)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "1px solid var(--card-border)", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     <span style={{ width: 24, height: 24, borderRadius: 6, background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>
                       {idx + 1}
                     </span>
@@ -248,7 +236,7 @@ export default function SettingsPage() {
                   </button>
                 </div>
                 <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div className="grid gap-3 md:grid-cols-2">
                     <div>
                       <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>Blog Name</label>
                       <input
@@ -270,7 +258,7 @@ export default function SettingsPage() {
                       />
                     </div>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div className="grid gap-3 md:grid-cols-2">
                     <div>
                       <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>Username</label>
                       <input
@@ -306,7 +294,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div className="grid gap-3 md:grid-cols-2">
                     <div>
                       <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>Author Name</label>
                       <input
@@ -328,7 +316,7 @@ export default function SettingsPage() {
                       />
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                     <p style={{ fontSize: 11, color: "var(--muted)" }}>
                       WordPress &gt; Users &gt; Profile &gt; Application Passwords
                     </p>
@@ -393,7 +381,7 @@ export default function SettingsPage() {
 
         {/* Save */}
         <div style={{ position: "sticky", bottom: 0, padding: "16px 0", background: "var(--background)", borderTop: "1px solid var(--card-border)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: saveMessage === "Settings saved" ? "var(--success)" : "var(--error)" }}>
               {saveMessage}
             </span>
@@ -410,7 +398,6 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
-      </main>
-    </div>
+    </AppShell>
   );
 }
