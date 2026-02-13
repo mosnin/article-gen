@@ -550,7 +550,7 @@ export default function Home() {
   const inGeneralMode = !selectedBlogId;
   const isInSelectedScope = useCallback(
     (wpBlogId?: string | null) =>
-      inGeneralMode ? true : wpBlogId === selectedBlogId,
+      inGeneralMode ? !wpBlogId : wpBlogId === selectedBlogId,
     [inGeneralMode, selectedBlogId]
   );
 
