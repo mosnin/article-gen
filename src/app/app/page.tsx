@@ -2004,7 +2004,37 @@ export default function Home() {
             </svg>
             New Article
           </button>
-          {scopedSessions.filter((s) => s.result).length > 0 && (
+
+          {wpBlogs.length > 0 && (
+            <div
+              className="mt-2 rounded-lg border px-3 py-2"
+              style={{ borderColor: "var(--card-border)", background: "var(--card)" }}
+            >
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted)" }}>
+                Scope
+              </div>
+              <select
+                value={selectedBlogId}
+                onChange={(e) => setSelectedBlogId(e.target.value)}
+                className="w-full rounded-md border px-2 py-1.5 text-xs font-medium"
+                style={{
+                  borderColor: "var(--card-border)",
+                  background: "var(--background)",
+                  color: "var(--foreground)",
+                  outline: "none",
+                }}
+              >
+                <option value="">General mode (no specific blog)</option>
+                {wpBlogs.map((blog) => (
+                  <option key={blog.id} value={blog.id}>
+                    {blog.name || blog.url}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {(scopedSessions.filter((s) => s.result).length > 0 || scopedClusters.length > 0) && (
             <button
               onClick={() => {
                 setShowDashboard(true);
