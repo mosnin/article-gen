@@ -1,36 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
+import { getBlogCredentials, type WordPressUserSettings } from "@/lib/wordpress";
 
-interface WpBlog {
-  id: string;
-  url: string;
-  username: string;
-  appPassword: string;
-}
-
-function getBlogCredentials(settings: Record<string, unknown>, blogId?: string): { wpUrl: string; auth: string } | null {
-  const blogs = settings.wp_blogs as WpBlog[] | null;
-
-  if (blogs && Array.isArray(blogs) && blogs.length > 0) {
-    const blog = blogId ? blogs.find((b) => b.id === blogId) : blogs[0];
-    if (blog?.url && blog?.username && blog?.appPassword) {
-      return {
-        wpUrl: blog.url.replace(/\/$/, ""),
-        auth: Buffer.from(`${blog.username}:${blog.appPassword}`).toString("base64"),
-      };
-    }
-  }
-
-  // Fallback to legacy single-blog fields
-  if (settings.wp_url && settings.wp_username && settings.wp_app_password) {
-    return {
-      wpUrl: (settings.wp_url as string).replace(/\/$/, ""),
-      auth: Buffer.from(`${settings.wp_username}:${settings.wp_app_password}`).toString("base64"),
-    };
-  }
-
-  return null;
-}
 
 export async function GET(req: NextRequest) {
   try {
@@ -50,12 +21,12 @@ export async function GET(req: NextRequest) {
       .single();
 
     if (!settings) {
-      return NextResponse.json({ error: "No blogs connected. Add a blog in Settings." }, { status: 400 });
+      return NextResponse.json({ error: "No blogs connected. Add a blog in Connected Blogs." }, { status: 400 });
     }
 
-    const creds = getBlogCredentials(settings, blogId);
+    const creds = getBlogCredentials(settings as WordPressUserSettings, blogId);
     if (!creds) {
-      return NextResponse.json({ error: "No blogs connected. Add a blog in Settings." }, { status: 400 });
+      return NextResponse.json({ error: "No blogs connected. Add a blog in Connected Blogs." }, { status: 400 });
     }
 
     const res = await fetch(`${creds.wpUrl}/wp-json/wp/v2/categories?per_page=100`, {
@@ -70,7 +41,7 @@ export async function GET(req: NextRequest) {
       const text = await res.text();
       if (res.status === 401 || res.status === 403) {
         return NextResponse.json({
-          error: `WordPress authentication failed (${res.status}). Check credentials in Settings for this blog.`,
+          error: `WordPress authentication failed (${res.status}). Check credentials in Connected Blogs for this blog.`,
         }, { status: 401 });
       }
       return NextResponse.json({ error: `WordPress error (${res.status}): ${text.slice(0, 200)}` }, { status: res.status });
@@ -113,7 +84,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "WordPress not connected." }, { status: 400 });
     }
 
-    const creds = getBlogCredentials(settings, blogId);
+    const creds = getBlogCredentials(settings as WordPressUserSettings, blogId);
     if (!creds) {
       return NextResponse.json({ error: "WordPress not connected." }, { status: 400 });
     }
