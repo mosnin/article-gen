@@ -1,21 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { createClient } from "@/lib/supabase-server";
+import { requireUser } from "@/lib/api-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { parseJsonBody } from "@/lib/validation";
+import { z } from "zod";
 
 export const maxDuration = 60;
 
 const MODEL = "gpt-4.1-mini";
 
+const MetadataSchema = z.object({
+  topic: z.string().min(1),
+  focusKeyword: z.string().optional(),
+  articleContext: z.string().min(1),
+  researchContext: z.string().min(1),
+});
+
 export async function POST(req: NextRequest) {
   try {
-    const { topic, focusKeyword, articleContext, researchContext } =
-      await req.json();
+    const supabase = await createClient();
+    const authResult = await requireUser(supabase);
+    if ("response" in authResult) return authResult.response;
 
-    if (!topic || !articleContext || !researchContext) {
-      return NextResponse.json(
-        { error: "Missing required fields from research phase" },
-        { status: 400 }
-      );
+    const limit = checkRateLimit(`generate:metadata:${authResult.user.id}`, { windowMs: 60_000, max: 20 });
+    if (!limit.allowed) {
+      return NextResponse.json({ error: "Too many requests. Please try again shortly." }, { status: 429 });
     }
+
+    const parsed = await parseJsonBody(req, MetadataSchema);
+    if (parsed instanceof NextResponse) return parsed;
+    const { topic, focusKeyword, articleContext, researchContext } = parsed;
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {

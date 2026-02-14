@@ -1,20 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
-import { getOrCreateProfile } from "@/lib/credits";
+import { requireAdmin } from "@/lib/api-auth";
 
 export async function GET() {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const profile = await getOrCreateProfile(supabase, user.id);
-    if (profile.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const adminResult = await requireAdmin(supabase);
+    if ("response" in adminResult) return adminResult.response;
 
     // Fetch all user profiles
     const { data: profiles, error } = await supabase

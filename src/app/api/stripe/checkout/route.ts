@@ -2,17 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { getStripe, PLANS, PlanKey } from "@/lib/stripe";
 import { getOrCreateProfile } from "@/lib/credits";
+import { getAppUrl } from "@/lib/app-url";
+import { requireUser } from "@/lib/api-auth";
+import { z } from "zod";
+import { parseJsonBody } from "@/lib/validation";
+
+const CheckoutSchema = z.object({
+  plan: z.enum(["free", "starter", "growth", "pro"]),
+});
 
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const authResult = await requireUser(supabase);
+    if ("response" in authResult) return authResult.response;
+    const { user } = authResult;
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { plan } = await req.json() as { plan: PlanKey };
+    const parsed = await parseJsonBody(req, CheckoutSchema);
+    if (parsed instanceof NextResponse) return parsed;
+    const { plan } = parsed as { plan: PlanKey };
 
     if (!plan || !PLANS[plan] || plan === "free") {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
@@ -40,14 +48,14 @@ export async function POST(req: NextRequest) {
         .eq("user_id", user.id);
     }
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const appUrl = getAppUrl();
 
     const session = await getStripe().checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
       line_items: [{ price: planConfig.priceId, quantity: 1 }],
-      success_url: `${origin}/app/billing?success=true`,
-      cancel_url: `${origin}/app/billing?canceled=true`,
+      success_url: `${appUrl}/app/billing?success=true`,
+      cancel_url: `${appUrl}/app/billing?canceled=true`,
       metadata: {
         supabase_user_id: user.id,
         plan,

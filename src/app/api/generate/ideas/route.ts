@@ -1,20 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { createClient } from "@/lib/supabase-server";
+import { requireUser } from "@/lib/api-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { parseJsonBody } from "@/lib/validation";
+import { z } from "zod";
 
 export const maxDuration = 60;
 
 const MODEL = "gpt-4.1-mini";
 
+const IdeasSchema = z.object({
+  niche: z.string().min(1, "Missing niche field"),
+  count: z.number().int().min(1).max(25).optional(),
+});
+
 export async function POST(req: NextRequest) {
   try {
-    const { niche, count } = await req.json();
+    const supabase = await createClient();
+    const authResult = await requireUser(supabase);
+    if ("response" in authResult) return authResult.response;
 
-    if (!niche) {
-      return NextResponse.json(
-        { error: "Missing niche field" },
-        { status: 400 }
-      );
+    const limit = checkRateLimit(`generate:ideas:${authResult.user.id}`, {
+      windowMs: 60_000,
+      max: 20,
+    });
+    if (!limit.allowed) {
+      return NextResponse.json({ error: "Too many requests. Please try again shortly." }, { status: 429 });
     }
+
+    const parsedBody = await parseJsonBody(req, IdeasSchema);
+    if (parsedBody instanceof NextResponse) return parsedBody;
+
+    const { niche, count } = parsedBody;
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {

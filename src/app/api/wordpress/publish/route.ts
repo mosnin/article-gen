@@ -2,15 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { downloadImage } from "@/lib/supabase-admin";
 import { marked } from "marked";
+import { getBlogCredentials, type WordPressUserSettings } from "@/lib/wordpress";
+import { requireUser } from "@/lib/api-auth";
+import { parseJsonBody } from "@/lib/validation";
+import { z } from "zod";
 
 export const maxDuration = 60;
-
-interface WpBlog {
-  id: string;
-  url: string;
-  username: string;
-  appPassword: string;
-}
 
 interface StoredImage {
   type: string;
@@ -20,35 +17,20 @@ interface StoredImage {
   success: boolean;
 }
 
-function getBlogCredentials(settings: Record<string, unknown>, blogId?: string): { wpUrl: string; auth: string } | null {
-  const blogs = settings.wp_blogs as WpBlog[] | null;
-
-  if (blogs && Array.isArray(blogs) && blogs.length > 0) {
-    const blog = blogId ? blogs.find((b) => b.id === blogId) : blogs[0];
-    if (blog?.url && blog?.username && blog?.appPassword) {
-      return {
-        wpUrl: blog.url.replace(/\/$/, ""),
-        auth: Buffer.from(`${blog.username}:${blog.appPassword}`).toString("base64"),
-      };
-    }
-  }
-
-  if (settings.wp_url && settings.wp_username && settings.wp_app_password) {
-    return {
-      wpUrl: (settings.wp_url as string).replace(/\/$/, ""),
-      auth: Buffer.from(`${settings.wp_username}:${settings.wp_app_password}`).toString("base64"),
-    };
-  }
-
-  return null;
-}
-
 interface ImageUploadResult {
   wpMediaId: number;
   wpUrl: string;
   altText: string;
   type: string;
 }
+
+const PublishSchema = z.object({
+  articleId: z.string().min(1, "Article ID is required"),
+  categoryIds: z.array(z.number()).optional(),
+  status: z.string().optional(),
+  includeImages: z.boolean().optional(),
+  blogId: z.string().optional(),
+});
 
 async function uploadImageToWP(
   wpUrl: string,
@@ -137,23 +119,13 @@ function injectImagesIntoHtml(
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const authResult = await requireUser(supabase);
+    if ("response" in authResult) return authResult.response;
+    const { user } = authResult;
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { articleId, categoryIds, status: postStatus, includeImages, blogId } = await req.json() as {
-      articleId: string;
-      categoryIds?: number[];
-      status?: string;
-      includeImages?: boolean;
-      blogId?: string;
-    };
-
-    if (!articleId) {
-      return NextResponse.json({ error: "Article ID is required" }, { status: 400 });
-    }
+    const parsed = await parseJsonBody(req, PublishSchema);
+    if (parsed instanceof NextResponse) return parsed;
+    const { articleId, categoryIds, status: postStatus, includeImages, blogId } = parsed;
 
     // Get WordPress credentials
     const { data: settings } = await supabase
@@ -163,7 +135,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (!settings) {
-      return NextResponse.json({ error: "No blogs connected. Add a blog in Settings." }, { status: 400 });
+      return NextResponse.json({ error: "No blogs connected. Add a blog in Connected Blogs." }, { status: 400 });
     }
 
     // Get the article with generated_images
@@ -179,9 +151,9 @@ export async function POST(req: NextRequest) {
     }
 
     const effectiveBlogId = blogId || article.wp_blog_id || undefined;
-    const creds = getBlogCredentials(settings, effectiveBlogId);
+    const creds = getBlogCredentials(settings as WordPressUserSettings, effectiveBlogId);
     if (!creds) {
-      return NextResponse.json({ error: "No blogs connected. Add a blog in Settings." }, { status: 400 });
+      return NextResponse.json({ error: "No blogs connected. Add a blog in Connected Blogs." }, { status: 400 });
     }
 
     const wpUrl = creds.wpUrl;
@@ -274,7 +246,7 @@ export async function POST(req: NextRequest) {
       const data = await res.json().catch(() => ({}));
       if (res.status === 401 || res.status === 403) {
         return NextResponse.json(
-          { error: `WordPress authentication failed (${res.status}). Check credentials in Settings for this blog.` },
+          { error: `WordPress authentication failed (${res.status}). Check credentials in Connected Blogs for this blog.` },
           { status: 401 }
         );
       }

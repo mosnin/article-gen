@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { getStripe } from "@/lib/stripe";
 import { getOrCreateProfile } from "@/lib/credits";
+import { getAppUrl } from "@/lib/app-url";
+import { requireUser } from "@/lib/api-auth";
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authResult = await requireUser(supabase);
+    if ("response" in authResult) return authResult.response;
+    const { user } = authResult;
 
     const profile = await getOrCreateProfile(supabase, user.id);
 
@@ -18,11 +18,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No billing account found" }, { status: 400 });
     }
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const appUrl = getAppUrl();
 
     const session = await getStripe().billingPortal.sessions.create({
       customer: profile.stripe_customer_id,
-      return_url: `${origin}/app/billing`,
+      return_url: `${appUrl}/app/billing`,
     });
 
     return NextResponse.json({ url: session.url });
