@@ -2,15 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { downloadImage } from "@/lib/supabase-admin";
 import { marked } from "marked";
+import { getBlogCredentials, type WordPressUserSettings } from "@/lib/wordpress";
 
 export const maxDuration = 60;
-
-interface WpBlog {
-  id: string;
-  url: string;
-  username: string;
-  appPassword: string;
-}
 
 interface StoredImage {
   type: string;
@@ -18,29 +12,6 @@ interface StoredImage {
   storagePath: string;
   publicUrl: string;
   success: boolean;
-}
-
-function getBlogCredentials(settings: Record<string, unknown>, blogId?: string): { wpUrl: string; auth: string } | null {
-  const blogs = settings.wp_blogs as WpBlog[] | null;
-
-  if (blogs && Array.isArray(blogs) && blogs.length > 0) {
-    const blog = blogId ? blogs.find((b) => b.id === blogId) : blogs[0];
-    if (blog?.url && blog?.username && blog?.appPassword) {
-      return {
-        wpUrl: blog.url.replace(/\/$/, ""),
-        auth: Buffer.from(`${blog.username}:${blog.appPassword}`).toString("base64"),
-      };
-    }
-  }
-
-  if (settings.wp_url && settings.wp_username && settings.wp_app_password) {
-    return {
-      wpUrl: (settings.wp_url as string).replace(/\/$/, ""),
-      auth: Buffer.from(`${settings.wp_username}:${settings.wp_app_password}`).toString("base64"),
-    };
-  }
-
-  return null;
 }
 
 interface ImageUploadResult {
@@ -179,7 +150,7 @@ export async function POST(req: NextRequest) {
     }
 
     const effectiveBlogId = blogId || article.wp_blog_id || undefined;
-    const creds = getBlogCredentials(settings, effectiveBlogId);
+    const creds = getBlogCredentials(settings as WordPressUserSettings, effectiveBlogId);
     if (!creds) {
       return NextResponse.json({ error: "No blogs connected. Add a blog in Connected Blogs." }, { status: 400 });
     }
