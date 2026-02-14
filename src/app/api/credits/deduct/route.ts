@@ -1,17 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { deductCredit } from "@/lib/credits";
+import { requireUser } from "@/lib/api-auth";
+import { parseJsonBody } from "@/lib/validation";
+import { z } from "zod";
+
+const DeductSchema = z.object({
+  articleId: z.string().optional(),
+  description: z.string().optional(),
+});
 
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const authResult = await requireUser(supabase);
+    if ("response" in authResult) return authResult.response;
+    const { user } = authResult;
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { articleId, description } = await req.json();
+    const parsed = await parseJsonBody(req, DeductSchema);
+    if (parsed instanceof NextResponse) return parsed;
+    const { articleId, description } = parsed;
 
     const result = await deductCredit(supabase, user.id, articleId, description);
 

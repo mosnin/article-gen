@@ -3,17 +3,24 @@ import { createClient } from "@/lib/supabase-server";
 import { getStripe, PLANS, PlanKey } from "@/lib/stripe";
 import { getOrCreateProfile } from "@/lib/credits";
 import { getAppUrl } from "@/lib/app-url";
+import { requireUser } from "@/lib/api-auth";
+import { z } from "zod";
+import { parseJsonBody } from "@/lib/validation";
+
+const CheckoutSchema = z.object({
+  plan: z.enum(["free", "starter", "growth", "pro"]),
+});
 
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const authResult = await requireUser(supabase);
+    if ("response" in authResult) return authResult.response;
+    const { user } = authResult;
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { plan } = await req.json() as { plan: PlanKey };
+    const parsed = await parseJsonBody(req, CheckoutSchema);
+    if (parsed instanceof NextResponse) return parsed;
+    const { plan } = parsed as { plan: PlanKey };
 
     if (!plan || !PLANS[plan] || plan === "free") {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });

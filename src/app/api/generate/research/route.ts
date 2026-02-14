@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
+import { requireUser } from "@/lib/api-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { checkCredits } from "@/lib/credits";
 
 export const maxDuration = 60;
@@ -10,10 +12,13 @@ const MODEL = "gpt-4.1-mini";
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const authResult = await requireUser(supabase);
+    if ("response" in authResult) return authResult.response;
+    const { user } = authResult;
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const limit = checkRateLimit(`generate:research:${authResult.user.id}`, { windowMs: 60_000, max: 12 });
+    if (!limit.allowed) {
+      return NextResponse.json({ error: "Too many requests. Please try again shortly." }, { status: 429 });
     }
 
     const creditCheck = await checkCredits(supabase, user.id);

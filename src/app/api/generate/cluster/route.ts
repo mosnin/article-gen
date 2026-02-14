@@ -1,20 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { createClient } from "@/lib/supabase-server";
+import { requireUser } from "@/lib/api-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { parseJsonBody } from "@/lib/validation";
+import { z } from "zod";
 
 export const maxDuration = 60;
 
 const MODEL = "gpt-4.1-mini";
 
+const ClusterSchema = z.object({
+  pillarTopic: z.string().min(1, "Missing pillar topic"),
+  pillarKeyword: z.string().optional(),
+  count: z.number().int().min(1).max(30).optional(),
+});
+
 export async function POST(req: NextRequest) {
   try {
-    const { pillarTopic, pillarKeyword, count } = await req.json();
+    const supabase = await createClient();
+    const authResult = await requireUser(supabase);
+    if ("response" in authResult) return authResult.response;
 
-    if (!pillarTopic) {
-      return NextResponse.json(
-        { error: "Missing pillar topic" },
-        { status: 400 }
-      );
+    const limit = checkRateLimit(`generate:cluster:${authResult.user.id}`, { windowMs: 60_000, max: 10 });
+    if (!limit.allowed) {
+      return NextResponse.json({ error: "Too many requests. Please try again shortly." }, { status: 429 });
     }
+
+    const parsedBody = await parseJsonBody(req, ClusterSchema);
+    if (parsedBody instanceof NextResponse) return parsedBody;
+    const { pillarTopic, pillarKeyword, count } = parsedBody;
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {

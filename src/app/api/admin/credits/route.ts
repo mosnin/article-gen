@@ -1,26 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
-import { getOrCreateProfile } from "@/lib/credits";
+import { requireAdmin } from "@/lib/api-auth";
+import { parseJsonBody } from "@/lib/validation";
+import { z } from "zod";
+
+const AdminCreditGrantSchema = z.object({
+  userId: z.string().min(1, "userId is required"),
+  amount: z.number().positive("amount must be greater than 0"),
+  description: z.string().optional(),
+});
 
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const adminResult = await requireAdmin(supabase);
+    if ("response" in adminResult) return adminResult.response;
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const adminProfile = await getOrCreateProfile(supabase, user.id);
-    if (adminProfile.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const { userId, amount, description } = await req.json();
-
-    if (!userId || typeof amount !== "number" || amount <= 0) {
-      return NextResponse.json({ error: "Invalid userId or amount" }, { status: 400 });
-    }
+    const parsed = await parseJsonBody(req, AdminCreditGrantSchema);
+    if (parsed instanceof NextResponse) return parsed;
+    const { userId, amount, description } = parsed;
 
     // Get target user's current credits
     const { data: targetProfile } = await supabase
@@ -49,6 +47,9 @@ export async function POST(req: NextRequest) {
       amount: amount,
       type: "admin_grant",
       description: description || `Admin granted ${amount} credits`,
+      performed_by: adminResult.user.id,
+      source: "admin_api",
+      request_id: req.headers.get("x-request-id") || null,
     });
 
     return NextResponse.json({ success: true, credits: newCredits });

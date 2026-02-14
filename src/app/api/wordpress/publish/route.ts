@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase-server";
 import { downloadImage } from "@/lib/supabase-admin";
 import { marked } from "marked";
 import { getBlogCredentials, type WordPressUserSettings } from "@/lib/wordpress";
+import { requireUser } from "@/lib/api-auth";
+import { parseJsonBody } from "@/lib/validation";
+import { z } from "zod";
 
 export const maxDuration = 60;
 
@@ -20,6 +23,14 @@ interface ImageUploadResult {
   altText: string;
   type: string;
 }
+
+const PublishSchema = z.object({
+  articleId: z.string().min(1, "Article ID is required"),
+  categoryIds: z.array(z.number()).optional(),
+  status: z.string().optional(),
+  includeImages: z.boolean().optional(),
+  blogId: z.string().optional(),
+});
 
 async function uploadImageToWP(
   wpUrl: string,
@@ -108,23 +119,13 @@ function injectImagesIntoHtml(
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const authResult = await requireUser(supabase);
+    if ("response" in authResult) return authResult.response;
+    const { user } = authResult;
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { articleId, categoryIds, status: postStatus, includeImages, blogId } = await req.json() as {
-      articleId: string;
-      categoryIds?: number[];
-      status?: string;
-      includeImages?: boolean;
-      blogId?: string;
-    };
-
-    if (!articleId) {
-      return NextResponse.json({ error: "Article ID is required" }, { status: 400 });
-    }
+    const parsed = await parseJsonBody(req, PublishSchema);
+    if (parsed instanceof NextResponse) return parsed;
+    const { articleId, categoryIds, status: postStatus, includeImages, blogId } = parsed;
 
     // Get WordPress credentials
     const { data: settings } = await supabase

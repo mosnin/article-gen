@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { getBlogCredentials, type WordPressUserSettings } from "@/lib/wordpress";
+import { requireUser } from "@/lib/api-auth";
+import { parseJsonBody } from "@/lib/validation";
+import { z } from "zod";
+
+const CreateCategorySchema = z.object({
+  name: z.string().min(1, "Category name is required"),
+  blogId: z.string().optional(),
+});
 
 
 export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const authResult = await requireUser(supabase);
+    if ("response" in authResult) return authResult.response;
+    const { user } = authResult;
 
     const blogId = req.nextUrl.searchParams.get("blogId") || undefined;
 
@@ -62,17 +68,13 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const authResult = await requireUser(supabase);
+    if ("response" in authResult) return authResult.response;
+    const { user } = authResult;
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { name, blogId } = await req.json();
-
-    if (!name || !name.trim()) {
-      return NextResponse.json({ error: "Category name is required" }, { status: 400 });
-    }
+    const parsed = await parseJsonBody(req, CreateCategorySchema);
+    if (parsed instanceof NextResponse) return parsed;
+    const { name, blogId } = parsed;
 
     const { data: settings } = await supabase
       .from("user_settings")

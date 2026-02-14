@@ -121,6 +121,9 @@ create table if not exists credit_transactions (
   type text not null check (type in ('usage', 'purchase', 'subscription_reset', 'admin_grant', 'refund')),
   description text,
   article_id uuid references articles(id) on delete set null,
+  performed_by uuid references auth.users(id) on delete set null,
+  source text,
+  request_id text,
   created_at timestamptz default now()
 );
 

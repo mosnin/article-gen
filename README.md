@@ -195,6 +195,8 @@ npm run start
 - Review generated content before publishing.
 - Validate WordPress application passwords and permissions per connected blog.
 - Keep RLS policies aligned with any schema changes.
+- Set `APP_URL` in production (required for Stripe redirect URL safety).
+- API endpoints now use centralized auth guards, schema validation, and basic per-user rate limits for generation routes.
 - Add observability (logging/alerts) around webhook failures and generation timeouts.
 
 ---
