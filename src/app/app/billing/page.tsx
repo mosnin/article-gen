@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import { Suspense } from "react";
+import AppShell from "@/components/app-shell";
 
 interface CreditInfo {
   credits: number;
@@ -119,64 +119,7 @@ function BillingContent() {
   }
 
   return (
-    <div style={{ background: "var(--background)", minHeight: "100vh" }}>
-      {/* Header */}
-      <header
-        style={{
-          borderBottom: "1px solid var(--card-border)",
-          background: "var(--background)",
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-        }}
-      >
-        <div style={{ maxWidth: 1000, margin: "0 auto", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div
-              style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}
-              onClick={() => router.push("/app")}
-            >
-              <Image src="/logo.png" alt="Article Sauce" width={28} height={28} />
-              <span style={{ fontWeight: 700, fontSize: 17 }}>Article Sauce</span>
-            </div>
-            <span style={{ color: "var(--muted)", fontSize: 13 }}>/</span>
-            <span style={{ fontWeight: 600, fontSize: 14 }}>Billing</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button
-              onClick={() => router.push("/app")}
-              style={{
-                padding: "6px 14px",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 500,
-                background: "var(--card)",
-                border: "1px solid var(--card-border)",
-                cursor: "pointer",
-              }}
-            >
-              Back to App
-            </button>
-            <button
-              onClick={handleLogout}
-              style={{
-                padding: "6px 14px",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 500,
-                background: "var(--accent)",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 24px" }}>
+    <AppShell title="Billing" onSignOut={handleLogout}>
         {successMessage && (
           <div style={{
             padding: "12px 20px",
@@ -197,11 +140,7 @@ function BillingContent() {
           <p style={{ color: "var(--muted)", fontSize: 14 }}>Manage your subscription and credits</p>
         </div>
 
-        <div style={{
-          display: "flex",
-          gap: 20,
-          marginBottom: 40,
-        }}>
+        <div className="mb-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           <div style={{
             flex: 1,
             background: "var(--card)",
@@ -260,7 +199,7 @@ function BillingContent() {
         {!creditInfo?.isAdmin && (
           <>
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20 }}>Plans</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 40 }}>
+            <div className="mb-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {PLANS.map((plan) => {
                 const isCurrent = creditInfo?.plan === plan.key;
                 return (
@@ -348,6 +287,8 @@ function BillingContent() {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  gap: 12,
+                  flexWrap: "wrap",
                   borderBottom: i < transactions.length - 1 ? "1px solid var(--card-border)" : "none",
                 }}
               >
@@ -368,8 +309,7 @@ function BillingContent() {
             ))}
           </div>
         )}
-      </main>
-    </div>
+    </AppShell>
   );
 }
 
