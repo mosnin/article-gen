@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { getStripe, PLANS, PlanKey } from "@/lib/stripe";
 import { getOrCreateProfile } from "@/lib/credits";
+import { getAppUrl } from "@/lib/app-url";
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,14 +41,14 @@ export async function POST(req: NextRequest) {
         .eq("user_id", user.id);
     }
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const appUrl = getAppUrl();
 
     const session = await getStripe().checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
       line_items: [{ price: planConfig.priceId, quantity: 1 }],
-      success_url: `${origin}/app/billing?success=true`,
-      cancel_url: `${origin}/app/billing?canceled=true`,
+      success_url: `${appUrl}/app/billing?success=true`,
+      cancel_url: `${appUrl}/app/billing?canceled=true`,
       metadata: {
         supabase_user_id: user.id,
         plan,

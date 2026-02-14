@@ -825,7 +825,7 @@ function LandingPage() {
         className="border-t px-6 py-8"
         style={{ borderColor: "var(--card-border)" }}
       >
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <Image
               src="/logo.png"
@@ -841,6 +841,14 @@ function LandingPage() {
           <span className="text-xs" style={{ color: "var(--muted)" }}>
             AI-Powered SEO Content
           </span>
+          <div className="flex items-center gap-4 text-xs">
+            <Link href="/terms" style={{ color: "var(--muted)" }}>
+              Terms of Service
+            </Link>
+            <Link href="/privacy" style={{ color: "var(--muted)" }}>
+              Privacy Policy
+            </Link>
+          </div>
         </div>
       </footer>
 
@@ -947,6 +955,18 @@ function LandingPage() {
                     authModal === "login" ? "Sign In" : "Create Account"
                   )}
                 </button>
+
+                <p className="px-1 text-center text-[11px] leading-4" style={{ color: "var(--muted)" }}>
+                  By continuing, you agree to our {" "}
+                  <Link href="/terms" className="underline" style={{ color: "var(--foreground)" }}>
+                    Terms of Service
+                  </Link>{" "}
+                  and {" "}
+                  <Link href="/privacy" className="underline" style={{ color: "var(--foreground)" }}>
+                    Privacy Policy
+                  </Link>
+                  .
+                </p>
               </form>
             </div>
 
