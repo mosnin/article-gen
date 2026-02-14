@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { marked } from "marked";
 import { createClient } from "@/lib/supabase-browser";
+import { isInScope } from "@/lib/scope";
 import type { User } from "@supabase/supabase-js";
 
 interface ImagePrompt {
@@ -547,11 +548,9 @@ export default function Home() {
     () => wpBlogs.find((blog) => blog.id === selectedBlogId) || null,
     [wpBlogs, selectedBlogId]
   );
-  const inGeneralMode = !selectedBlogId;
   const isInSelectedScope = useCallback(
-    (wpBlogId?: string | null) =>
-      inGeneralMode ? !wpBlogId : wpBlogId === selectedBlogId,
-    [inGeneralMode, selectedBlogId]
+    (wpBlogId?: string | null) => isInScope(selectedBlogId, wpBlogId),
+    [selectedBlogId]
   );
 
   const scopedSessions = useMemo(
@@ -1273,14 +1272,14 @@ export default function Home() {
 
     if (activeSessionId) {
       const nextActiveSession = sessions.find((session) =>
-        session.id === activeSessionId && (nextBlogId ? session.wpBlogId === nextBlogId : true)
+        session.id === activeSessionId && isInScope(nextBlogId, session.wpBlogId)
       );
       if (!nextActiveSession) setActiveSessionId(null);
     }
 
     if (activeClusterId) {
       const nextActiveCluster = clusters.find((cluster) =>
-        cluster.id === activeClusterId && (nextBlogId ? cluster.wpBlogId === nextBlogId : true)
+        cluster.id === activeClusterId && isInScope(nextBlogId, cluster.wpBlogId)
       );
       if (!nextActiveCluster) {
         setActiveClusterId(null);
