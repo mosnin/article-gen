@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { getStripe } from "@/lib/stripe";
 import { getOrCreateProfile } from "@/lib/credits";
+import { getAppUrl } from "@/lib/app-url";
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -18,11 +19,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No billing account found" }, { status: 400 });
     }
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const appUrl = getAppUrl();
 
     const session = await getStripe().billingPortal.sessions.create({
       customer: profile.stripe_customer_id,
-      return_url: `${origin}/app/billing`,
+      return_url: `${appUrl}/app/billing`,
     });
 
     return NextResponse.json({ url: session.url });
