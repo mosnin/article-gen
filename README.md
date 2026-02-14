@@ -134,9 +134,14 @@ STRIPE_WEBHOOK_SECRET=
 STRIPE_STARTER_PRICE_ID=
 STRIPE_GROWTH_PRICE_ID=
 STRIPE_PRO_PRICE_ID=
+
+APP_URL=
+# optional fallback for client references
+NEXT_PUBLIC_APP_URL=
 ```
 
 > `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required for both middleware and client auth flows.
+> `APP_URL` should be set to your canonical production URL (used for Stripe success/cancel/portal return URLs).
 
 ---
 
