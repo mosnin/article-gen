@@ -4,6 +4,8 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { HeroSection } from "@/components/ui/hero-4";
+import FeatureSection from "@/components/ui/feature-section";
 import { createClient } from "@/lib/supabase-browser";
 
 function useCountUp(end: number, duration: number, suffix = "", prefix = "") {
@@ -93,6 +95,24 @@ export default function LandingPageWrapper() {
 }
 
 function LandingPage() {
+  const avatarData = [
+    {
+      src: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
+      alt: "User 1",
+      fallback: "U1",
+    },
+    {
+      src: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80",
+      alt: "User 2",
+      fallback: "U2",
+    },
+    {
+      src: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&q=80",
+      alt: "User 3",
+      fallback: "U3",
+    },
+  ];
+
   const articles = useCountUp(4000, 2000);
   const words = useCountUp(16, 2000, "M+");
   const prompts = useCountUp(4, 1200);
@@ -237,82 +257,17 @@ function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="relative overflow-hidden px-6 pb-24 pt-32">
-        <div className="mx-auto max-w-4xl text-center">
-          <FadeIn>
-            <div
-              className="mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-medium"
-              style={{
-                borderColor: "var(--card-border)",
-                color: "var(--muted)",
-              }}
-            >
-              <span
-                className="inline-block h-1.5 w-1.5 rounded-full"
-                style={{ background: "var(--success)" }}
-              />
-              Powered by GPT-4.1
-            </div>
-          </FadeIn>
-
-          <FadeIn delay={0.1}>
-            <h1
-              className="mb-6 text-5xl font-bold leading-tight tracking-tight md:text-7xl"
-              style={{ letterSpacing: "-0.03em" }}
-            >
-              SEO articles that
-              <br />
-              <span
-                style={{
-                  background:
-                    "linear-gradient(135deg, #1d1d1f 0%, #86868b 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                }}
-              >
-                write themselves.
-              </span>
-            </h1>
-          </FadeIn>
-
-          <FadeIn delay={0.2}>
-            <p
-              className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed md:text-xl"
-              style={{ color: "var(--muted)" }}
-            >
-              Generate comprehensive, SEO-optimized articles with metadata,
-              image prompts, JSON-LD schema, and everything you need to publish.
-              One click. No templates. No filler.
-            </p>
-          </FadeIn>
-
-          <FadeIn delay={0.3}>
-            <div className="flex items-center justify-center gap-4">
-              <button
-                onClick={() => openAuth("signup")}
-                className="rounded-full px-8 py-3.5 text-base font-semibold text-white transition-all duration-200 hover:scale-105 active:scale-95"
-                style={{
-                  background: "var(--accent)",
-                  boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
-                }}
-              >
-                Start Generating
-              </button>
-              <a
-                href="#how-it-works"
-                className="rounded-full border px-8 py-3.5 text-base font-semibold transition-all duration-200 hover:scale-105 active:scale-95"
-                style={{
-                  borderColor: "var(--card-border)",
-                  color: "var(--foreground)",
-                }}
-              >
-                How It Works
-              </a>
-            </div>
-          </FadeIn>
-        </div>
-
-        {/* Gradient orb */}
+      <div className="relative overflow-hidden">
+        <HeroSection
+          title={<>SEO articles that</>}
+          animatedTexts={["write themselves.", "rank and convert.", "ship in one click."]}
+          subtitle="Generate comprehensive, SEO-optimized articles with metadata, image prompts, JSON-LD schema, and everything you need to publish. One click. No templates. No filler."
+          infoBadgeText="Powered by GPT-4.1"
+          ctaButtonText="Start Generating"
+          socialProofText="Trusted by 100,000+ marketers and founders"
+          avatars={avatarData}
+          ctaButtonProps={{ onClick: () => openAuth("signup") }}
+        />
         <div
           className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.03]"
           style={{
@@ -320,7 +275,10 @@ function LandingPage() {
               "radial-gradient(circle, #1d1d1f 0%, transparent 70%)",
           }}
         />
-      </section>
+      </div>
+
+
+      <FeatureSection />
 
       {/* Stats */}
       <section className="px-6 pb-24">
