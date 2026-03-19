@@ -61,43 +61,32 @@ export async function deductCredit(
   articleId?: string,
   description?: string
 ): Promise<{ success: boolean; credits: number }> {
+  // Admins have unlimited credits — bypass the DB function entirely.
   const profile = await getOrCreateProfile(supabase, userId);
-
   if (profile.role === "admin") {
     return { success: true, credits: -1 };
   }
 
-  if (profile.credits < 1) {
-    return { success: false, credits: 0 };
+  // Single round-trip atomic deduction via Postgres function.
+  // The function updates credits WHERE credits >= 1, so concurrent requests
+  // cannot both succeed — no optimistic-lock retry needed.
+  const { data, error } = await supabase
+    .rpc("deduct_credit_atomic", { p_user_id: userId })
+    .single<{ success: boolean; credits: number }>();
+
+  if (error || !data) {
+    return { success: false, credits: profile.credits };
   }
 
-  // Atomic decrement: only deducts if credits are still >= 1 at update time,
-  // preventing race conditions where concurrent requests both pass the check above.
-  const { data: updated, error: updateError } = await supabase
-    .from("user_profiles")
-    .update({ credits: profile.credits - 1, updated_at: new Date().toISOString() })
-    .eq("user_id", userId)
-    .eq("credits", profile.credits) // optimistic lock: fails if credits changed
-    .select("credits")
-    .single();
-
-  if (updateError || !updated) {
-    // Credits were modified concurrently — re-fetch and fail safely
-    const { data: refetched } = await supabase
-      .from("user_profiles")
-      .select("credits")
-      .eq("user_id", userId)
-      .single();
-    return { success: false, credits: refetched?.credits ?? 0 };
+  if (data.success) {
+    await supabase.from("credit_transactions").insert({
+      user_id: userId,
+      amount: -1,
+      type: "usage",
+      description: description || "Article generation",
+      article_id: articleId || null,
+    });
   }
 
-  await supabase.from("credit_transactions").insert({
-    user_id: userId,
-    amount: -1,
-    type: "usage",
-    description: description || "Article generation",
-    article_id: articleId || null,
-  });
-
-  return { success: true, credits: updated.credits };
+  return { success: data.success, credits: data.credits };
 }

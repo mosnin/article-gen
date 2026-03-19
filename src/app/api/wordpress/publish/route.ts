@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { downloadImage } from "@/lib/supabase-admin";
 import { marked } from "marked";
+import { decryptCredential } from "@/lib/wp-crypto";
 
 export const maxDuration = 60;
 
@@ -28,7 +29,7 @@ function getBlogCredentials(settings: Record<string, unknown>, blogId?: string):
     if (blog?.url && blog?.username && blog?.appPassword) {
       return {
         wpUrl: blog.url.replace(/\/$/, ""),
-        auth: Buffer.from(`${blog.username}:${blog.appPassword}`).toString("base64"),
+        auth: Buffer.from(`${blog.username}:${decryptCredential(blog.appPassword)}`).toString("base64"),
       };
     }
   }
@@ -36,7 +37,7 @@ function getBlogCredentials(settings: Record<string, unknown>, blogId?: string):
   if (settings.wp_url && settings.wp_username && settings.wp_app_password) {
     return {
       wpUrl: (settings.wp_url as string).replace(/\/$/, ""),
-      auth: Buffer.from(`${settings.wp_username}:${settings.wp_app_password}`).toString("base64"),
+      auth: Buffer.from(`${settings.wp_username}:${decryptCredential(settings.wp_app_password as string)}`).toString("base64"),
     };
   }
 

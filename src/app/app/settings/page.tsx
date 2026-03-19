@@ -36,11 +36,9 @@ export default function SettingsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.replace("/?auth=login"); return; }
 
-    const { data: settings } = await supabase
-      .from("user_settings")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
+    const res = await fetch("/api/settings");
+    if (!res.ok) { setLoading(false); return; }
+    const { settings } = await res.json();
 
     if (settings) {
       setDomain(settings.domain || "");
@@ -73,62 +71,25 @@ export default function SettingsPage() {
     setSaveMessage("");
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setSaveMessage("Failed to save: not logged in");
-        setSaving(false);
-        return;
-      }
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          domain,
+          site_name: siteName,
+          site_about: siteAbout,
+          wp_blogs: blogs.filter((b) => b.url.trim()),
+        }),
+      });
 
-      // Also update legacy fields with first blog for backwards compat
-      const firstBlog = blogs.find((b) => b.url && b.username && b.appPassword);
-      const firstBlogWithAuthor = blogs.find((b) => b.authorName?.trim());
-
-      const settingsPayload = {
-        domain,
-        site_name: siteName,
-        site_about: siteAbout,
-        author_name: firstBlogWithAuthor?.authorName || "",
-        author_about: firstBlogWithAuthor?.authorAbout || "",
-        wp_blogs: blogs.filter((b) => b.url.trim()),
-        wp_url: firstBlog?.url || "",
-        wp_username: firstBlog?.username || "",
-        wp_app_password: firstBlog?.appPassword || "",
-        updated_at: new Date().toISOString(),
-      };
-
-      // Check if row exists first, then insert or update
-      const { data: existing } = await supabase
-        .from("user_settings")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
-      let error;
-      if (existing) {
-        // Update existing row
-        const result = await supabase
-          .from("user_settings")
-          .update(settingsPayload)
-          .eq("user_id", user.id);
-        error = result.error;
-      } else {
-        // Insert new row
-        const result = await supabase
-          .from("user_settings")
-          .insert({ user_id: user.id, ...settingsPayload });
-        error = result.error;
-      }
-
-      if (error) {
-        console.error("Settings save error:", error);
-        setSaveMessage(`Failed to save: ${error.message}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSaveMessage(`Failed to save: ${data.error || res.status}`);
       } else {
         setSaveMessage("Settings saved");
         setTimeout(() => setSaveMessage(""), 2500);
       }
     } catch (err) {
-      console.error("Settings save exception:", err);
       setSaveMessage(`Failed to save: ${err instanceof Error ? err.message : "unexpected error"}`);
     } finally {
       setSaving(false);
