@@ -33,6 +33,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (typeof topic !== "string" || topic.trim().length === 0) {
+      return NextResponse.json({ error: "Topic must be a non-empty string" }, { status: 400 });
+    }
+
+    if (topic.length > 300) {
+      return NextResponse.json({ error: "Topic must be 300 characters or fewer" }, { status: 400 });
+    }
+
+    if (focusKeyword && (typeof focusKeyword !== "string" || focusKeyword.length > 150)) {
+      return NextResponse.json({ error: "Focus keyword must be 150 characters or fewer" }, { status: 400 });
+    }
+
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(

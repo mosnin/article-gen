@@ -71,15 +71,24 @@ export async function deductCredit(
     return { success: false, credits: 0 };
   }
 
-  const newCredits = profile.credits - 1;
-
-  const { error: updateError } = await supabase
+  // Atomic decrement: only deducts if credits are still >= 1 at update time,
+  // preventing race conditions where concurrent requests both pass the check above.
+  const { data: updated, error: updateError } = await supabase
     .from("user_profiles")
-    .update({ credits: newCredits, updated_at: new Date().toISOString() })
-    .eq("user_id", userId);
+    .update({ credits: profile.credits - 1, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("credits", profile.credits) // optimistic lock: fails if credits changed
+    .select("credits")
+    .single();
 
-  if (updateError) {
-    return { success: false, credits: profile.credits };
+  if (updateError || !updated) {
+    // Credits were modified concurrently — re-fetch and fail safely
+    const { data: refetched } = await supabase
+      .from("user_profiles")
+      .select("credits")
+      .eq("user_id", userId)
+      .single();
+    return { success: false, credits: refetched?.credits ?? 0 };
   }
 
   await supabase.from("credit_transactions").insert({
@@ -90,5 +99,5 @@ export async function deductCredit(
     article_id: articleId || null,
   });
 
-  return { success: true, credits: newCredits };
+  return { success: true, credits: updated.credits };
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { createClient } from "@/lib/supabase-server";
 
 export const maxDuration = 60;
 
@@ -7,6 +8,13 @@ const MODEL = "gpt-4.1-mini";
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { niche, count } = await req.json();
 
     if (!niche) {
@@ -14,6 +22,14 @@ export async function POST(req: NextRequest) {
         { error: "Missing niche field" },
         { status: 400 }
       );
+    }
+
+    if (typeof niche !== "string" || niche.trim().length === 0) {
+      return NextResponse.json({ error: "Niche must be a non-empty string" }, { status: 400 });
+    }
+
+    if (niche.length > 200) {
+      return NextResponse.json({ error: "Niche must be 200 characters or fewer" }, { status: 400 });
     }
 
     const apiKey = process.env.OPENAI_API_KEY;

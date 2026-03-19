@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { createClient } from "@/lib/supabase-server";
 
 export const maxDuration = 60;
 
@@ -7,6 +8,13 @@ const MODEL = "gpt-4.1-mini";
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { topic, focusKeyword, articleContext, researchContext } =
       await req.json();
 

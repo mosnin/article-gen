@@ -41,6 +41,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (typeof topic !== "string" || topic.length > 300) {
+      return NextResponse.json({ error: "Topic must be 300 characters or fewer" }, { status: 400 });
+    }
+
+    if (typeof title !== "string" || title.length > 200) {
+      return NextResponse.json({ error: "Title must be 200 characters or fewer" }, { status: 400 });
+    }
+
+    if (!Array.isArray(allKeywords) || allKeywords.length > 20) {
+      return NextResponse.json({ error: "Keywords must be an array of 20 items or fewer" }, { status: 400 });
+    }
+
+    const targetWordCountNum = typeof targetWordCount === "number" ? targetWordCount : parseInt(targetWordCount, 10);
+    if (isNaN(targetWordCountNum) || targetWordCountNum < 500 || targetWordCountNum > 8000) {
+      return NextResponse.json({ error: "Target word count must be between 500 and 8000" }, { status: 400 });
+    }
+
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
