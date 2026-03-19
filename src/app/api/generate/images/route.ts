@@ -2,18 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
 import { uploadImage, getPublicUrl } from "@/lib/supabase-admin";
+import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const slotAcquired = await acquireGenerationSlot(supabase, user.id);
+  if (!slotAcquired) {
+    return NextResponse.json(
+      { error: "Too many concurrent generations (max 5). Please wait for a generation to complete." },
+      { status: 429 }
+    );
+  }
+
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { prompt, type, altText, articleId, imageIndex } = await req.json() as {
       prompt: string;
       type: string;
@@ -76,5 +85,7 @@ export async function POST(req: NextRequest) {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });
+  } finally {
+    await releaseGenerationSlot(supabase, user.id);
   }
 }
