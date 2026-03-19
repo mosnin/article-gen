@@ -1,20 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
+import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
 const MODEL = "gpt-4.1-mini";
 
 export async function POST(req: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const slotAcquired = await acquireGenerationSlot(supabase, user.id);
+  if (!slotAcquired) {
+    return NextResponse.json(
+      { error: "Too many concurrent generations (max 5). Please wait for a generation to complete." },
+      { status: 429 }
+    );
+  }
+
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { niche, count } = await req.json();
 
     if (!niche) {
@@ -87,5 +96,7 @@ Generate exactly ${articleCount} ideas.`,
     const message =
       error instanceof Error ? error.message : "An unexpected error occurred";
     return NextResponse.json({ error: message }, { status: 500 });
+  } finally {
+    await releaseGenerationSlot(supabase, user.id);
   }
 }

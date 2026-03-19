@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
-import { encryptCredential, decryptCredential } from "@/lib/wp-crypto";
+import { encryptCredential, decryptCredential, isEncrypted } from "@/lib/wp-crypto";
+import type {
+  ShopifyAccount,
+  MediumAccount,
+  GhostBlog,
+  DevToAccount,
+} from "@/lib/publish-platforms";
 
 interface WpBlog {
   id: string;
@@ -12,28 +18,103 @@ interface WpBlog {
   authorAbout?: string;
 }
 
+// ── WordPress ──────────────────────────────────────────────────────────────
+
 function encryptBlogPasswords(blogs: WpBlog[]): WpBlog[] {
-  return blogs.map((blog) => ({
-    ...blog,
-    appPassword: blog.appPassword ? encryptCredential(blog.appPassword) : "",
+  return blogs.map((b) => ({
+    ...b,
+    appPassword: b.appPassword && !isEncrypted(b.appPassword)
+      ? encryptCredential(b.appPassword)
+      : b.appPassword ?? "",
   }));
 }
 
 function decryptBlogPasswords(blogs: WpBlog[]): WpBlog[] {
-  return blogs.map((blog) => ({
-    ...blog,
-    appPassword: blog.appPassword ? decryptCredential(blog.appPassword) : "",
+  return blogs.map((b) => ({
+    ...b,
+    appPassword: b.appPassword ? decryptCredential(b.appPassword) : "",
   }));
 }
 
-/** GET /api/settings — returns user settings with decrypted passwords */
+// ── Shopify ────────────────────────────────────────────────────────────────
+
+function encryptShopifyAccounts(accounts: ShopifyAccount[]): ShopifyAccount[] {
+  return accounts.map((a) => ({
+    ...a,
+    accessToken: a.accessToken && !isEncrypted(a.accessToken)
+      ? encryptCredential(a.accessToken)
+      : a.accessToken ?? "",
+  }));
+}
+
+function decryptShopifyAccounts(accounts: ShopifyAccount[]): ShopifyAccount[] {
+  return accounts.map((a) => ({
+    ...a,
+    accessToken: a.accessToken ? decryptCredential(a.accessToken) : "",
+  }));
+}
+
+// ── Medium ─────────────────────────────────────────────────────────────────
+
+function encryptMediumAccounts(accounts: MediumAccount[]): MediumAccount[] {
+  return accounts.map((a) => ({
+    ...a,
+    integrationToken: a.integrationToken && !isEncrypted(a.integrationToken)
+      ? encryptCredential(a.integrationToken)
+      : a.integrationToken ?? "",
+  }));
+}
+
+function decryptMediumAccounts(accounts: MediumAccount[]): MediumAccount[] {
+  return accounts.map((a) => ({
+    ...a,
+    integrationToken: a.integrationToken ? decryptCredential(a.integrationToken) : "",
+  }));
+}
+
+// ── Ghost ──────────────────────────────────────────────────────────────────
+
+function encryptGhostBlogs(blogs: GhostBlog[]): GhostBlog[] {
+  return blogs.map((b) => ({
+    ...b,
+    adminApiKey: b.adminApiKey && !isEncrypted(b.adminApiKey)
+      ? encryptCredential(b.adminApiKey)
+      : b.adminApiKey ?? "",
+  }));
+}
+
+function decryptGhostBlogs(blogs: GhostBlog[]): GhostBlog[] {
+  return blogs.map((b) => ({
+    ...b,
+    adminApiKey: b.adminApiKey ? decryptCredential(b.adminApiKey) : "",
+  }));
+}
+
+// ── Dev.to ─────────────────────────────────────────────────────────────────
+
+function encryptDevToAccounts(accounts: DevToAccount[]): DevToAccount[] {
+  return accounts.map((a) => ({
+    ...a,
+    apiKey: a.apiKey && !isEncrypted(a.apiKey)
+      ? encryptCredential(a.apiKey)
+      : a.apiKey ?? "",
+  }));
+}
+
+function decryptDevToAccounts(accounts: DevToAccount[]): DevToAccount[] {
+  return accounts.map((a) => ({
+    ...a,
+    apiKey: a.apiKey ? decryptCredential(a.apiKey) : "",
+  }));
+}
+
+// ── GET ────────────────────────────────────────────────────────────────────
+
 export async function GET() {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { data: settings, error } = await supabase
       .from("user_settings")
@@ -44,25 +125,34 @@ export async function GET() {
     if (error && error.code !== "PGRST116") {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-
-    if (!settings) {
-      return NextResponse.json({ settings: null });
-    }
-
-    // Decrypt blog passwords before sending to the client
-    const blogs = settings.wp_blogs as WpBlog[] | null;
-    const decryptedBlogs = blogs && Array.isArray(blogs)
-      ? decryptBlogPasswords(blogs)
-      : [];
+    if (!settings) return NextResponse.json({ settings: null });
 
     return NextResponse.json({
       settings: {
         ...settings,
-        wp_blogs: decryptedBlogs,
-        // Also decrypt legacy single-blog fields
+        // WordPress
+        wp_blogs: Array.isArray(settings.wp_blogs)
+          ? decryptBlogPasswords(settings.wp_blogs as WpBlog[])
+          : [],
         wp_app_password: settings.wp_app_password
           ? decryptCredential(settings.wp_app_password as string)
           : "",
+        // Shopify
+        shopify_accounts: Array.isArray(settings.shopify_accounts)
+          ? decryptShopifyAccounts(settings.shopify_accounts as ShopifyAccount[])
+          : [],
+        // Medium
+        medium_accounts: Array.isArray(settings.medium_accounts)
+          ? decryptMediumAccounts(settings.medium_accounts as MediumAccount[])
+          : [],
+        // Ghost
+        ghost_blogs: Array.isArray(settings.ghost_blogs)
+          ? decryptGhostBlogs(settings.ghost_blogs as GhostBlog[])
+          : [],
+        // Dev.to
+        devto_accounts: Array.isArray(settings.devto_accounts)
+          ? decryptDevToAccounts(settings.devto_accounts as DevToAccount[])
+          : [],
       },
     });
   } catch (error: unknown) {
@@ -71,23 +161,33 @@ export async function GET() {
   }
 }
 
-/** POST /api/settings — encrypts passwords before saving */
+// ── POST ───────────────────────────────────────────────────────────────────
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const blogs = (body.wp_blogs as WpBlog[] | undefined) ?? [];
 
-    // Encrypt app passwords before storing
-    const encryptedBlogs = encryptBlogPasswords(
-      blogs.filter((b: WpBlog) => b.url?.trim())
+    const wpBlogs = encryptBlogPasswords(
+      ((body.wp_blogs as WpBlog[]) ?? []).filter((b) => b.url?.trim())
     );
-    const firstBlog = encryptedBlogs[0] as WpBlog | undefined;
+    const firstBlog = wpBlogs[0] as WpBlog | undefined;
+
+    const shopifyAccounts = encryptShopifyAccounts(
+      ((body.shopify_accounts as ShopifyAccount[]) ?? []).filter((a) => a.shopDomain?.trim())
+    );
+    const mediumAccounts = encryptMediumAccounts(
+      ((body.medium_accounts as MediumAccount[]) ?? []).filter((a) => a.integrationToken?.trim())
+    );
+    const ghostBlogs = encryptGhostBlogs(
+      ((body.ghost_blogs as GhostBlog[]) ?? []).filter((b) => b.url?.trim())
+    );
+    const devtoAccounts = encryptDevToAccounts(
+      ((body.devto_accounts as DevToAccount[]) ?? []).filter((a) => a.apiKey?.trim())
+    );
 
     const payload = {
       domain: body.domain ?? "",
@@ -95,11 +195,16 @@ export async function POST(req: NextRequest) {
       site_about: body.site_about ?? "",
       author_name: body.author_name ?? "",
       author_about: body.author_about ?? "",
-      wp_blogs: encryptedBlogs,
-      // Keep legacy fields in sync (encrypted)
+      // WordPress
+      wp_blogs: wpBlogs,
       wp_url: firstBlog?.url ?? "",
       wp_username: firstBlog?.username ?? "",
       wp_app_password: firstBlog?.appPassword ?? "",
+      // Other platforms
+      shopify_accounts: shopifyAccounts,
+      medium_accounts: mediumAccounts,
+      ghost_blogs: ghostBlogs,
+      devto_accounts: devtoAccounts,
       updated_at: new Date().toISOString(),
     };
 
@@ -113,9 +218,7 @@ export async function POST(req: NextRequest) {
       ? await supabase.from("user_settings").update(payload).eq("user_id", user.id)
       : await supabase.from("user_settings").insert({ user_id: user.id, ...payload });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
