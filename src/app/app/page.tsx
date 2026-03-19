@@ -3639,6 +3639,8 @@ export default function Home() {
                 onSelectArticle={setClusterActiveArticleId}
                 resultView={resultView}
                 onResultViewChange={setResultView}
+                onPublish={(articleId) => router.push(`/app/publish/${articleId}`)}
+                hasAnyPlatform={wpBlogs.length > 0 || otherPlatformCount > 0}
               />
             )}
 

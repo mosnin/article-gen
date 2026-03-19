@@ -69,6 +69,7 @@ export default function PublishPage() {
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
   const [publishResult, setPublishResult] = useState<{ postUrl: string; editUrl: string; platform: string; imagesUploaded?: number; imageErrors?: string[] } | null>(null);
+  const [publishLogs, setPublishLogs] = useState<Array<{ id: string; platform: string; account_name: string | null; post_url: string | null; published_at: string }>>([]);
 
   // Platform selection
   const [activePlatform, setActivePlatform] = useState<Platform>("wordpress");
@@ -123,6 +124,13 @@ export default function PublishPage() {
     setArticle(art as Article);
     const html = await marked(art.article_markdown || "");
     setPreviewHtml(html);
+
+    // Load publish history
+    const logsRes = await fetch(`/api/publish-logs?articleId=${articleId}`);
+    if (logsRes.ok) {
+      const { logs } = await logsRes.json();
+      setPublishLogs(logs ?? []);
+    }
 
     // Load all platform settings
     const res = await fetch("/api/settings");
@@ -260,6 +268,9 @@ export default function PublishPage() {
       if (data.success) {
         setPublishResult({ postUrl: data.postUrl, editUrl: data.editUrl, platform: activePlatform, imagesUploaded: data.imagesUploaded, imageErrors: data.imageErrors });
         setArticle((prev) => prev ? { ...prev, posted: true } : prev);
+        // Refresh publish history
+        const logsRes = await fetch(`/api/publish-logs?articleId=${articleId}`);
+        if (logsRes.ok) { const { logs } = await logsRes.json(); setPublishLogs(logs ?? []); }
       } else {
         setError(data.error || "Failed to publish");
       }
@@ -596,6 +607,32 @@ export default function PublishPage() {
                       style={{ width: "100%", padding: 12, borderRadius: 10, fontSize: 14, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: publishing ? 0.6 : 1 }}>
                       {publishing ? "Publishing..." : `Publish to ${platformLabel[activePlatform]}`}
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Publish History */}
+              {publishLogs.length > 0 && (
+                <div style={{ marginTop: 24, background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--card-border)" }}>
+                    <h3 style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Publish History</h3>
+                  </div>
+                  <div style={{ padding: "8px 0" }}>
+                    {publishLogs.map((log) => (
+                      <div key={log.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px", gap: 12 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, textTransform: "capitalize" }}>{log.platform}</div>
+                          {log.account_name && <div style={{ fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{log.account_name}</div>}
+                          <div style={{ fontSize: 11, color: "var(--muted)" }}>{new Date(log.published_at).toLocaleDateString()}</div>
+                        </div>
+                        {log.post_url && (
+                          <a href={log.post_url} target="_blank" rel="noopener noreferrer"
+                            style={{ fontSize: 12, color: "var(--accent)", whiteSpace: "nowrap", textDecoration: "none", fontWeight: 500 }}>
+                            View →
+                          </a>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

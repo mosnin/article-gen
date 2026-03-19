@@ -18,6 +18,8 @@ interface ClusterViewProps {
   onSelectArticle: (id: string | null) => void;
   resultView: "data" | "preview";
   onResultViewChange: (view: "data" | "preview") => void;
+  onPublish?: (articleId: string) => void;
+  hasAnyPlatform?: boolean;
 }
 
 export function ClusterView({
@@ -26,6 +28,8 @@ export function ClusterView({
   onSelectArticle,
   resultView,
   onResultViewChange,
+  onPublish,
+  hasAnyPlatform,
 }: ClusterViewProps) {
   const activeClusterArticle: ArticleSession | null = clusterActiveArticleId
     ? clusterActiveArticleId === "pillar"
@@ -69,25 +73,45 @@ export function ClusterView({
         <div className="space-y-4">
           {/* Pillar card */}
           <div
-            className="cursor-pointer rounded-xl border p-4 transition-colors"
+            className="rounded-xl border p-4 transition-colors"
             style={{ borderColor: "var(--accent)", background: "rgba(0, 122, 255, 0.04)" }}
-            onClick={() => {
-              if (activeCluster.pillarSession) onSelectArticle("pillar");
-            }}
           >
-            <div className="mb-2 flex items-center gap-2">
-              <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white" style={{ background: "var(--accent)" }}>
-                Pillar
-              </span>
-              {activeCluster.pillarSession?.loading && (
-                <svg className="progress-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
-              )}
-              {activeCluster.pillarSession?.result && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-              )}
-              {activeCluster.pillarSession?.error && (
-                <span className="text-xs" style={{ color: "var(--error)" }}>Failed</span>
-              )}
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white" style={{ background: "var(--accent)" }}>
+                  Pillar
+                </span>
+                {activeCluster.pillarSession?.loading && (
+                  <svg className="progress-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                )}
+                {activeCluster.pillarSession?.result && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                )}
+                {activeCluster.pillarSession?.error && (
+                  <span className="text-xs" style={{ color: "var(--error)" }}>Failed</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {hasAnyPlatform && onPublish && activeCluster.pillarSession?.result && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onPublish(activeCluster.pillarSession!.id); }}
+                    className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-white transition-opacity hover:opacity-80"
+                    style={{ background: "var(--accent)" }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 2L11 13" /><path d="M22 2L15 22l-4-9-9-4 19-7z" />
+                    </svg>
+                    Publish
+                  </button>
+                )}
+                <button
+                  onClick={() => { if (activeCluster.pillarSession) onSelectArticle("pillar"); }}
+                  className="text-xs font-medium"
+                  style={{ color: "var(--accent)" }}
+                >
+                  View →
+                </button>
+              </div>
             </div>
             <h3 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>
               {activeCluster.pillarSession?.result?.title || activeCluster.pillarTopic}
@@ -121,32 +145,54 @@ export function ClusterView({
               {activeCluster.clusterArticles.map((article, i) => (
                 <div
                   key={article.id}
-                  className="cursor-pointer rounded-xl border p-3 transition-all hover:shadow-sm"
+                  className="rounded-xl border p-3 transition-all hover:shadow-sm"
                   style={{
                     borderColor: article.session?.loading ? "var(--accent)" : "var(--card-border)",
                     background: article.session?.loading ? "rgba(0, 122, 255, 0.03)" : "var(--card)",
                     opacity: article.session?.queued && !article.session?.loading ? 0.6 : 1,
                   }}
-                  onClick={() => {
-                    if (article.session?.result || article.session?.error) onSelectArticle(article.id);
-                  }}
                 >
-                  <div className="mb-1 flex items-center gap-2">
-                    <span className="text-[10px] font-bold tabular-nums" style={{ color: "var(--muted)" }}>
-                      #{i + 1}
-                    </span>
-                    {article.session?.loading && (
-                      <svg className="progress-spinner" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
-                    )}
-                    {article.session?.result && (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                    )}
-                    {article.session?.error && (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--error)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                    )}
-                    {article.session?.queued && (
-                      <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--card-border)" }} />
-                    )}
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold tabular-nums" style={{ color: "var(--muted)" }}>
+                        #{i + 1}
+                      </span>
+                      {article.session?.loading && (
+                        <svg className="progress-spinner" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                      )}
+                      {article.session?.result && (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      )}
+                      {article.session?.error && (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--error)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      )}
+                      {article.session?.queued && (
+                        <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--card-border)" }} />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {hasAnyPlatform && onPublish && article.session?.result && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onPublish(article.session!.id); }}
+                          className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium text-white transition-opacity hover:opacity-80"
+                          style={{ background: "var(--accent)" }}
+                        >
+                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M22 2L11 13" /><path d="M22 2L15 22l-4-9-9-4 19-7z" />
+                          </svg>
+                          Pub
+                        </button>
+                      )}
+                      {(article.session?.result || article.session?.error) && (
+                        <button
+                          onClick={() => onSelectArticle(article.id)}
+                          className="text-[10px] font-medium"
+                          style={{ color: "var(--accent)" }}
+                        >
+                          View →
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <h4 className="truncate text-sm font-medium" style={{ color: "var(--foreground)" }}>
                     {article.session?.result?.title || article.concept}
@@ -235,6 +281,18 @@ export function ClusterView({
                 <h2 className="text-2xl font-bold tracking-tight" style={{ color: "var(--foreground)" }}>
                   {activeClusterArticle.result.title}
                 </h2>
+                {hasAnyPlatform && onPublish && (
+                  <button
+                    onClick={() => onPublish(activeClusterArticle.id)}
+                    className="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                    style={{ background: "var(--accent)" }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 2L11 13" /><path d="M22 2L15 22l-4-9-9-4 19-7z" />
+                    </svg>
+                    Publish
+                  </button>
+                )}
               </div>
               <div className="flex gap-2">
                 <button

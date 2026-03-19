@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase-server";
 import { downloadImage } from "@/lib/supabase-admin";
 import { marked } from "marked";
 import { decryptCredential } from "@/lib/wp-crypto";
+import { logPublishEvent } from "@/lib/publish-log";
 
 export const maxDuration = 60;
 
@@ -292,6 +293,16 @@ export async function POST(req: NextRequest) {
       .from("articles")
       .update({ posted: true, updated_at: new Date().toISOString() })
       .eq("id", articleId);
+
+    await logPublishEvent(supabase, {
+      userId: user.id,
+      articleId,
+      platform: "wordpress",
+      accountName: wpUrl,
+      postId: String(post.id),
+      postUrl: post.link,
+      editUrl: `${wpUrl}/wp-admin/post.php?post=${post.id}&action=edit`,
+    });
 
     return NextResponse.json({
       success: true,

@@ -4,6 +4,7 @@ import { decryptCredential } from "@/lib/wp-crypto";
 import { createGhostJwt } from "@/lib/publish-platforms";
 import type { GhostBlog } from "@/lib/publish-platforms";
 import { marked } from "marked";
+import { logPublishEvent } from "@/lib/publish-log";
 
 export const maxDuration = 60;
 
@@ -124,17 +125,24 @@ export async function POST(req: NextRequest) {
     const result = await res.json();
     const post = result.posts?.[0];
 
+    const editUrl = `${ghostUrl}/ghost/#/editor/post/${post.id}`;
+
     await supabase
       .from("articles")
       .update({ posted: true, published_platform: "ghost", updated_at: new Date().toISOString() })
       .eq("id", articleId);
 
-    return NextResponse.json({
-      success: true,
+    await logPublishEvent(supabase, {
+      userId: user.id,
+      articleId,
+      platform: "ghost",
+      accountName: blog.name || blog.url,
       postId: post.id,
       postUrl: post.url,
-      editUrl: `${ghostUrl}/ghost/#/editor/post/${post.id}`,
+      editUrl,
     });
+
+    return NextResponse.json({ success: true, postId: post.id, postUrl: post.url, editUrl });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });

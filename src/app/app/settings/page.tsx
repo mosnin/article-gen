@@ -99,6 +99,10 @@ export default function SettingsPage() {
   // Dev.to
   const [devtoAccounts, setDevtoAccounts] = useState<DevToAccount[]>([]);
 
+  // Platform connection tests (shared across all non-WP platforms)
+  const [testingPlatformId, setTestingPlatformId] = useState<string | null>(null);
+  const [platformTestResults, setPlatformTestResults] = useState<Record<string, { ok: boolean; message: string }>>({});
+
   // Site settings
   const [domain, setDomain] = useState("");
   const [siteName, setSiteName] = useState("");
@@ -235,6 +239,20 @@ export default function SettingsPage() {
   const updateDevTo = (id: string, field: keyof DevToAccount, value: string) =>
     setDevtoAccounts((prev) => prev.map((a) => a.id === id ? { ...a, [field]: value } : a));
 
+  const testPlatformConnection = async (id: string, endpoint: string, body: Record<string, string>) => {
+    setTestingPlatformId(id);
+    setPlatformTestResults((prev) => ({ ...prev, [id]: { ok: false, message: "Testing..." } }));
+    try {
+      const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await res.json();
+      setPlatformTestResults((prev) => ({ ...prev, [id]: { ok: data.ok === true, message: data.message || (data.ok ? "Connected" : "Failed") } }));
+    } catch {
+      setPlatformTestResults((prev) => ({ ...prev, [id]: { ok: false, message: "Network error" } }));
+    } finally {
+      setTestingPlatformId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", background: "var(--background)" }}>
@@ -344,7 +362,18 @@ export default function SettingsPage() {
                     <div><label style={labelStyle}>Shop Domain</label><input type="text" value={account.shopDomain} onChange={(e) => updateShopify(account.id, "shopDomain", e.target.value)} placeholder="mystore.myshopify.com" style={inputStyle} /></div>
                   </div>
                   <div><label style={labelStyle}>Access Token</label><PasswordInput value={account.accessToken} onChange={(v) => updateShopify(account.id, "accessToken", v)} placeholder="shpat_..." /></div>
-                  <p style={{ fontSize: 11, color: "var(--muted)" }}>Shopify Admin › Apps › Develop apps › Create a private app</p>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <p style={{ fontSize: 11, color: "var(--muted)" }}>Shopify Admin › Apps › Develop apps › Create a private app</p>
+                    <button onClick={() => testPlatformConnection(account.id, "/api/shopify/test", { accountId: account.id })} disabled={!account.shopDomain || !account.accessToken || testingPlatformId === account.id}
+                      style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--background)", border: "1px solid var(--card-border)", cursor: "pointer", opacity: (!account.shopDomain || !account.accessToken) ? 0.4 : 1, whiteSpace: "nowrap" }}>
+                      {testingPlatformId === account.id ? "Testing..." : "Test Connection"}
+                    </button>
+                  </div>
+                  {platformTestResults[account.id] && (
+                    <p style={{ fontSize: 12, color: platformTestResults[account.id].ok ? "var(--success)" : "var(--error)", margin: 0 }}>
+                      {platformTestResults[account.id].message}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
@@ -376,7 +405,18 @@ export default function SettingsPage() {
                 <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
                   <div><label style={labelStyle}>Account Name</label><input type="text" value={account.name} onChange={(e) => updateMedium(account.id, "name", e.target.value)} placeholder="My Medium Account" style={inputStyle} /></div>
                   <div><label style={labelStyle}>Integration Token</label><PasswordInput value={account.integrationToken} onChange={(v) => updateMedium(account.id, "integrationToken", v)} placeholder="Your Medium integration token" /></div>
-                  <p style={{ fontSize: 11, color: "var(--muted)" }}>medium.com › Settings › Security and apps › Integration tokens</p>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <p style={{ fontSize: 11, color: "var(--muted)" }}>medium.com › Settings › Security and apps › Integration tokens</p>
+                    <button onClick={() => testPlatformConnection(account.id, "/api/medium/test", { accountId: account.id })} disabled={!account.integrationToken || testingPlatformId === account.id}
+                      style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--background)", border: "1px solid var(--card-border)", cursor: "pointer", opacity: !account.integrationToken ? 0.4 : 1, whiteSpace: "nowrap" }}>
+                      {testingPlatformId === account.id ? "Testing..." : "Test Connection"}
+                    </button>
+                  </div>
+                  {platformTestResults[account.id] && (
+                    <p style={{ fontSize: 12, color: platformTestResults[account.id].ok ? "var(--success)" : "var(--error)", margin: 0 }}>
+                      {platformTestResults[account.id].message}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
@@ -411,7 +451,18 @@ export default function SettingsPage() {
                     <div><label style={labelStyle}>Ghost URL</label><input type="text" value={blog.url} onChange={(e) => updateGhost(blog.id, "url", e.target.value)} placeholder="https://yourblog.ghost.io" style={inputStyle} /></div>
                   </div>
                   <div><label style={labelStyle}>Admin API Key</label><PasswordInput value={blog.adminApiKey} onChange={(v) => updateGhost(blog.id, "adminApiKey", v)} placeholder="id:secret (from Ghost Admin › Integrations)" /></div>
-                  <p style={{ fontSize: 11, color: "var(--muted)" }}>Ghost Admin › Settings › Integrations › Add custom integration</p>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <p style={{ fontSize: 11, color: "var(--muted)" }}>Ghost Admin › Settings › Integrations › Add custom integration</p>
+                    <button onClick={() => testPlatformConnection(blog.id, "/api/ghost/test", { blogId: blog.id })} disabled={!blog.url || !blog.adminApiKey || testingPlatformId === blog.id}
+                      style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--background)", border: "1px solid var(--card-border)", cursor: "pointer", opacity: (!blog.url || !blog.adminApiKey) ? 0.4 : 1, whiteSpace: "nowrap" }}>
+                      {testingPlatformId === blog.id ? "Testing..." : "Test Connection"}
+                    </button>
+                  </div>
+                  {platformTestResults[blog.id] && (
+                    <p style={{ fontSize: 12, color: platformTestResults[blog.id].ok ? "var(--success)" : "var(--error)", margin: 0 }}>
+                      {platformTestResults[blog.id].message}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
@@ -443,7 +494,18 @@ export default function SettingsPage() {
                 <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
                   <div><label style={labelStyle}>Account Name</label><input type="text" value={account.name} onChange={(e) => updateDevTo(account.id, "name", e.target.value)} placeholder="My Dev.to Account" style={inputStyle} /></div>
                   <div><label style={labelStyle}>API Key</label><PasswordInput value={account.apiKey} onChange={(v) => updateDevTo(account.id, "apiKey", v)} placeholder="Your Dev.to API key" /></div>
-                  <p style={{ fontSize: 11, color: "var(--muted)" }}>dev.to › Settings › Extensions › DEV API Keys</p>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <p style={{ fontSize: 11, color: "var(--muted)" }}>dev.to › Settings › Extensions › DEV API Keys</p>
+                    <button onClick={() => testPlatformConnection(account.id, "/api/devto/test", { accountId: account.id })} disabled={!account.apiKey || testingPlatformId === account.id}
+                      style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--background)", border: "1px solid var(--card-border)", cursor: "pointer", opacity: !account.apiKey ? 0.4 : 1, whiteSpace: "nowrap" }}>
+                      {testingPlatformId === account.id ? "Testing..." : "Test Connection"}
+                    </button>
+                  </div>
+                  {platformTestResults[account.id] && (
+                    <p style={{ fontSize: 12, color: platformTestResults[account.id].ok ? "var(--success)" : "var(--error)", margin: 0 }}>
+                      {platformTestResults[account.id].message}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}

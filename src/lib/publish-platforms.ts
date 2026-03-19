@@ -5,6 +5,8 @@
  * before use.
  */
 
+import crypto from "crypto";
+
 export interface ShopifyAccount {
   id: string;
   name: string;
@@ -49,7 +51,6 @@ export function createGhostJwt(adminApiKey: string): string {
   const [id, secret] = adminApiKey.split(":");
   if (!id || !secret) throw new Error("Invalid Ghost Admin API key format (expected id:secret)");
 
-  const crypto = require("crypto") as typeof import("crypto");
   const now = Math.floor(Date.now() / 1000);
 
   const headerB64 = Buffer.from(JSON.stringify({ alg: "HS256", kid: id, typ: "JWT" })).toString("base64url");

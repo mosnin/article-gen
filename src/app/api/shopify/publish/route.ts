@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
-import { downloadImage } from "@/lib/supabase-admin";
 import { decryptCredential } from "@/lib/wp-crypto";
 import type { ShopifyAccount } from "@/lib/publish-platforms";
 import { marked } from "marked";
+import { logPublishEvent } from "@/lib/publish-log";
 
 export const maxDuration = 60;
 
@@ -28,22 +28,6 @@ async function getShopifyBlogId(shopDomain: string, auth: string): Promise<numbe
   }
 }
 
-async function uploadImageToShopify(
-  shopDomain: string,
-  auth: string,
-  imageBuffer: Buffer,
-  altText: string,
-  filename: string
-): Promise<string | null> {
-  try {
-    // Shopify accepts base64 image uploads via the files API or product images;
-    // for blog articles the simplest path is to embed the public Supabase URL directly
-    // since Shopify will hot-link it. Return null to signal "use URL in HTML instead".
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -172,17 +156,25 @@ export async function POST(req: NextRequest) {
     const result = await res.json();
     const createdArticle = result.article;
 
+    const postUrl = `https://${shopDomain}/blogs/${createdArticle.blog_id}/${createdArticle.handle}`;
+    const editUrl = `https://${shopDomain}/admin/articles/${createdArticle.id}`;
+
     await supabase
       .from("articles")
       .update({ posted: true, published_platform: "shopify", updated_at: new Date().toISOString() })
       .eq("id", articleId);
 
-    return NextResponse.json({
-      success: true,
-      postId: createdArticle.id,
-      postUrl: `https://${shopDomain}/blogs/${createdArticle.blog_id}/${createdArticle.handle}`,
-      editUrl: `https://${shopDomain}/admin/articles/${createdArticle.id}`,
+    await logPublishEvent(supabase, {
+      userId: user.id,
+      articleId,
+      platform: "shopify",
+      accountName: account.name || account.shopDomain,
+      postId: String(createdArticle.id),
+      postUrl,
+      editUrl,
     });
+
+    return NextResponse.json({ success: true, postId: createdArticle.id, postUrl, editUrl });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -9,6 +9,8 @@
  * fall back gracefully for legacy plaintext values already in the database.
  */
 
+import crypto from "crypto";
+
 const ENCRYPTED_PREFIX = "enc:";
 const ALGO = "aes-256-gcm";
 
@@ -25,7 +27,6 @@ function getKey(): Buffer {
 
 /** Encrypt a plaintext string. Returns "enc:<base64(iv+authTag+ciphertext)>". */
 export function encryptCredential(plaintext: string): string {
-  const crypto = require("crypto") as typeof import("crypto");
   const key = getKey();
   const iv = crypto.randomBytes(12); // 96-bit IV for GCM
   const cipher = crypto.createCipheriv(ALGO, key, iv);
@@ -47,7 +48,6 @@ export function decryptCredential(value: string): string {
     // Legacy plaintext — return unchanged for backward compatibility
     return value;
   }
-  const crypto = require("crypto") as typeof import("crypto");
   const key = getKey();
   const packed = Buffer.from(value.slice(ENCRYPTED_PREFIX.length), "base64");
   const iv = packed.subarray(0, 12);

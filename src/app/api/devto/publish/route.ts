@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { decryptCredential } from "@/lib/wp-crypto";
 import type { DevToAccount } from "@/lib/publish-platforms";
+import { logPublishEvent } from "@/lib/publish-log";
 
 export const maxDuration = 60;
 
@@ -102,12 +103,17 @@ export async function POST(req: NextRequest) {
       .update({ posted: true, published_platform: "devto", updated_at: new Date().toISOString() })
       .eq("id", articleId);
 
-    return NextResponse.json({
-      success: true,
-      postId: result.id,
+    await logPublishEvent(supabase, {
+      userId: user.id,
+      articleId,
+      platform: "devto",
+      accountName: account.name,
+      postId: String(result.id),
       postUrl: result.url,
-      editUrl: `https://dev.to/dashboard`,
+      editUrl: "https://dev.to/dashboard",
     });
+
+    return NextResponse.json({ success: true, postId: result.id, postUrl: result.url, editUrl: "https://dev.to/dashboard" });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });

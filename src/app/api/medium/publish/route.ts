@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { decryptCredential } from "@/lib/wp-crypto";
 import type { MediumAccount } from "@/lib/publish-platforms";
+import { logPublishEvent } from "@/lib/publish-log";
 
 export const maxDuration = 60;
 
@@ -109,12 +110,17 @@ export async function POST(req: NextRequest) {
       .update({ posted: true, published_platform: "medium", updated_at: new Date().toISOString() })
       .eq("id", articleId);
 
-    return NextResponse.json({
-      success: true,
+    await logPublishEvent(supabase, {
+      userId: user.id,
+      articleId,
+      platform: "medium",
+      accountName: account.name,
       postId: post.id,
       postUrl: post.url,
       editUrl: post.url,
     });
+
+    return NextResponse.json({ success: true, postId: post.id, postUrl: post.url, editUrl: post.url });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });
