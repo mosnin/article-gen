@@ -788,7 +788,7 @@ export default function Home() {
     setFormError("");
     setSidebarOpen(false);
 
-    runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined, outline);
+    runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined);
     setGeneratingWithOutline(false);
     setOutline([]);
   };
