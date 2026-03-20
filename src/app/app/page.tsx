@@ -21,6 +21,7 @@ import { IdeasModal } from "./components/IdeasModal";
 import { SidebarArticleList } from "./components/SidebarArticleList";
 import { ClusterView } from "./components/ClusterView";
 import { ArticleResultPanel } from "./components/ArticleResultPanel";
+import OutlineEditor, { type OutlineItem } from "./components/OutlineEditor";
 
 const STEPS = [
   "Organizing context & researching facts...",
@@ -120,6 +121,32 @@ export default function Home() {
   const [selectedBlogId, setSelectedBlogId] = useState<string>("");
   // Other publish platforms (count only for hasAnyPlatform check)
   const [otherPlatformCount, setOtherPlatformCount] = useState(0);
+
+  // Generation presets
+  interface Preset {
+    id: string;
+    name: string;
+    quality: "standard" | "premium";
+    wordCount: number;
+    withImages: boolean;
+    tone?: string;
+    targetAudience?: string;
+  }
+  const [presets, setPresets] = useState<Preset[]>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState<string>("");
+
+  // Outline editor
+  const [outlineTitle, setOutlineTitle] = useState("");
+  const [outline, setOutline] = useState<OutlineItem[]>([]);
+  const [showOutlineEditor, setShowOutlineEditor] = useState(false);
+  const [outlineLoading, setOutlineLoading] = useState(false);
+  const [generatingWithOutline, setGeneratingWithOutline] = useState(false);
+
+  // GSC keyword import
+  const [gscConnected, setGscConnected] = useState(false);
+  const [gscImporting, setGscImporting] = useState(false);
+  const [showGscPicker, setShowGscPicker] = useState(false);
+  const [gscQueries, setGscQueries] = useState<Array<{ query: string; impressions: number; clicks: number }>>([]);
 
   // AI Image generation toggles
   const [generateImages, setGenerateImages] = useState(false);
@@ -243,6 +270,14 @@ export default function Home() {
         const ghostCount = Array.isArray(settings.ghost_blogs) ? (settings.ghost_blogs as unknown[]).length : 0;
         const devtoCount = Array.isArray(settings.devto_accounts) ? (settings.devto_accounts as unknown[]).length : 0;
         setOtherPlatformCount(shopifyCount + mediumCount + ghostCount + devtoCount);
+
+        // Load presets
+        if (Array.isArray(settings.presets)) {
+          setPresets(settings.presets as Preset[]);
+        }
+
+        // GSC connection status
+        setGscConnected(!!settings.gsc_refresh_token);
       }
 
       // Load credit info
@@ -676,6 +711,102 @@ export default function Home() {
     setSidebarOpen(false);
 
     runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined);
+  };
+
+  const handlePreviewOutline = async () => {
+    if (!formTopic.trim()) {
+      setFormError("Please enter a topic first.");
+      return;
+    }
+    setFormError("");
+    setOutlineLoading(true);
+    try {
+      const res = await fetch("/api/generate/outline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: formTopic.trim(),
+          focusKeyword: formKeyword.trim() || undefined,
+          advancedSettings,
+        }),
+      });
+      const data = await res.json() as { title?: string; outline?: Array<{ level: number; heading: string; notes?: string }>; error?: string };
+      if (!res.ok || data.error) throw new Error(data.error || "Failed to generate outline");
+      setOutlineTitle(data.title || formTopic.trim());
+      setOutline(
+        (data.outline || []).map((item) => ({
+          id: crypto.randomUUID(),
+          level: (item.level === 3 ? 3 : 2) as 2 | 3,
+          heading: item.heading,
+          notes: item.notes,
+        }))
+      );
+      setShowOutlineEditor(true);
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : "Failed to generate outline");
+    } finally {
+      setOutlineLoading(false);
+    }
+  };
+
+  const handleGenerateFromOutline = () => {
+    if (!formTopic.trim()) return;
+
+    const creditsNeeded = generateImages ? 2 : 1;
+    if (!isAdmin && userCredits !== null && userCredits < creditsNeeded) {
+      setFormError(generateImages
+        ? "You need 2 credits (1 article + 1 images). Please upgrade your plan."
+        : "No credits remaining. Please upgrade your plan.");
+      return;
+    }
+
+    const id = crypto.randomUUID();
+    const topic = formTopic.trim();
+    const focusKeyword = formKeyword.trim() || undefined;
+
+    setSessions((prev) => [
+      {
+        id,
+        topic,
+        focusKeyword: formKeyword.trim(),
+        wpBlogId: selectedBlogId || null,
+        loading: true,
+        queued: false,
+        error: "",
+        result: null,
+        currentStep: 0,
+        quality: "premium",
+        posted: false,
+      },
+      ...prev,
+    ]);
+    setActiveSessionId(id);
+    setShowOutlineEditor(false);
+    setGeneratingWithOutline(true);
+    setFormTopic("");
+    setFormKeyword("");
+    setFormError("");
+    setSidebarOpen(false);
+
+    runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined, outline);
+    setGeneratingWithOutline(false);
+    setOutline([]);
+  };
+
+  const handleGscImport = async () => {
+    if (gscImporting) return;
+    setGscImporting(true);
+    try {
+      const res = await fetch("/api/gsc/queries");
+      const data = await res.json() as { queries?: Array<{ query: string; impressions: number; clicks: number }>; error?: string };
+      if (!res.ok || data.error) throw new Error(data.error || "Failed to fetch GSC data");
+      setGscQueries(data.queries || []);
+      setShowGscPicker(true);
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : "Failed to import from GSC");
+    } finally {
+      setGscImporting(false);
+    }
   };
 
   const handleBatchGenerate = () => {

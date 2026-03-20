@@ -41,6 +41,16 @@ interface DevToAccount {
   apiKey: string;
 }
 
+interface Preset {
+  id: string;
+  name: string;
+  quality: "standard" | "premium";
+  wordCount: number;
+  withImages: boolean;
+  tone: string;
+  targetAudience: string;
+}
+
 function PasswordInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const [show, setShow] = useState(false);
   return (
@@ -103,6 +113,16 @@ export default function SettingsPage() {
   const [testingPlatformId, setTestingPlatformId] = useState<string | null>(null);
   const [platformTestResults, setPlatformTestResults] = useState<Record<string, { ok: boolean; message: string }>>({});
 
+  // Presets
+  const [presets, setPresets] = useState<Preset[]>([]);
+
+  // Google Search Console
+  const [gscConnected, setGscConnected] = useState(false);
+  const [gscSiteUrl, setGscSiteUrl] = useState("");
+  const [gscSites, setGscSites] = useState<Array<{ siteUrl: string; permissionLevel: string }>>([]);
+  const [gscLoadingSites, setGscLoadingSites] = useState(false);
+  const [gscMessage, setGscMessage] = useState("");
+
   // Site settings
   const [domain, setDomain] = useState("");
   const [siteName, setSiteName] = useState("");
@@ -139,7 +159,22 @@ export default function SettingsPage() {
       if (Array.isArray(settings.medium_accounts)) setMediumAccounts(settings.medium_accounts);
       if (Array.isArray(settings.ghost_blogs)) setGhostBlogs(settings.ghost_blogs);
       if (Array.isArray(settings.devto_accounts)) setDevtoAccounts(settings.devto_accounts);
+      if (Array.isArray(settings.presets)) setPresets(settings.presets);
+      setGscConnected(!!settings.gsc_connected);
+      setGscSiteUrl(settings.gsc_site_url || "");
     }
+
+    // Check for GSC connection result from OAuth redirect
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("gsc_connected") === "1") {
+      setGscConnected(true);
+      setGscMessage("Google Search Console connected!");
+      window.history.replaceState({}, "", "/app/settings");
+    } else if (params.get("gsc_error")) {
+      setGscMessage(`GSC connection failed: ${params.get("gsc_error")}`);
+      window.history.replaceState({}, "", "/app/settings");
+    }
+
     setLoading(false);
   }, [router, supabase]);
 
@@ -161,6 +196,8 @@ export default function SettingsPage() {
           medium_accounts: mediumAccounts.filter((a) => a.integrationToken.trim()),
           ghost_blogs: ghostBlogs.filter((b) => b.url.trim()),
           devto_accounts: devtoAccounts.filter((a) => a.apiKey.trim()),
+          presets: presets.filter((p) => p.name.trim()),
+          gsc_site_url: gscSiteUrl,
         }),
       });
       if (!res.ok) {
@@ -238,6 +275,34 @@ export default function SettingsPage() {
   const removeDevTo = (id: string) => setDevtoAccounts((prev) => prev.filter((a) => a.id !== id));
   const updateDevTo = (id: string, field: keyof DevToAccount, value: string) =>
     setDevtoAccounts((prev) => prev.map((a) => a.id === id ? { ...a, [field]: value } : a));
+
+  // ── Preset helpers ──────────────────────────────────────────────────────
+  const addPreset = () => setPresets((prev) => [...prev, {
+    id: crypto.randomUUID(), name: "", quality: "premium", wordCount: 2000, withImages: false, tone: "professional", targetAudience: "",
+  }]);
+  const removePreset = (id: string) => setPresets((prev) => prev.filter((p) => p.id !== id));
+  const updatePreset = (id: string, field: keyof Preset, value: string | number | boolean) =>
+    setPresets((prev) => prev.map((p) => p.id === id ? { ...p, [field]: value } : p));
+
+  // ── GSC helpers ─────────────────────────────────────────────────────────
+  const fetchGscSites = async () => {
+    setGscLoadingSites(true);
+    setGscMessage("");
+    try {
+      const res = await fetch("/api/gsc/sites");
+      const data = await res.json() as { sites?: Array<{ siteUrl: string; permissionLevel: string }>; error?: string };
+      if (data.error) { setGscMessage(data.error); }
+      else { setGscSites(data.sites ?? []); }
+    } catch { setGscMessage("Failed to load sites"); }
+    finally { setGscLoadingSites(false); }
+  };
+  const disconnectGsc = async () => {
+    await fetch("/api/gsc/disconnect", { method: "POST" });
+    setGscConnected(false);
+    setGscSiteUrl("");
+    setGscSites([]);
+    setGscMessage("Disconnected from Google Search Console");
+  };
 
   const testPlatformConnection = async (id: string, endpoint: string, body: Record<string, string>) => {
     setTestingPlatformId(id);
@@ -516,6 +581,119 @@ export default function SettingsPage() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
               Add Dev.to Account
             </button>
+          </div>
+        </section>
+
+        {/* Generation Presets */}
+        <section style={{ marginBottom: 40 }}>
+          <div style={{ marginBottom: 16 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>Generation Presets</h2>
+            <p style={{ fontSize: 13, color: "var(--muted)" }}>Save named configurations to quickly fill in the generate form.</p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {presets.map((preset) => (
+              <div key={preset.id} style={cardStyle}>
+                <div style={sectionHeaderStyle}>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>{preset.name || "Untitled Preset"}</span>
+                  <button onClick={() => removePreset(preset.id)} style={{ padding: "4px 8px", borderRadius: 6, fontSize: 12, background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}>Remove</button>
+                </div>
+                <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div><label style={labelStyle}>Preset Name</label><input value={preset.name} onChange={(e) => updatePreset(preset.id, "name", e.target.value)} placeholder="Tech Blog Post" style={inputStyle} /></div>
+                    <div><label style={labelStyle}>Target Audience</label><input value={preset.targetAudience} onChange={(e) => updatePreset(preset.id, "targetAudience", e.target.value)} placeholder="Software developers" style={inputStyle} /></div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={labelStyle}>Quality</label>
+                      <select value={preset.quality} onChange={(e) => updatePreset(preset.id, "quality", e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+                        <option value="standard">Standard (~2,000 words)</option>
+                        <option value="premium">Premium (~4,000 words)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Tone</label>
+                      <select value={preset.tone} onChange={(e) => updatePreset(preset.id, "tone", e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+                        <option value="professional">Professional</option>
+                        <option value="casual">Casual</option>
+                        <option value="technical">Technical</option>
+                        <option value="conversational">Conversational</option>
+                        <option value="authoritative">Authoritative</option>
+                      </select>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 18 }}>
+                      <input type="checkbox" id={`img-${preset.id}`} checked={preset.withImages} onChange={(e) => updatePreset(preset.id, "withImages", e.target.checked)} style={{ width: 16, height: 16, cursor: "pointer", accentColor: "var(--accent)" }} />
+                      <label htmlFor={`img-${preset.id}`} style={{ fontSize: 13, cursor: "pointer" }}>Include AI images</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button onClick={addPreset}
+              style={{ padding: 14, borderRadius: 12, border: "2px dashed var(--card-border)", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--accent)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--card-border)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+              Add Preset
+            </button>
+          </div>
+        </section>
+
+        {/* Google Search Console */}
+        <section style={{ marginBottom: 40 }}>
+          <div style={{ marginBottom: 16 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>Google Search Console</h2>
+            <p style={{ fontSize: 13, color: "var(--muted)" }}>Import real keyword data from your site to pre-fill the article generator.</p>
+          </div>
+          <div style={cardStyle}>
+            <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
+              {!gscConnected ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Not connected</p>
+                    <p style={{ fontSize: 12, color: "var(--muted)" }}>Connect your Google account to import top queries.</p>
+                  </div>
+                  <a href="/api/gsc/auth"
+                    style={{ padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--accent)", color: "#fff", textDecoration: "none", whiteSpace: "nowrap" }}>
+                    Connect Google
+                  </a>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--success)" }}>Connected</span>
+                    </div>
+                    <button onClick={disconnectGsc} style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, background: "transparent", border: "1px solid var(--card-border)", cursor: "pointer", color: "var(--muted)" }}>
+                      Disconnect
+                    </button>
+                  </div>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      <label style={labelStyle}>Property / Site</label>
+                      <button onClick={fetchGscSites} disabled={gscLoadingSites} style={{ fontSize: 11, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                        {gscLoadingSites ? "Loading..." : "Load sites ↻"}
+                      </button>
+                    </div>
+                    {gscSites.length > 0 ? (
+                      <select value={gscSiteUrl} onChange={(e) => setGscSiteUrl(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+                        <option value="">Select a property...</option>
+                        {gscSites.map((s) => <option key={s.siteUrl} value={s.siteUrl}>{s.siteUrl}</option>)}
+                      </select>
+                    ) : (
+                      <input value={gscSiteUrl} onChange={(e) => setGscSiteUrl(e.target.value)} placeholder="sc-domain:example.com" style={inputStyle} />
+                    )}
+                  </div>
+                </>
+              )}
+              {gscMessage && (
+                <p style={{ fontSize: 12, color: gscMessage.includes("fail") || gscMessage.includes("error") || gscMessage.includes("Error") ? "var(--error)" : "var(--success)", margin: 0 }}>
+                  {gscMessage}
+                </p>
+              )}
+            </div>
           </div>
         </section>
 

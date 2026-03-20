@@ -33,6 +33,8 @@ interface Article {
   posted: boolean;
   wp_blog_id?: string;
   generated_images?: StoredImage[];
+  publish_at?: string | null;
+  scheduled_platform?: string | null;
 }
 
 interface WpBlog { id: string; name: string; url: string; }
@@ -106,6 +108,12 @@ export default function PublishPage() {
   const [devtoCanonical, setDevtoCanonical] = useState("");
   const [tagInput, setTagInput] = useState("");
 
+  // Schedule state
+  const [scheduleMode, setScheduleMode] = useState(false);
+  const [scheduleDateTime, setScheduleDateTime] = useState("");
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduleResult, setScheduleResult] = useState<{ scheduledAt: string } | null>(null);
+
   const availableImages = article?.generated_images?.filter((i) => i.success && i.publicUrl) ?? [];
 
   const fetchData = useCallback(async () => {
@@ -114,7 +122,7 @@ export default function PublishPage() {
 
     const { data: art } = await supabase
       .from("articles")
-      .select("id, title, topic, slug, meta_description, article_markdown, posted, wp_blog_id, generated_images")
+      .select("id, title, topic, slug, meta_description, article_markdown, posted, wp_blog_id, generated_images, publish_at, scheduled_platform")
       .eq("id", articleId)
       .eq("user_id", user.id)
       .single();
@@ -278,6 +286,59 @@ export default function PublishPage() {
       setError("Failed to publish article");
     }
     setPublishing(false);
+  };
+
+  const handleSchedule = async () => {
+    if (!scheduleDateTime) { setError("Please select a date and time"); return; }
+    setScheduling(true);
+    setError("");
+    try {
+      let accountId: string | undefined;
+      let scheduledOptions: Record<string, unknown> = {};
+
+      if (activePlatform === "wordpress") {
+        accountId = activeBlogId || undefined;
+        scheduledOptions = { status: postStatus, categoryIds: selectedCategories, includeImages };
+      } else if (activePlatform === "shopify") {
+        accountId = activeShopifyId || undefined;
+        scheduledOptions = { status: "publish" };
+      } else if (activePlatform === "medium") {
+        accountId = activeMediumId || undefined;
+        const tags = tagInput.split(",").map((t) => t.trim()).filter(Boolean);
+        scheduledOptions = { status: mediumStatus, tags, canonicalUrl: mediumCanonical || undefined };
+      } else if (activePlatform === "ghost") {
+        accountId = activeGhostId || undefined;
+        const tags = tagInput.split(",").map((t) => t.trim()).filter(Boolean);
+        scheduledOptions = { status: ghostStatus, tags };
+      } else {
+        accountId = activeDevtoId || undefined;
+        const tags = tagInput.split(",").map((t) => t.trim()).filter(Boolean);
+        scheduledOptions = { published: devtoPublished, tags, canonicalUrl: devtoCanonical || undefined };
+      }
+
+      const res = await fetch("/api/articles/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          articleId,
+          platform: activePlatform,
+          accountId,
+          publishAt: scheduleDateTime,
+          scheduledOptions,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setScheduleResult({ scheduledAt: data.scheduledAt });
+        setArticle((prev) => prev ? { ...prev, publish_at: data.scheduledAt, scheduled_platform: activePlatform } : prev);
+      } else {
+        setError(data.error || "Failed to schedule");
+      }
+    } catch {
+      setError("Failed to schedule article");
+    }
+    setScheduling(false);
   };
 
   const platformLabel: Record<Platform, string> = {
@@ -595,6 +656,39 @@ export default function PublishPage() {
                       </>
                     )}
 
+                    {/* Schedule mode toggle */}
+                    <div style={{ display: "flex", gap: 6, borderRadius: 8, background: "var(--background)", border: "1px solid var(--card-border)", padding: 4 }}>
+                      <button onClick={() => { setScheduleMode(false); setError(""); setScheduleResult(null); }}
+                        style={{ flex: 1, padding: "7px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: !scheduleMode ? "var(--accent)" : "transparent", color: !scheduleMode ? "#fff" : "var(--muted)", transition: "all 0.15s" }}>
+                        Publish Now
+                      </button>
+                      <button onClick={() => { setScheduleMode(true); setError(""); setScheduleResult(null); }}
+                        style={{ flex: 1, padding: "7px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: scheduleMode ? "var(--accent)" : "transparent", color: scheduleMode ? "#fff" : "var(--muted)", transition: "all 0.15s" }}>
+                        Schedule
+                      </button>
+                    </div>
+
+                    {/* Schedule datetime picker */}
+                    {scheduleMode && (
+                      <div>
+                        <label style={labelStyle}>Publish Date &amp; Time</label>
+                        <input
+                          type="datetime-local"
+                          value={scheduleDateTime}
+                          onChange={(e) => setScheduleDateTime(e.target.value)}
+                          min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
+                          style={{ ...inputStyle, colorScheme: "dark" }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Scheduled confirmation */}
+                    {scheduleResult && (
+                      <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(52, 199, 89, 0.1)", color: "var(--success)", fontSize: 13, fontWeight: 500 }}>
+                        Scheduled for {new Date(scheduleResult.scheduledAt).toLocaleString()}
+                      </div>
+                    )}
+
                     {/* Error */}
                     {error && (
                       <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(239, 68, 68, 0.1)", color: "var(--error)", fontSize: 13 }}>
@@ -602,11 +696,35 @@ export default function PublishPage() {
                       </div>
                     )}
 
-                    {/* Publish button */}
-                    <button onClick={handlePublish} disabled={publishing}
-                      style={{ width: "100%", padding: 12, borderRadius: 10, fontSize: 14, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: publishing ? 0.6 : 1 }}>
-                      {publishing ? "Publishing..." : `Publish to ${platformLabel[activePlatform]}`}
-                    </button>
+                    {/* Publish / Schedule button */}
+                    {scheduleMode ? (
+                      <button onClick={handleSchedule} disabled={scheduling || !scheduleDateTime}
+                        style={{ width: "100%", padding: 12, borderRadius: 10, fontSize: 14, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: (scheduling || !scheduleDateTime) ? 0.6 : 1 }}>
+                        {scheduling ? "Scheduling..." : `Schedule for ${platformLabel[activePlatform]}`}
+                      </button>
+                    ) : (
+                      <button onClick={handlePublish} disabled={publishing}
+                        style={{ width: "100%", padding: 12, borderRadius: 10, fontSize: 14, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: publishing ? 0.6 : 1 }}>
+                        {publishing ? "Publishing..." : `Publish to ${platformLabel[activePlatform]}`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Scheduled status */}
+              {article.publish_at && !article.posted && (
+                <div style={{ marginTop: 16, background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--foreground)" }}>
+                      Scheduled for {new Date(article.publish_at).toLocaleString()}
+                    </div>
+                    {article.scheduled_platform && (
+                      <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "capitalize" }}>
+                        Platform: {article.scheduled_platform}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

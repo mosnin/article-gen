@@ -8,6 +8,17 @@ import type {
   DevToAccount,
 } from "@/lib/publish-platforms";
 
+export interface Preset {
+  id: string;
+  name: string;
+  quality: "standard" | "premium";
+  wordCount: number;
+  withImages: boolean;
+  tone?: string;
+  targetAudience?: string;
+  defaultBlogId?: string;
+}
+
 interface WpBlog {
   id: string;
   name: string;
@@ -153,6 +164,11 @@ export async function GET() {
         devto_accounts: Array.isArray(settings.devto_accounts)
           ? decryptDevToAccounts(settings.devto_accounts as DevToAccount[])
           : [],
+        // Presets (stored as-is, no encryption needed)
+        presets: Array.isArray(settings.presets) ? settings.presets : [],
+        // GSC (only expose whether connected + site url, never the token)
+        gsc_connected: !!settings.gsc_refresh_token,
+        gsc_site_url: settings.gsc_site_url ?? "",
       },
     });
   } catch (error: unknown) {
@@ -189,7 +205,7 @@ export async function POST(req: NextRequest) {
       ((body.devto_accounts as DevToAccount[]) ?? []).filter((a) => a.apiKey?.trim())
     );
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       domain: body.domain ?? "",
       site_name: body.site_name ?? "",
       site_about: body.site_about ?? "",
@@ -205,8 +221,15 @@ export async function POST(req: NextRequest) {
       medium_accounts: mediumAccounts,
       ghost_blogs: ghostBlogs,
       devto_accounts: devtoAccounts,
+      // Presets
+      presets: Array.isArray(body.presets) ? body.presets : [],
       updated_at: new Date().toISOString(),
     };
+
+    // GSC site_url update (token is written by the callback route, not here)
+    if (typeof body.gsc_site_url === "string") {
+      payload.gsc_site_url = body.gsc_site_url;
+    }
 
     const { data: existing } = await supabase
       .from("user_settings")
