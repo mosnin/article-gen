@@ -28,6 +28,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/app/backlinks": "Backlink Exchange",
   "/app/free-tools": "Free Tools Builder",
   "/app/team": "Team",
+  "/app/general-settings": "General Settings",
 };
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
