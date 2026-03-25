@@ -21,6 +21,10 @@ const PAGE_TITLES: Record<string, string> = {
   "/app/admin": "Admin",
   "/app/onboarding": "Onboarding",
   "/app/autopilot": "Content Autopilot",
+  "/app/planner": "Content Planner",
+  "/app/integrations": "Integrations",
+  "/app/linking": "Linking Configuration",
+  "/app/articles-settings": "Articles Settings",
 };
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

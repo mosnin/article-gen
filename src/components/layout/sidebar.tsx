@@ -12,6 +12,7 @@ interface NavItem {
   icon: React.ReactNode;
   badge?: string | number;
   exact?: boolean;
+  badgeVariant?: "accent" | "new";
 }
 
 interface SidebarProps {
@@ -24,7 +25,7 @@ interface SidebarProps {
   onMobileClose?: () => void;
 }
 
-function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+function NavLink({ item, collapsed, indent = false }: { item: NavItem; collapsed: boolean; indent?: boolean }) {
   const pathname = usePathname();
   const isActive = item.exact
     ? pathname === item.href
@@ -35,6 +36,7 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
       href={item.href}
       className={cn(
         "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150",
+        indent && "pl-8",
         isActive
           ? "bg-[var(--accent-light)] text-[var(--accent)]"
           : "text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)]"
@@ -42,21 +44,48 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
     >
       <span
         className={cn(
-          "flex h-5 w-5 shrink-0 items-center justify-center transition-colors",
+          "flex h-4 w-4 shrink-0 items-center justify-center transition-colors",
           isActive ? "text-[var(--accent)]" : "text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)]"
         )}
       >
         {item.icon}
       </span>
       {!collapsed && (
-        <span className="truncate">{item.label}</span>
+        <span className="truncate text-[13px]">{item.label}</span>
       )}
       {!collapsed && item.badge !== undefined && (
-        <span className="ml-auto rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-semibold text-white min-w-[18px] text-center">
+        <span className={cn(
+          "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold min-w-[18px] text-center",
+          item.badgeVariant === "new"
+            ? "bg-green-100 text-green-700"
+            : "bg-[var(--accent)] text-white"
+        )}>
           {item.badge}
         </span>
       )}
     </Link>
+  );
+}
+
+function SectionHeader({ label, children, defaultOpen = true }: { label: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+      >
+        {label}
+        <svg
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className={cn("h-3 w-3 transition-transform", open ? "rotate-180" : "")}
+        >
+          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+        </svg>
+      </button>
+      {open && <div className="space-y-0.5">{children}</div>}
+    </div>
   );
 }
 
@@ -71,7 +100,7 @@ export function Sidebar({
 }: SidebarProps) {
   const router = useRouter();
 
-  const primaryNav: NavItem[] = [
+  const topNav: NavItem[] = [
     {
       label: "Dashboard",
       href: "/app",
@@ -91,8 +120,20 @@ export function Sidebar({
         </svg>
       ),
     },
+  ];
+
+  const articlesNav: NavItem[] = [
     {
-      label: "Articles",
+      label: "Content Planner",
+      href: "/app/planner",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+    {
+      label: "Content History",
       href: "/app/articles",
       icon: (
         <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -101,20 +142,41 @@ export function Sidebar({
       ),
     },
     {
-      label: "Clusters",
-      href: "/app/clusters",
+      label: "Articles Settings",
+      href: "/app/articles-settings",
       icon: (
         <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-          <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
+          <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
         </svg>
       ),
     },
     {
-      label: "Calendar",
-      href: "/app/calendar",
+      label: "Integrations",
+      href: "/app/integrations",
       icon: (
         <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-          <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+          <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.298.057-.591.114-.88a7 7 0 10-4.228 0c.057.289.099.582.114.88h4z" />
+        </svg>
+      ),
+    },
+    {
+      label: "Linking Config",
+      href: "/app/linking",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+  ];
+
+  const toolsNav: NavItem[] = [
+    {
+      label: "Autopilot",
+      href: "/app/autopilot",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
         </svg>
       ),
     },
@@ -128,11 +190,11 @@ export function Sidebar({
       ),
     },
     {
-      label: "Autopilot",
-      href: "/app/autopilot",
+      label: "Clusters",
+      href: "/app/clusters",
       icon: (
         <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-          <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+          <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
         </svg>
       ),
     },
@@ -188,23 +250,35 @@ export function Sidebar({
         </Link>
       </div>
 
-      {/* Primary nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-tertiary)] mb-1">
-          Workspace
-        </p>
-        {primaryNav.map((item) => (
-          <NavLink key={item.href} item={item} collapsed={false} />
-        ))}
-
-        <div className="mt-6 mb-1">
-          <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-tertiary)]">
-            Account
-          </p>
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+        {/* Top nav */}
+        <div className="space-y-0.5">
+          {topNav.map((item) => (
+            <NavLink key={item.href} item={item} collapsed={false} />
+          ))}
         </div>
-        {secondaryNav.map((item) => (
-          <NavLink key={item.href} item={item} collapsed={false} />
-        ))}
+
+        {/* Articles section */}
+        <SectionHeader label="Articles">
+          {articlesNav.map((item) => (
+            <NavLink key={item.href} item={item} collapsed={false} />
+          ))}
+        </SectionHeader>
+
+        {/* Tools section */}
+        <SectionHeader label="Tools">
+          {toolsNav.map((item) => (
+            <NavLink key={item.href} item={item} collapsed={false} />
+          ))}
+        </SectionHeader>
+
+        {/* Account section */}
+        <SectionHeader label="Account" defaultOpen={false}>
+          {secondaryNav.map((item) => (
+            <NavLink key={item.href} item={item} collapsed={false} />
+          ))}
+        </SectionHeader>
       </nav>
 
       {/* Credits widget */}
