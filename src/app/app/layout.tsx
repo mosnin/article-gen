@@ -14,6 +14,8 @@ const PAGE_TITLES: Record<string, string> = {
   "/app/generate": "Generate",
   "/app/articles": "Articles",
   "/app/clusters": "Clusters",
+  "/app/calendar": "Content Calendar",
+  "/app/research": "Keyword & Competitor Research",
   "/app/settings": "Settings",
   "/app/billing": "Billing",
   "/app/admin": "Admin",
