@@ -4,7 +4,7 @@ import OpenAI from "openai";
 
 export const maxDuration = 60;
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const getOpenAI = () => new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ─── Exa helpers ─────────────────────────────────────────────────────────────
 
@@ -176,7 +176,7 @@ Rules:
 - topKeywords: SEO keywords this site should target, 2-5 words each
 - Be specific and actionable, not generic`;
 
-  const completion = await openai.chat.completions.create({
+  const completion = await getOpenAI().chat.completions.create({
     model: "gpt-4.1-mini",
     messages: [{ role: "user", content: prompt }],
     temperature: 0.4,

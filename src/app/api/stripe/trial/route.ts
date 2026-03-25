@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     const profile = await getOrCreateProfile(supabase, user.id);
 
     // Check if already on a paid plan / already trialed
-    if (profile.plan && profile.plan !== "free") {
+    if (profile.subscription_plan && profile.subscription_plan !== "free") {
       return NextResponse.json({ error: "Already on a paid plan" }, { status: 400 });
     }
 

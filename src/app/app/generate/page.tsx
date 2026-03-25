@@ -15,12 +15,12 @@ import type {
   AdvancedSettings,
   ClusterArticle,
   TopicCluster,
-} from "./types";
-import { HelpPage } from "./components/HelpPage";
-import { IdeasModal } from "./components/IdeasModal";
-import { ClusterView } from "./components/ClusterView";
-import { ArticleResultPanel } from "./components/ArticleResultPanel";
-import OutlineEditor, { type OutlineItem } from "./components/OutlineEditor";
+} from "../types";
+import { HelpPage } from "../components/HelpPage";
+import { IdeasModal } from "../components/IdeasModal";
+import { ClusterView } from "../components/ClusterView";
+import { ArticleResultPanel } from "../components/ArticleResultPanel";
+import OutlineEditor, { type OutlineItem } from "../components/OutlineEditor";
 
 const STEPS = [
   "Organizing context & researching facts...",
@@ -3252,8 +3252,6 @@ export default function Home() {
                 batchCountdown={batchCountdown}
               />
             )}
-
-          </div>
 
       {/* Floating progress pill */}
       {activeCount > 0 && (

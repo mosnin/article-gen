@@ -117,9 +117,7 @@ function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId 
       )}
 
       {slot.status === "done" && slot.articleId && (
-        <Button size="sm" variant="outline" className="h-7 text-xs mt-1" asChild>
-          <a href={`/app/articles?id=${slot.articleId}`}>View Article →</a>
-        </Button>
+        <a href={`/app/articles?id=${slot.articleId}`} className="inline-flex h-7 items-center rounded-md border border-[var(--border-default)] px-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] transition-colors mt-1">View Article →</a>
       )}
 
       {slot.status === "failed" && (

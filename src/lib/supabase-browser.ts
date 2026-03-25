@@ -4,11 +4,10 @@ export function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables"
-    );
-  }
-
-  return createBrowserClient(supabaseUrl, supabaseAnonKey);
+  // During build/prerender env vars may be absent — fall back to placeholder values
+  // so the module doesn't throw. The client won't make real requests at build time.
+  return createBrowserClient(
+    supabaseUrl ?? "https://placeholder.supabase.co",
+    supabaseAnonKey ?? "placeholder"
+  );
 }
