@@ -18,7 +18,6 @@ import type {
 } from "./types";
 import { HelpPage } from "./components/HelpPage";
 import { IdeasModal } from "./components/IdeasModal";
-import { SidebarArticleList } from "./components/SidebarArticleList";
 import { ClusterView } from "./components/ClusterView";
 import { ArticleResultPanel } from "./components/ArticleResultPanel";
 import OutlineEditor, { type OutlineItem } from "./components/OutlineEditor";
@@ -93,7 +92,6 @@ export default function Home() {
 
   const [sessions, setSessions] = useState<ArticleSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [formTopic, setFormTopic] = useState("");
   const [formKeyword, setFormKeyword] = useState("");
   const [formError, setFormError] = useState("");
@@ -708,7 +706,6 @@ export default function Home() {
     setFormTopic("");
     setFormKeyword("");
     setFormError("");
-    setSidebarOpen(false);
 
     runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined);
   };
@@ -786,7 +783,6 @@ export default function Home() {
     setFormTopic("");
     setFormKeyword("");
     setFormError("");
-    setSidebarOpen(false);
 
     runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined);
     setGeneratingWithOutline(false);
@@ -853,7 +849,6 @@ export default function Home() {
 
     setBatchItems([{ id: crypto.randomUUID(), topic: "", keyword: "" }]);
     setFormError("");
-    setSidebarOpen(false);
 
     processBatchQueue();
   };
@@ -1340,7 +1335,6 @@ export default function Home() {
     setActiveSessionId(null);
     setShowHelp(false);
     setShowDashboard(false);
-    setSidebarOpen(false);
 
     try {
       // Phase 1: Generate cluster article ideas
@@ -1678,543 +1672,8 @@ export default function Home() {
   );
 
   return (
-    <div
-      className="flex h-screen overflow-hidden"
-      style={{ background: "var(--background)" }}
-    >
-      {/* Mobile sidebar backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/20 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+    <>
 
-      {/* Sidebar */}
-      <aside
-        className={`sidebar-aside fixed z-50 flex h-full w-[280px] flex-col border-r transition-transform duration-300 md:static md:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-        style={{
-          background: "var(--sidebar-bg)",
-          borderColor: "var(--card-border)",
-        }}
-      >
-        <div
-          className="flex items-center justify-between border-b px-4 py-4"
-          style={{ borderColor: "var(--card-border)" }}
-        >
-          <div className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Article Sauce" width={28} height={28} className="rounded" />
-            <h1 className="gradient-text text-lg font-bold tracking-tight">
-              Article Sauce
-            </h1>
-            <button
-              onClick={() => {
-                setShowHelp(true);
-                setActiveSessionId(null);
-              }}
-              className="rounded-full p-1 transition-colors"
-              style={{ color: "var(--muted)" }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.color =
-                  "var(--foreground)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.color =
-                  "var(--muted)";
-              }}
-              title="How it works"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-            </button>
-          </div>
-          <button
-            className="rounded p-1 md:hidden"
-            onClick={() => setSidebarOpen(false)}
-            style={{ color: "var(--muted)" }}
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="p-3">
-          <button
-            onClick={() => {
-              setActiveSessionId(null);
-              setShowHelp(false);
-              setShowDashboard(false);
-              setShowClusterView(false);
-              setActiveClusterId(null);
-              setClusterActiveArticleId(null);
-              setFormError("");
-              setSidebarOpen(false);
-            }}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200"
-            style={{ background: "var(--accent)", color: "#fff" }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background =
-                "var(--accent-hover)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background =
-                "var(--accent)";
-            }}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            New Article
-          </button>
-
-          {wpBlogs.length > 0 && (
-            <div
-              className="mt-2 rounded-lg border px-3 py-2"
-              style={{ borderColor: "var(--card-border)", background: "var(--card)" }}
-            >
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted)" }}>
-                Scope
-              </div>
-              <select
-                value={selectedBlogId}
-                onChange={(e) => handleScopeChange(e.target.value)}
-                className="w-full rounded-md border px-2 py-1.5 text-xs font-medium"
-                style={{
-                  borderColor: "var(--card-border)",
-                  background: "var(--background)",
-                  color: "var(--foreground)",
-                  outline: "none",
-                }}
-              >
-                <option value="">General mode (no specific blog)</option>
-                {wpBlogs.map((blog) => (
-                  <option key={blog.id} value={blog.id}>
-                    {blog.name || blog.url}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {(scopedSessions.filter((s) => s.result).length > 0 || scopedClusters.length > 0) && (
-            <button
-              onClick={() => {
-                setShowDashboard(true);
-                setShowHelp(false);
-                setActiveSessionId(null);
-                setShowClusterView(false);
-                setActiveClusterId(null);
-                setClusterActiveArticleId(null);
-                setSidebarOpen(false);
-              }}
-              className="mt-1.5 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-              style={{
-                background: showDashboard ? "var(--card)" : "transparent",
-                color: "var(--foreground)",
-              }}
-              onMouseEnter={(e) => {
-                if (!showDashboard)
-                  (e.currentTarget as HTMLButtonElement).style.background =
-                    "rgba(0,0,0,0.04)";
-              }}
-              onMouseLeave={(e) => {
-                if (!showDashboard)
-                  (e.currentTarget as HTMLButtonElement).style.background =
-                    "transparent";
-              }}
-            >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="3" y="3" width="7" height="7" />
-                <rect x="14" y="3" width="7" height="7" />
-                <rect x="3" y="14" width="7" height="7" />
-                <rect x="14" y="14" width="7" height="7" />
-              </svg>
-              Dashboard
-            </button>
-          )}
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-3 pb-3">
-          {/* Topic Clusters Section */}
-          {scopedClusters.length > 0 && (
-            <div className="mb-3">
-              <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted)" }}>
-                Topic Clusters
-              </div>
-              <div className="space-y-0.5">
-                {scopedClusters.map((cluster) => (
-                  <div key={cluster.id}>
-                    <button
-                      onClick={() => {
-                        const isExpanding = activeClusterId !== cluster.id;
-                        setActiveClusterId(cluster.id);
-                        setShowClusterView(true);
-                        setActiveSessionId(null);
-                        setShowHelp(false);
-                        setShowDashboard(false);
-                        setClusterActiveArticleId(null);
-                        if (!isExpanding) {
-                          updateCluster(cluster.id, { expanded: !cluster.expanded });
-                        } else {
-                          updateCluster(cluster.id, { expanded: true });
-                        }
-                        setSidebarOpen(false);
-                      }}
-                      className="group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors"
-                      style={{
-                        background: activeClusterId === cluster.id && showClusterView && !clusterActiveArticleId ? "var(--card)" : "transparent",
-                        color: "var(--foreground)",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!(activeClusterId === cluster.id && showClusterView && !clusterActiveArticleId))
-                          (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,0,0,0.04)";
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!(activeClusterId === cluster.id && showClusterView && !clusterActiveArticleId))
-                          (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                      }}
-                    >
-                      <svg
-                        width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                        style={{ transform: cluster.expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s", flexShrink: 0 }}
-                      >
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
-                      <span className="flex items-center gap-1.5 truncate">
-                        {cluster.generating ? (
-                          <span className="sidebar-pulse block h-2 w-2 flex-shrink-0 rounded-full" style={{ background: "var(--accent)" }} />
-                        ) : (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-                            <circle cx="12" cy="12" r="3" />
-                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                          </svg>
-                        )}
-                        <span className="truncate">{cluster.pillarKeyword || cluster.pillarTopic}</span>
-                      </span>
-                      {cluster.generating && (
-                        <span className="ml-auto flex-shrink-0 text-[10px] tabular-nums" style={{ color: "var(--muted)" }}>
-                          {cluster.generationPhase === "planning" ? "Planning..." :
-                           cluster.generationPhase === "pillar" ? "Pillar..." :
-                           cluster.generationPhase === "clusters" ? `${cluster.clusterArticles.filter((a) => a.session?.result).length}/${cluster.clusterArticles.length}` :
-                           cluster.generationPhase === "relinking" ? "Linking..." : ""}
-                        </span>
-                      )}
-                    </button>
-                    {cluster.expanded && (
-                      <div className="ml-4 space-y-0.5 border-l py-0.5 pl-2" style={{ borderColor: "var(--card-border)" }}>
-                        {/* Pillar page */}
-                        <button
-                          onClick={() => {
-                            setActiveClusterId(cluster.id);
-                            setShowClusterView(true);
-                            setClusterActiveArticleId("pillar");
-                            setActiveSessionId(null);
-                            setShowHelp(false);
-                            setShowDashboard(false);
-                            setSidebarOpen(false);
-                          }}
-                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors"
-                          style={{
-                            background: clusterActiveArticleId === "pillar" && activeClusterId === cluster.id ? "var(--card)" : "transparent",
-                            color: "var(--foreground)",
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!(clusterActiveArticleId === "pillar" && activeClusterId === cluster.id))
-                              (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,0,0,0.04)";
-                          }}
-                          onMouseLeave={(e) => {
-                            if (!(clusterActiveArticleId === "pillar" && activeClusterId === cluster.id))
-                              (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                          }}
-                        >
-                          <span className="flex-shrink-0">
-                            {cluster.pillarSession?.loading ? (
-                              <span className="sidebar-pulse block h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent)" }} />
-                            ) : cluster.pillarSession?.error ? (
-                              <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--error)" }} />
-                            ) : cluster.pillarSession?.result ? (
-                              <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--success)" }} />
-                            ) : (
-                              <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--card-border)" }} />
-                            )}
-                          </span>
-                          <span className="truncate font-medium" style={{ color: "var(--accent)" }}>
-                            Pillar: {cluster.pillarSession?.result?.title || cluster.pillarTopic}
-                          </span>
-                        </button>
-                        {/* Cluster articles */}
-                        {cluster.clusterArticles.map((article) => (
-                          <button
-                            key={article.id}
-                            onClick={() => {
-                              setActiveClusterId(cluster.id);
-                              setShowClusterView(true);
-                              setClusterActiveArticleId(article.id);
-                              setActiveSessionId(null);
-                              setShowHelp(false);
-                              setShowDashboard(false);
-                              setSidebarOpen(false);
-                            }}
-                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors"
-                            style={{
-                              background: clusterActiveArticleId === article.id && activeClusterId === cluster.id ? "var(--card)" : "transparent",
-                            }}
-                            onMouseEnter={(e) => {
-                              if (!(clusterActiveArticleId === article.id && activeClusterId === cluster.id))
-                                (e.currentTarget as HTMLButtonElement).style.background = "rgba(0,0,0,0.04)";
-                            }}
-                            onMouseLeave={(e) => {
-                              if (!(clusterActiveArticleId === article.id && activeClusterId === cluster.id))
-                                (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                            }}
-                          >
-                            <span className="flex-shrink-0">
-                              {article.session?.loading ? (
-                                <span className="sidebar-pulse block h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent)" }} />
-                              ) : article.session?.error ? (
-                                <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--error)" }} />
-                              ) : article.session?.result ? (
-                                <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "#007aff" }} />
-                              ) : article.session?.queued ? (
-                                <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--card-border)" }} />
-                              ) : (
-                                <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--card-border)" }} />
-                              )}
-                            </span>
-                            <span className="truncate" style={{ color: "var(--foreground)" }}>
-                              {article.session?.result?.title || article.concept}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Articles section header */}
-          {(scopedSessions.length > 0 || scopedClusters.length > 0) && scopedSessions.length > 0 && scopedClusters.length > 0 && (
-            <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted)" }}>
-              Articles
-            </div>
-          )}
-
-          {scopedSessions.length === 0 && scopedClusters.length === 0 ? (
-            <p
-              className="px-3 py-6 text-center text-xs"
-              style={{ color: "var(--muted)" }}
-            >
-              No articles yet. Start generating!
-            </p>
-          ) : scopedSessions.length > 0 ? (
-            <SidebarArticleList
-              sessions={scopedSessions}
-              activeSessionId={activeSessionId}
-              onSelect={(id) => {
-                setActiveSessionId(id);
-                setShowHelp(false);
-                setShowDashboard(false);
-                setShowClusterView(false);
-                setActiveClusterId(null);
-                setClusterActiveArticleId(null);
-                setSidebarOpen(false);
-              }}
-              onDelete={handleDeleteSession}
-              getStepLabel={getStepLabel}
-            />
-          ) : null}
-        </div>
-
-        {/* Credits & Navigation */}
-        {user && (
-          <div
-            className="mt-auto border-t px-3 py-3"
-            style={{ borderColor: "var(--card-border)" }}
-          >
-            {/* Credit display */}
-            <div
-              className="mb-2 rounded-lg px-3 py-2"
-              style={{ background: "var(--background)", border: "1px solid var(--card-border)" }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: "var(--muted)" }}>Credits</span>
-                <span className="text-xs font-bold" style={{ color: "var(--foreground)" }}>
-                  {isAdmin ? "Unlimited" : userCredits !== null ? userCredits : "..."}
-                </span>
-              </div>
-              <div className="mt-1 flex items-center justify-between">
-                <span className="text-xs" style={{ color: "var(--muted)" }}>Plan</span>
-                <span className="text-xs font-semibold" style={{ color: "var(--accent)", textTransform: "capitalize" }}>
-                  {isAdmin ? "Admin" : userPlan}
-                </span>
-              </div>
-            </div>
-
-            {/* Nav links */}
-            <div className="mb-2 flex flex-col gap-1">
-              <button
-                onClick={() => router.push("/app/billing")}
-                className="w-full rounded-lg px-3 py-1.5 text-left text-xs font-medium transition-colors"
-                style={{ color: "var(--muted)" }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--foreground)"; (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
-              >
-                Billing & Credits
-              </button>
-              <button
-                onClick={() => router.push("/app/settings")}
-                className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-left text-xs font-medium transition-colors"
-                style={{ color: "var(--muted)" }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--foreground)"; (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
-              >
-                <span>Settings</span>
-                {wpBlogs.length > 0 ? (
-                  <span className="flex items-center gap-1 text-[10px]" style={{ color: "var(--success)" }}>
-                    <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--success)" }} />
-                    {wpBlogs.length} blog{wpBlogs.length > 1 ? "s" : ""}
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 text-[10px]" style={{ color: "var(--muted)" }}>
-                    <span className="block h-1.5 w-1.5 rounded-full" style={{ background: "var(--card-border)" }} />
-                    No blogs
-                  </span>
-                )}
-              </button>
-              {isAdmin && (
-                <button
-                  onClick={() => router.push("/app/admin")}
-                  className="w-full rounded-lg px-3 py-1.5 text-left text-xs font-medium transition-colors"
-                  style={{ color: "var(--error)" }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
-                >
-                  Admin Dashboard
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span
-                className="truncate text-xs"
-                style={{ color: "var(--muted)" }}
-                title={user.email}
-              >
-                {user.email}
-              </span>
-              <button
-                onClick={handleLogout}
-                className="ml-2 flex-shrink-0 rounded px-2 py-1 text-xs transition-colors"
-                style={{ color: "var(--muted)" }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.color = "var(--error)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)";
-                }}
-                title="Sign out"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
-      </aside>
-
-      {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Mobile header */}
-        <header
-          className="flex items-center gap-3 border-b px-4 py-3 md:hidden"
-          style={{ borderColor: "var(--card-border)" }}
-        >
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="relative rounded p-1"
-            style={{ color: "var(--foreground)" }}
-          >
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-            {loadingCount > 0 && (
-              <span
-                className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                style={{ background: "var(--accent)" }}
-              >
-                {loadingCount}
-              </span>
-            )}
-          </button>
-          <Image src="/logo.png" alt="Article Sauce" width={24} height={24} className="rounded" />
-          <h1 className="gradient-text text-lg font-bold tracking-tight">
-            Article Sauce
-          </h1>
-        </header>
-
-        {/* Content area */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-4xl px-6 py-10">
             {/* Help Page */}
             {showHelp && (
               <HelpPage onBack={() => setShowHelp(false)} />
@@ -3795,17 +3254,6 @@ export default function Home() {
             )}
 
           </div>
-        </main>
-
-        <footer
-          className="border-t py-4 text-center"
-          style={{ borderColor: "var(--card-border)" }}
-        >
-          <p className="text-xs" style={{ color: "var(--muted)" }}>
-            Article Sauce
-          </p>
-        </footer>
-      </div>
 
       {/* Floating progress pill */}
       {activeCount > 0 && (
@@ -3945,6 +3393,6 @@ export default function Home() {
           onClose={() => setShowIdeas(false)}
         />
       )}
-    </div>
+  </>
   );
 }
