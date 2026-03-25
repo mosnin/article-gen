@@ -41,6 +41,29 @@ interface DevToAccount {
   apiKey: string;
 }
 
+interface NotionConnection {
+  id: string;
+  name: string;
+  databaseId: string;
+  integrationToken: string;
+}
+
+interface WebflowSite {
+  id: string;
+  name: string;
+  siteId: string;
+  collectionId: string;
+  apiToken: string;
+}
+
+interface WebhookEndpoint {
+  id: string;
+  name: string;
+  url: string;
+  secret: string;
+  format: "json" | "html" | "markdown";
+}
+
 interface Preset {
   id: string;
   name: string;
@@ -109,6 +132,15 @@ export default function SettingsPage() {
   // Dev.to
   const [devtoAccounts, setDevtoAccounts] = useState<DevToAccount[]>([]);
 
+  // Notion
+  const [notionConnections, setNotionConnections] = useState<NotionConnection[]>([]);
+
+  // Webflow
+  const [webflowSites, setWebflowSites] = useState<WebflowSite[]>([]);
+
+  // Webhooks
+  const [webhookEndpoints, setWebhookEndpoints] = useState<WebhookEndpoint[]>([]);
+
   // Platform connection tests (shared across all non-WP platforms)
   const [testingPlatformId, setTestingPlatformId] = useState<string | null>(null);
   const [platformTestResults, setPlatformTestResults] = useState<Record<string, { ok: boolean; message: string }>>({});
@@ -159,6 +191,9 @@ export default function SettingsPage() {
       if (Array.isArray(settings.medium_accounts)) setMediumAccounts(settings.medium_accounts);
       if (Array.isArray(settings.ghost_blogs)) setGhostBlogs(settings.ghost_blogs);
       if (Array.isArray(settings.devto_accounts)) setDevtoAccounts(settings.devto_accounts);
+      if (Array.isArray(settings.notion_connections)) setNotionConnections(settings.notion_connections);
+      if (Array.isArray(settings.webflow_sites)) setWebflowSites(settings.webflow_sites);
+      if (Array.isArray(settings.webhook_endpoints)) setWebhookEndpoints(settings.webhook_endpoints);
       if (Array.isArray(settings.presets)) setPresets(settings.presets);
       setGscConnected(!!settings.gsc_connected);
       setGscSiteUrl(settings.gsc_site_url || "");
@@ -196,6 +231,9 @@ export default function SettingsPage() {
           medium_accounts: mediumAccounts.filter((a) => a.integrationToken.trim()),
           ghost_blogs: ghostBlogs.filter((b) => b.url.trim()),
           devto_accounts: devtoAccounts.filter((a) => a.apiKey.trim()),
+          notion_connections: notionConnections.filter((c) => c.databaseId.trim()),
+          webflow_sites: webflowSites.filter((s) => s.collectionId.trim()),
+          webhook_endpoints: webhookEndpoints.filter((w) => w.url.trim()),
           presets: presets.filter((p) => p.name.trim()),
           gsc_site_url: gscSiteUrl,
         }),
@@ -275,6 +313,24 @@ export default function SettingsPage() {
   const removeDevTo = (id: string) => setDevtoAccounts((prev) => prev.filter((a) => a.id !== id));
   const updateDevTo = (id: string, field: keyof DevToAccount, value: string) =>
     setDevtoAccounts((prev) => prev.map((a) => a.id === id ? { ...a, [field]: value } : a));
+
+  // ── Notion helpers ─────────────────────────────────────────────────────────
+  const addNotion = () => setNotionConnections((prev) => [...prev, { id: crypto.randomUUID(), name: "", databaseId: "", integrationToken: "" }]);
+  const removeNotion = (id: string) => setNotionConnections((prev) => prev.filter((c) => c.id !== id));
+  const updateNotion = (id: string, field: keyof NotionConnection, value: string) =>
+    setNotionConnections((prev) => prev.map((c) => c.id === id ? { ...c, [field]: value } : c));
+
+  // ── Webflow helpers ─────────────────────────────────────────────────────────
+  const addWebflow = () => setWebflowSites((prev) => [...prev, { id: crypto.randomUUID(), name: "", siteId: "", collectionId: "", apiToken: "" }]);
+  const removeWebflow = (id: string) => setWebflowSites((prev) => prev.filter((s) => s.id !== id));
+  const updateWebflow = (id: string, field: keyof WebflowSite, value: string) =>
+    setWebflowSites((prev) => prev.map((s) => s.id === id ? { ...s, [field]: value } : s));
+
+  // ── Webhook helpers ─────────────────────────────────────────────────────────
+  const addWebhook = () => setWebhookEndpoints((prev) => [...prev, { id: crypto.randomUUID(), name: "", url: "", secret: "", format: "json" }]);
+  const removeWebhook = (id: string) => setWebhookEndpoints((prev) => prev.filter((w) => w.id !== id));
+  const updateWebhook = (id: string, field: keyof WebhookEndpoint, value: string) =>
+    setWebhookEndpoints((prev) => prev.map((w) => w.id === id ? { ...w, [field]: value } : w));
 
   // ── Preset helpers ──────────────────────────────────────────────────────
   const addPreset = () => setPresets((prev) => [...prev, {
@@ -580,6 +636,125 @@ export default function SettingsPage() {
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--card-border)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
               Add Dev.to Account
+            </button>
+          </div>
+        </section>
+
+        {/* Notion */}
+        <section style={{ marginBottom: 40 }}>
+          <div style={{ marginBottom: 16 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>Notion</h2>
+            <p style={{ fontSize: 13, color: "var(--muted)" }}>Publish articles directly to a Notion database. Requires an integration token and database ID.</p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {notionConnections.map((conn) => (
+              <div key={conn.id} style={cardStyle}>
+                <div style={sectionHeaderStyle}>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>{conn.name || "Notion Database"}</span>
+                  <button onClick={() => removeNotion(conn.id)} style={{ padding: "4px 8px", borderRadius: 6, fontSize: 12, background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}>Remove</button>
+                </div>
+                <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div><label style={labelStyle}>Connection Name</label><input type="text" value={conn.name} onChange={(e) => updateNotion(conn.id, "name", e.target.value)} placeholder="My Notion DB" style={inputStyle} /></div>
+                    <div><label style={labelStyle}>Database ID</label><input type="text" value={conn.databaseId} onChange={(e) => updateNotion(conn.id, "databaseId", e.target.value)} placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" style={inputStyle} /></div>
+                  </div>
+                  <div><label style={labelStyle}>Integration Token</label><PasswordInput value={conn.integrationToken} onChange={(v) => updateNotion(conn.id, "integrationToken", v)} placeholder="secret_..." /></div>
+                  <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>
+                    Notion Settings → Integrations → New integration. Database must have: Name (title), Content, Meta Description, Slug, Focus Keyword, Status (select).
+                  </p>
+                </div>
+              </div>
+            ))}
+            <button onClick={addNotion}
+              style={{ padding: 14, borderRadius: 12, border: "2px dashed var(--card-border)", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--accent)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--card-border)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+              Add Notion Connection
+            </button>
+          </div>
+        </section>
+
+        {/* Webflow */}
+        <section style={{ marginBottom: 40 }}>
+          <div style={{ marginBottom: 16 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>Webflow</h2>
+            <p style={{ fontSize: 13, color: "var(--muted)" }}>Publish articles to a Webflow CMS collection. Requires an API token and Collection ID.</p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {webflowSites.map((site) => (
+              <div key={site.id} style={cardStyle}>
+                <div style={sectionHeaderStyle}>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>{site.name || "Webflow Site"}</span>
+                  <button onClick={() => removeWebflow(site.id)} style={{ padding: "4px 8px", borderRadius: 6, fontSize: 12, background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}>Remove</button>
+                </div>
+                <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div><label style={labelStyle}>Site Name</label><input type="text" value={site.name} onChange={(e) => updateWebflow(site.id, "name", e.target.value)} placeholder="My Webflow Site" style={inputStyle} /></div>
+                    <div><label style={labelStyle}>Site ID</label><input type="text" value={site.siteId} onChange={(e) => updateWebflow(site.id, "siteId", e.target.value)} placeholder="xxxxxxxxxxxxxxxxxxxxxxxx" style={inputStyle} /></div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div><label style={labelStyle}>Collection ID</label><input type="text" value={site.collectionId} onChange={(e) => updateWebflow(site.id, "collectionId", e.target.value)} placeholder="xxxxxxxxxxxxxxxxxxxxxxxx" style={inputStyle} /></div>
+                    <div><label style={labelStyle}>API Token</label><PasswordInput value={site.apiToken} onChange={(v) => updateWebflow(site.id, "apiToken", v)} placeholder="..." /></div>
+                  </div>
+                  <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>
+                    Webflow Dashboard → Site Settings → Integrations → API Access. Collection must have fields: name, slug, post-body, post-summary, meta-title, meta-description.
+                  </p>
+                </div>
+              </div>
+            ))}
+            <button onClick={addWebflow}
+              style={{ padding: 14, borderRadius: 12, border: "2px dashed var(--card-border)", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--accent)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--card-border)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+              Add Webflow Site
+            </button>
+          </div>
+        </section>
+
+        {/* Webhooks */}
+        <section style={{ marginBottom: 40 }}>
+          <div style={{ marginBottom: 16 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>Webhooks</h2>
+            <p style={{ fontSize: 13, color: "var(--muted)" }}>Send articles to any endpoint when published. Supports JSON, HTML, or Markdown. Optional HMAC-SHA256 signing.</p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {webhookEndpoints.map((wh) => (
+              <div key={wh.id} style={cardStyle}>
+                <div style={sectionHeaderStyle}>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>{wh.name || wh.url || "Webhook"}</span>
+                  <button onClick={() => removeWebhook(wh.id)} style={{ padding: "4px 8px", borderRadius: 6, fontSize: 12, background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}>Remove</button>
+                </div>
+                <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div><label style={labelStyle}>Name</label><input type="text" value={wh.name} onChange={(e) => updateWebhook(wh.id, "name", e.target.value)} placeholder="My CMS" style={inputStyle} /></div>
+                    <div>
+                      <label style={labelStyle}>Content Format</label>
+                      <select value={wh.format} onChange={(e) => updateWebhook(wh.id, "format", e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+                        <option value="json">JSON (markdown content)</option>
+                        <option value="html">JSON (HTML content)</option>
+                        <option value="markdown">JSON (raw markdown)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div><label style={labelStyle}>Endpoint URL</label><input type="text" value={wh.url} onChange={(e) => updateWebhook(wh.id, "url", e.target.value)} placeholder="https://your-cms.com/api/articles" style={inputStyle} /></div>
+                  <div><label style={labelStyle}>Signing Secret <span style={{ fontWeight: 400, color: "var(--muted)" }}>(optional)</span></label><PasswordInput value={wh.secret} onChange={(v) => updateWebhook(wh.id, "secret", v)} placeholder="Used to generate X-ArticleGen-Signature header" /></div>
+                </div>
+              </div>
+            ))}
+            <button onClick={addWebhook}
+              style={{ padding: 14, borderRadius: 12, border: "2px dashed var(--card-border)", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--accent)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--card-border)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+              Add Webhook
             </button>
           </div>
         </section>
