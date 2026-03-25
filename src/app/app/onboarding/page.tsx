@@ -207,6 +207,11 @@ export default function OnboardingPage() {
   // Step 5 — Integration
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
 
+  // Site analysis
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzed, setAnalyzed] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState("");
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -302,6 +307,37 @@ export default function OnboardingPage() {
     }
   };
 
+  const analyzeSite = async () => {
+    if (!businessUrl.trim()) {
+      setAnalyzeError("Enter your website URL first.");
+      return;
+    }
+    setAnalyzing(true);
+    setAnalyzeError("");
+    try {
+      const res = await fetch("/api/onboarding/analyze-site", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: businessUrl.trim(), niche: niche.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "Analysis failed");
+
+      // Auto-fill fields
+      if (data.niche && !niche) setNiche(data.niche);
+      if (data.businessDescription && !businessDesc) setBusinessDesc(data.businessDescription);
+      if (data.targetAudiences?.length > 0) setAudiences(data.targetAudiences.slice(0, 5));
+      if (data.competitors?.length > 0) setCompetitors(data.competitors.slice(0, 5));
+      if (data.suggestedSitemapUrl) setSitemapUrl(data.suggestedSitemapUrl);
+      if (data.suggestedBlogUrl) setBlogUrl(data.suggestedBlogUrl);
+      setAnalyzed(true);
+    } catch (err) {
+      setAnalyzeError(err instanceof Error ? err.message : "Analysis failed. Fill in manually.");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   const finish = async () => {
     setSaving(true);
     setError("");
@@ -360,9 +396,54 @@ export default function OnboardingPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">Website URL <span className="text-red-500">*</span></label>
-                    <input value={businessUrl} onChange={(e) => setBusinessUrl(e.target.value)} placeholder="https://yourblog.com" className={inputCls} />
+                    <input value={businessUrl} onChange={(e) => { setBusinessUrl(e.target.value); setAnalyzed(false); }} placeholder="https://yourblog.com" className={inputCls} />
                   </div>
                 </div>
+
+                {/* Analyze button */}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={analyzeSite}
+                    disabled={analyzing || !businessUrl.trim()}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-50 border"
+                    style={{
+                      background: analyzed ? "#f0fdf4" : "#f5f3ff",
+                      borderColor: analyzed ? "#bbf7d0" : "#c4b5fd",
+                      color: analyzed ? "#15803d" : "#7c3aed",
+                    }}
+                  >
+                    {analyzing ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Analyzing your site…
+                      </>
+                    ) : analyzed ? (
+                      <>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        Site analyzed — re-analyze
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                        Auto-fill from URL
+                      </>
+                    )}
+                  </button>
+                  {!analyzed && !analyzing && (
+                    <p className="text-xs text-gray-400">We&apos;ll research your site and pre-fill the fields below</p>
+                  )}
+                  {analyzed && (
+                    <p className="text-xs text-green-600">Audiences and competitors pre-filled from your site ✓</p>
+                  )}
+                </div>
+                {analyzeError && (
+                  <p className="text-xs text-red-500">{analyzeError}</p>
+                )}
+
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Niche / Industry</label>
                   <input value={niche} onChange={(e) => setNiche(e.target.value)} placeholder="e.g. SaaS, E-commerce, Health & Fitness" className={inputCls} />
