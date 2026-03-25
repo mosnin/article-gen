@@ -146,8 +146,8 @@ export default function BacklinksPage() {
           <div className="px-5 py-5">
             <div className="mb-3 flex items-center gap-1.5">
               <p className="text-xs font-semibold text-[var(--text-primary)]">Network Participation</p>
-              <button className="text-[var(--text-tertiary)]">
-                <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+              <button aria-label="More information" className="text-[var(--text-tertiary)]">
+                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className="h-3.5 w-3.5">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                 </svg>
               </button>
@@ -190,15 +190,15 @@ export default function BacklinksPage() {
       </div>
 
       {/* Credits + Performance */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Backlink Credits */}
         <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] p-5">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-sm">🪙</span>
               <h3 className="text-sm font-semibold text-[var(--text-primary)]">Backlink Credits</h3>
-              <button className="text-[var(--text-tertiary)]">
-                <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+              <button aria-label="More information" className="text-[var(--text-tertiary)]">
+                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className="h-3.5 w-3.5">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                 </svg>
               </button>

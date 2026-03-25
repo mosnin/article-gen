@@ -197,7 +197,7 @@ function BillingContent() {
               <thead>
                 <tr className="border-b border-[var(--border-default)]">
                   {["Date", "Invoice Number", "Amount", "Status", "Actions"].map((col) => (
-                    <th key={col} className="px-5 py-3 text-left text-xs font-semibold text-[var(--text-tertiary)]">
+                    <th key={col} scope="col" className="px-5 py-3 text-left text-xs font-semibold text-[var(--text-tertiary)]">
                       {col === "Date" ? (
                         <div className="flex items-center gap-1">
                           {col}

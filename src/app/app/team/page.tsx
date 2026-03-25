@@ -42,7 +42,8 @@ export default function TeamPage() {
   }, []);
 
   const handleInvite = async () => {
-    if (!email.trim() || !email.includes("@")) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim() || !emailRegex.test(email.trim())) {
       toast.error("Enter a valid email address");
       return;
     }
@@ -101,7 +102,9 @@ export default function TeamPage() {
         </h2>
 
         <div className="flex gap-2">
+          <label htmlFor="invite-email" className="sr-only">Email address to invite</label>
           <input
+            id="invite-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -145,6 +148,7 @@ export default function TeamPage() {
                     </span>
                     <button
                       onClick={() => handleRemove(u.id)}
+                      aria-label={`Remove ${u.email}`}
                       className="text-[var(--text-tertiary)] hover:text-[var(--error)] transition-colors"
                     >
                       <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">

@@ -43,6 +43,7 @@ function NavLink({ item, collapsed, indent = false }: { item: NavItem; collapsed
       )}
     >
       <span
+        aria-hidden="true"
         className={cn(
           "flex h-4 w-4 shrink-0 items-center justify-center transition-colors",
           isActive ? "text-[var(--accent)]" : "text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)]"
@@ -69,22 +70,28 @@ function NavLink({ item, collapsed, indent = false }: { item: NavItem; collapsed
 
 function SectionHeader({ label, children, defaultOpen = true }: { label: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
+  const sectionId = `nav-section-${label.toLowerCase().replace(/\s+/g, "-")}`;
   return (
     <div>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+        aria-expanded={open}
+        aria-controls={sectionId}
+        className="flex w-full items-center justify-between rounded px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
       >
         {label}
         <svg
           viewBox="0 0 20 20"
           fill="currentColor"
+          aria-hidden="true"
           className={cn("h-3 w-3 transition-transform", open ? "rotate-180" : "")}
         >
           <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
         </svg>
       </button>
-      {open && <div className="space-y-0.5">{children}</div>}
+      <div id={sectionId} className={cn("space-y-0.5", !open && "hidden")}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -390,7 +397,8 @@ export function Sidebar({
         {/* User */}
         <button
           onClick={onSignOut}
-          className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] transition-colors group"
+          aria-label="Sign out"
+          className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         >
           <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent-light)] text-[var(--accent)] text-xs font-semibold">
             {userEmail?.[0]?.toUpperCase() ?? "U"}
@@ -424,6 +432,7 @@ export function Sidebar({
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-40 bg-black/50 lg:hidden"
             onClick={onMobileClose}
+            aria-hidden="true"
           />
         )}
       </AnimatePresence>
@@ -432,6 +441,9 @@ export function Sidebar({
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation"
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
