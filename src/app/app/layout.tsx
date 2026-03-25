@@ -20,6 +20,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/app/billing": "Billing",
   "/app/admin": "Admin",
   "/app/onboarding": "Onboarding",
+  "/app/autopilot": "Content Autopilot",
 };
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
