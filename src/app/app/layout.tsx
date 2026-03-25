@@ -25,6 +25,9 @@ const PAGE_TITLES: Record<string, string> = {
   "/app/integrations": "Integrations",
   "/app/linking": "Linking Configuration",
   "/app/articles-settings": "Articles Settings",
+  "/app/backlinks": "Backlink Exchange",
+  "/app/free-tools": "Free Tools Builder",
+  "/app/team": "Team",
 };
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

@@ -168,6 +168,15 @@ export function Sidebar({
         </svg>
       ),
     },
+    {
+      label: "Backlink Exchange",
+      href: "/app/backlinks",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path d="M8 5a1 1 0 100 2h5.586l-1.293 1.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L13.586 5H8zM12 15a1 1 0 100-2H6.414l1.293-1.293a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L6.414 15H12z" />
+        </svg>
+      ),
+    },
   ];
 
   const toolsNav: NavItem[] = [
@@ -273,36 +282,97 @@ export function Sidebar({
           ))}
         </SectionHeader>
 
+        {/* Free Tools Builder */}
+        <NavLink
+          item={{
+            label: "Free Tools Builder",
+            href: "/app/free-tools",
+            badge: "NEW",
+            badgeVariant: "new",
+            icon: (
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                <path fillRule="evenodd" d="M6.672 1.911a1 1 0 10-1.932.518l.259.966a1 1 0 001.932-.518l-.26-.966zM2.429 4.74a1 1 0 10-.517 1.932l.966.259a1 1 0 00.517-1.932l-.966-.26zm8.814-.569a1 1 0 00-1.415-1.414l-.707.707a1 1 0 101.415 1.415l.707-.708zm-7.071 7.072l.707-.707A1 1 0 003.465 9.12l-.708.707a1 1 0 001.415 1.415zm3.2-5.171a1 1 0 00-1.3 1.3l4 10a1 1 0 001.823.075l1.38-2.759 3.018 3.02a1 1 0 001.414-1.415l-3.019-3.02 2.76-1.379a1 1 0 00-.076-1.822l-10-4z" clipRule="evenodd" />
+              </svg>
+            ),
+          }}
+          collapsed={false}
+        />
+
+        {/* Add-ons section */}
+        <SectionHeader label="Add-ons" defaultOpen={false}>
+          <NavLink
+            item={{
+              label: "Human Curated Service",
+              href: "/app/addons/curated",
+              icon: (
+                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                </svg>
+              ),
+            }}
+            collapsed={false}
+          />
+          <NavLink
+            item={{
+              label: "Get 350+ Backlinks",
+              href: "/app/addons/backlinks",
+              icon: (
+                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
+                </svg>
+              ),
+            }}
+            collapsed={false}
+          />
+        </SectionHeader>
+
         {/* Account section */}
         <SectionHeader label="Account" defaultOpen={false}>
+          <NavLink
+            item={{
+              label: "Team",
+              href: "/app/team",
+              icon: (
+                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+                </svg>
+              ),
+            }}
+            collapsed={false}
+          />
           {secondaryNav.map((item) => (
             <NavLink key={item.href} item={item} collapsed={false} />
           ))}
         </SectionHeader>
       </nav>
 
-      {/* Credits widget */}
-      <div className="shrink-0 border-t border-[var(--border-default)] px-4 py-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-[var(--text-secondary)]">Credits</span>
-          <span className="text-xs font-semibold text-[var(--text-primary)]">{credits} left</span>
-        </div>
-        <div className="h-1.5 w-full rounded-full bg-[var(--surface-sunken)] overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{
-              width: `${creditPercent}%`,
-              backgroundColor: creditPercent < 20 ? "var(--error)" : creditPercent < 50 ? "var(--warning)" : "var(--accent)",
-            }}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] text-[var(--text-tertiary)]">{plan} plan</span>
-          {credits < 10 && (
-            <Link href="/app/billing" className="text-[11px] text-[var(--accent)] hover:underline font-medium">
-              Upgrade
-            </Link>
-          )}
+      {/* Bottom widget */}
+      <div className="shrink-0 border-t border-[var(--border-default)] px-3 py-3 space-y-2.5">
+        {/* Join Referral Program */}
+        <Link
+          href="/app/referral"
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--border-default)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] transition-colors"
+        >
+          <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-[var(--accent)]">
+            <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+          </svg>
+          Join Referral Program
+        </Link>
+
+        {/* Stats row */}
+        <div className="flex items-center gap-3 px-1">
+          <div className="flex items-center gap-1 text-[11px] text-[var(--text-tertiary)]">
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
+              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+            </svg>
+            <span>{credits} Articles/mo</span>
+          </div>
+          <div className="flex items-center gap-1 text-[11px] text-[var(--text-tertiary)]">
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
+              <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
+            </svg>
+            <span>100 Backlink Credits</span>
+          </div>
         </div>
 
         {/* User */}
@@ -313,9 +383,12 @@ export function Sidebar({
           <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent-light)] text-[var(--accent)] text-xs font-semibold">
             {userEmail?.[0]?.toUpperCase() ?? "U"}
           </div>
-          <span className="truncate text-xs">{userEmail}</span>
+          <div className="min-w-0 flex-1 text-left">
+            <p className="truncate text-xs font-medium text-[var(--text-primary)]">{userEmail}</p>
+            <p className="text-[10px] text-[var(--text-tertiary)] capitalize">{plan} Subscription</p>
+          </div>
           <svg viewBox="0 0 20 20" fill="currentColor" className="ml-auto h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-            <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
+            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
           </svg>
         </button>
       </div>
