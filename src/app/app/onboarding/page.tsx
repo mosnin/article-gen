@@ -4,855 +4,687 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 
-const TOTAL_STEPS = 3;
+// ─── Step definitions ─────────────────────────────────────────────────────────
 
-interface PlatformCard {
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-}
+const STEPS = ["Business", "Audience & Competitors", "Blog", "Articles", "Integration"] as const;
+type Step = (typeof STEPS)[number];
 
-function WordPressIcon() {
+// ─── Icons ────────────────────────────────────────────────────────────────────
+
+const CheckIcon = () => (
+  <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+    <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+// ─── Step indicator ───────────────────────────────────────────────────────────
+
+function StepIndicator({ current }: { current: number }) {
   return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" stroke="#21759b" strokeWidth="1.5" fill="#fff" />
-      <path d="M3.6 12c0 3.54 2.06 6.61 5.05 8.08L4.3 9.18A8.4 8.4 0 0 0 3.6 12zm14.53-.38c0-1.1-.4-1.87-.74-2.46-.45-.74-.88-1.36-.88-2.1 0-.82.62-1.58 1.5-1.58l.11.01A8.4 8.4 0 0 0 12 3.6c-2.9 0-5.45 1.49-6.93 3.74l.53.02c.87 0 2.2-.11 2.2-.11.45-.02.5.63.06.68 0 0-.45.05-.95.08l3.02 8.98 1.81-5.44-1.29-3.54c-.44-.03-.86-.08-.86-.08-.44-.03-.39-.7.06-.68 0 0 1.36.11 2.17.11.87 0 2.2-.11 2.2-.11.45-.02.5.63.05.68 0 0-.45.05-.94.08l3 8.93.83-2.76c.36-.93.57-1.6.57-2.18zM12.2 12.8l-2.49 7.24a8.42 8.42 0 0 0 5.17-.14l-.06-.11-2.62-7zm7.2-4.76a6.62 6.62 0 0 1 .06.93c0 .92-.17 1.95-.69 3.24l-2.76 7.97A8.41 8.41 0 0 0 19.4 8.04z" fill="#21759b" />
-    </svg>
+    <div className="flex items-center justify-center gap-0 mb-10">
+      {STEPS.map((label, i) => {
+        const done = i < current;
+        const active = i === current;
+        return (
+          <div key={label} className="flex items-center">
+            <div className="flex flex-col items-center gap-1.5">
+              <div
+                className="flex items-center justify-center rounded-full text-xs font-semibold transition-all duration-300"
+                style={{
+                  width: 22,
+                  height: 22,
+                  background: done || active ? "#7c3aed" : "transparent",
+                  border: done || active ? "none" : "2px solid #d1d5db",
+                  color: done || active ? "#fff" : "#9ca3af",
+                }}
+              >
+                {done ? <CheckIcon /> : i + 1}
+              </div>
+              <span
+                className="text-xs font-medium whitespace-nowrap hidden sm:block"
+                style={{ color: active ? "#7c3aed" : done ? "#374151" : "#9ca3af" }}
+              >
+                {label}
+              </span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div
+                className="h-px w-10 sm:w-16 mx-1 transition-all duration-300"
+                style={{ background: i < current ? "#7c3aed" : "#d1d5db", marginBottom: 16 }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
-function MediumIcon() {
+// ─── Toggle ───────────────────────────────────────────────────────────────────
+
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect width="24" height="24" rx="4" fill="#000" />
-      <ellipse cx="8.5" cy="12" rx="4.5" ry="5.5" fill="#fff" />
-      <ellipse cx="17" cy="12" rx="2" ry="5" fill="#fff" />
-      <rect x="21" y="7" width="1.5" height="10" rx="0.75" fill="#fff" />
-    </svg>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200"
+      style={{ background: checked ? "#7c3aed" : "#d1d5db" }}
+    >
+      <span
+        className="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200"
+        style={{ transform: checked ? "translateX(20px)" : "translateX(0)" }}
+      />
+    </button>
   );
 }
 
-function DevToIcon() {
+// ─── Tag input ────────────────────────────────────────────────────────────────
+
+function TagInput({
+  tags,
+  onAdd,
+  onRemove,
+  placeholder,
+  max = 7,
+}: {
+  tags: string[];
+  onAdd: (t: string) => void;
+  onRemove: (i: number) => void;
+  placeholder: string;
+  max?: number;
+}) {
+  const [val, setVal] = useState("");
+
+  const add = () => {
+    const t = val.trim();
+    if (t && tags.length < max) {
+      onAdd(t);
+      setVal("");
+    }
+  };
+
   return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect width="24" height="24" rx="4" fill="#0a0a0a" />
-      <text x="3" y="17" fontSize="10" fontWeight="800" fill="#fff" fontFamily="monospace">
-        DEV
-      </text>
-    </svg>
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+          placeholder={placeholder}
+          disabled={tags.length >= max}
+          className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-100 disabled:opacity-50 bg-white"
+        />
+        <button
+          type="button"
+          onClick={add}
+          disabled={!val.trim() || tags.length >= max}
+          className="px-4 py-2 text-sm font-semibold rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+        >
+          Add
+        </button>
+      </div>
+      {tags.length > 0 && (
+        <div className="grid sm:grid-cols-2 gap-2">
+          {tags.map((tag, i) => (
+            <div key={i} className="flex items-center justify-between gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800">
+              <span className="truncate">{tag}</span>
+              <button type="button" onClick={() => onRemove(i)} className="text-gray-400 hover:text-gray-700 flex-shrink-0 transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-xs text-gray-400">{tags.length}/{max} added</p>
+    </div>
   );
 }
 
-function GhostIcon() {
+// ─── Card wrapper ─────────────────────────────────────────────────────────────
+
+function Card({ children }: { children: React.ReactNode }) {
   return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect width="24" height="24" rx="4" fill="#212121" />
-      <path d="M12 4a6 6 0 0 0-6 6v8l2-2 2 2 2-2 2 2 2-2v-8a6 6 0 0 0-6-6z" fill="#fff" />
-      <circle cx="10" cy="11" r="1" fill="#212121" />
-      <circle cx="14" cy="11" r="1" fill="#212121" />
-    </svg>
+    <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+      {children}
+    </div>
   );
 }
 
-function ShopifyIcon() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect width="24" height="24" rx="4" fill="#96bf48" />
-      <path d="M15.5 6.5c-.1-.1-.3-.1-.5-.1s-.3 0-.5.1c-.1-.4-.4-1.2-1.2-1.2-.1 0-.1 0-.2.1-.3-.4-.7-.6-1.1-.6-2.7 0-4 3.4-4.4 5.1l-1.6.5v8.2l7.5 1.3 4-1V7.2L15.5 6.5zm-2.2-.8c.5 0 .8.5.9.9-.4.1-.9.3-1.4.4 0-.5.2-1.3.5-1.3zM12 19.5 8 18.7V10l4 .7v8.8zm1 .2v-8.8l3-1.1v9.5l-3 .4zm2.9-9.9-3 1.1-.9-.1.1-3.3.3-.1.3.1-.1 2.8 1.8-.6.2.1h1.3z" fill="#fff" />
-    </svg>
-  );
-}
+const ARTICLE_STYLES = ["Informative", "Persuasive", "Listicle", "How-to Guide", "Comparison", "News", "Opinion"];
+const INTERNAL_LINK_OPTIONS = ["0 links", "1 link per article", "2 links per article", "3 links per article", "5 links per article"];
+const IMAGE_STYLES = ["Brand & Text", "Watercolor", "Cinematic", "Illustration", "Sketch", "Photorealistic"];
 
-const PLATFORMS: PlatformCard[] = [
-  {
-    name: "WordPress",
-    description: "Publish to any WordPress site via REST API",
-    icon: <WordPressIcon />,
-  },
-  {
-    name: "Medium",
-    description: "Reach millions of readers on Medium",
-    icon: <MediumIcon />,
-  },
-  {
-    name: "Dev.to",
-    description: "Share articles with the developer community",
-    icon: <DevToIcon />,
-  },
-  {
-    name: "Ghost",
-    description: "Publish to your Ghost-powered publication",
-    icon: <GhostIcon />,
-  },
-  {
-    name: "Shopify",
-    description: "Drive traffic to your Shopify store blog",
-    icon: <ShopifyIcon />,
-  },
+const INTEGRATIONS = [
+  { id: "notion", name: "Notion", icon: "N", color: "#000", bg: "#f3f4f6" },
+  { id: "wordpress", name: "WordPress", icon: "W", color: "#21759b", bg: "#e8f4f8" },
+  { id: "wordpress_com", name: "WordPress.com", icon: "W", color: "#0073aa", bg: "#e6f2f8" },
+  { id: "shopify", name: "Shopify", icon: "S", color: "#5b8c3d", bg: "#eef5ea" },
+  { id: "wix", name: "Wix", icon: "WX", color: "#000", bg: "#f3f4f6" },
+  { id: "webflow", name: "Webflow", icon: "WF", color: "#146ef5", bg: "#eaf1fe" },
+  { id: "webhook", name: "API Webhook", icon: "⚡", color: "#374151", bg: "#f3f4f6" },
+  { id: "framer", name: "Framer", icon: "F", color: "#0055ff", bg: "#ebefff" },
+  { id: "ghost", name: "Ghost", icon: "G", color: "#15212a", bg: "#eef0f1" },
+  { id: "devto", name: "Dev.to", icon: "D", color: "#000", bg: "#f3f4f6" },
 ];
 
-// ─── Shared style helpers ──────────────────────────────────────────────────────
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "10px 12px",
-  borderRadius: "8px",
-  border: "1px solid var(--border-default, var(--card-border, #e2e8f0))",
-  background: "var(--background)",
-  color: "var(--foreground)",
-  fontSize: "14px",
-  outline: "none",
-  boxSizing: "border-box",
-  fontFamily: "inherit",
-  transition: "border-color 0.15s",
-};
-
-const inputErrorStyle: React.CSSProperties = {
-  ...inputStyle,
-  border: "1px solid #ef4444",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "13px",
-  fontWeight: 600,
-  color: "var(--foreground)",
-  marginBottom: "6px",
-};
-
-const optionalBadgeStyle: React.CSSProperties = {
-  fontSize: "11px",
-  fontWeight: 400,
-  color: "var(--muted, #94a3b8)",
-  marginLeft: "6px",
-};
-
-const primaryBtnStyle = (loading: boolean): React.CSSProperties => ({
-  width: "100%",
-  padding: "12px",
-  borderRadius: "8px",
-  background: "var(--accent, #3b82f6)",
-  color: "#fff",
-  border: "none",
-  fontSize: "15px",
-  fontWeight: 600,
-  cursor: loading ? "not-allowed" : "pointer",
-  opacity: loading ? 0.65 : 1,
-  transition: "opacity 0.15s",
-  fontFamily: "inherit",
-});
-
-const ghostBtnStyle: React.CSSProperties = {
-  background: "none",
-  border: "1px solid var(--border-default, var(--card-border, #e2e8f0))",
-  color: "var(--foreground)",
-  padding: "11px 20px",
-  borderRadius: "8px",
-  fontSize: "14px",
-  fontWeight: 500,
-  cursor: "pointer",
-  fontFamily: "inherit",
-  transition: "border-color 0.15s",
-};
-
-const inlineErrorStyle: React.CSSProperties = {
-  color: "#ef4444",
-  fontSize: "12px",
-  marginTop: "4px",
-};
-
-// ─── Main Component ────────────────────────────────────────────────────────────
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [authChecked, setAuthChecked] = useState(false);
+  const supabase = createClient();
 
-  // Step state
-  const [step, setStep] = useState(1);
-
-  // Step 2 – Site Setup
-  const [domain, setDomain] = useState("");
-  const [siteName, setSiteName] = useState("");
-  const [siteAbout, setSiteAbout] = useState("");
-  const [authorName, setAuthorName] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<{ domain?: string; site_name?: string }>({});
-  const [saveError, setSaveError] = useState("");
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  // Step 3 – Platform Connect
-  const [completing, setCompleting] = useState(false);
-  const [completeError, setCompleteError] = useState("");
+  // Step 1 — Business
+  const [businessName, setBusinessName] = useState("");
+  const [businessUrl, setBusinessUrl] = useState("");
+  const [businessDesc, setBusinessDesc] = useState("");
+  const [niche, setNiche] = useState("");
 
-  // ── Auth guard ────────────────────────────────────────────────────────────────
+  // Step 2 — Audience & Competitors
+  const [audiences, setAudiences] = useState<string[]>([]);
+  const [competitors, setCompetitors] = useState<string[]>([]);
+
+  // Step 3 — Blog
+  const [sitemapUrl, setSitemapUrl] = useState("");
+  const [blogUrl, setBlogUrl] = useState("");
+  const [exampleUrls, setExampleUrls] = useState(["", "", ""]);
+
+  // Step 4 — Articles
+  const [autoPublish, setAutoPublish] = useState(false);
+  const [articleStyle, setArticleStyle] = useState("Informative");
+  const [internalLinks, setInternalLinks] = useState("3 links per article");
+  const [globalInstructions, setGlobalInstructions] = useState("");
+  const [brandColor, setBrandColor] = useState("#000000");
+  const [imageStyle, setImageStyle] = useState("Cinematic");
+
+  // Step 5 — Integration
+  const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
+
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.replace("/");
-      } else {
-        setAuthChecked(true);
-      }
-    });
-  }, [router]);
-
-  // ── Check if already onboarded ────────────────────────────────────────────────
-  useEffect(() => {
-    if (!authChecked) return;
-    fetch("/api/onboarding/status")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data?.onboarding_complete === true) router.replace("/app");
-      })
-      .catch(() => {/* ignore */});
-  }, [authChecked, router]);
-
-  // ── Step 2: save settings ─────────────────────────────────────────────────────
-  async function handleSaveSettings() {
-    const errors: { domain?: string; site_name?: string } = {};
-    if (!domain.trim()) errors.domain = "Domain is required.";
-    if (!siteName.trim()) errors.site_name = "Site name is required.";
-    if (Object.keys(errors).length) {
-      setFieldErrors(errors);
-      return;
-    }
-    setFieldErrors({});
-    setSaveError("");
-    setSaving(true);
-    try {
-      const res = await fetch("/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          domain: domain.trim(),
-          site_name: siteName.trim(),
-          site_about: siteAbout.trim() || undefined,
-          author_name: authorName.trim() || undefined,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setSaveError(data.error || "Failed to save settings. Please try again.");
         return;
       }
-      setStep(3);
+
+      // Check if onboarding already complete
+      try {
+        const res = await fetch("/api/onboarding/status");
+        const data = await res.json();
+        if (data.complete) {
+          router.replace("/app");
+          return;
+        }
+      } catch {
+        // proceed
+      }
+
+      setCheckingAuth(false);
+    };
+    init();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const saveAndNext = async () => {
+    setSaving(true);
+    setError("");
+
+    try {
+      if (step === 0) {
+        if (!businessName.trim() || !businessUrl.trim()) {
+          setError("Business name and website URL are required.");
+          setSaving(false);
+          return;
+        }
+        await fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            site_name: businessName.trim(),
+            domain: businessUrl.trim(),
+            site_about: businessDesc.trim(),
+            niche: niche.trim(),
+          }),
+        });
+      }
+
+      if (step === 1) {
+        await fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            target_audiences: audiences,
+            competitors,
+          }),
+        });
+      }
+
+      if (step === 2) {
+        await fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sitemap_url: sitemapUrl.trim(),
+            blog_url: blogUrl.trim(),
+            example_article_urls: exampleUrls.filter(Boolean),
+          }),
+        });
+      }
+
+      if (step === 3) {
+        await fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            auto_publish: autoPublish,
+            article_style: articleStyle,
+            internal_links: internalLinks,
+            global_instructions: globalInstructions.trim(),
+            brand_color: brandColor,
+            image_style: imageStyle,
+          }),
+        });
+      }
+
+      setStep((s) => s + 1);
     } catch {
-      setSaveError("Network error. Please try again.");
+      setError("Failed to save. Please try again.");
     } finally {
       setSaving(false);
     }
-  }
+  };
 
-  // ── Step 3: complete onboarding ───────────────────────────────────────────────
-  async function handleComplete() {
-    setCompleteError("");
-    setCompleting(true);
+  const finish = async () => {
+    setSaving(true);
+    setError("");
     try {
-      const res = await fetch("/api/onboarding/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setCompleteError(data.error || "Something went wrong. Please try again.");
-        return;
+      if (selectedIntegration) {
+        await fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ preferred_integration: selectedIntegration }),
+        });
       }
-      router.push("/app");
+      await fetch("/api/onboarding/complete", { method: "POST" });
+      if (selectedIntegration && selectedIntegration !== "webhook") {
+        router.push("/app/settings");
+      } else {
+        router.push("/app");
+      }
     } catch {
-      setCompleteError("Network error. Please try again.");
+      setError("Failed to finish. Please try again.");
     } finally {
-      setCompleting(false);
+      setSaving(false);
     }
-  }
+  };
 
-  // ── Render guard ──────────────────────────────────────────────────────────────
-  if (!authChecked) {
+  if (checkingAuth) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "var(--background)",
-        }}
-      >
-        <div
-          style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "50%",
-            border: "3px solid var(--border-default, #e2e8f0)",
-            borderTopColor: "var(--accent, #3b82f6)",
-            animation: "spin 0.7s linear infinite",
-          }}
-        />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <svg className="animate-spin h-5 w-5 text-[#7c3aed]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
       </div>
     );
   }
 
-  // ── Main layout ───────────────────────────────────────────────────────────────
+  const inputCls = "w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-100 bg-white transition-all";
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--background, #f8fafc)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "24px 16px",
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif",
-      }}
-    >
-      <div style={{ width: "100%", maxWidth: "520px" }}>
+    <div className="min-h-screen bg-gray-50 py-10 px-4">
+      <div className="max-w-2xl mx-auto">
+        <StepIndicator current={step} />
 
-        {/* ── Brand ─────────────────────────────────────────────────────────────── */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "10px",
-            marginBottom: "32px",
-          }}
-        >
-          {/* Blue icon */}
-          <div
-            style={{
-              width: "36px",
-              height: "36px",
-              borderRadius: "9px",
-              background: "var(--accent, #3b82f6)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M4 6h16M4 10h10M4 14h12M4 18h8"
-                stroke="#fff"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-          <span
-            style={{
-              fontSize: "20px",
-              fontWeight: 700,
-              color: "var(--foreground)",
-              letterSpacing: "-0.3px",
-            }}
-          >
-            ArticleGen
-          </span>
-        </div>
-
-        {/* ── Progress indicator ─────────────────────────────────────────────────── */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "10px",
-            marginBottom: "28px",
-          }}
-        >
-          <span
-            style={{
-              fontSize: "12px",
-              fontWeight: 600,
-              color: "var(--muted, #94a3b8)",
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-            }}
-          >
-            Step {step} of {TOTAL_STEPS}
-          </span>
-          <div style={{ display: "flex", gap: "8px" }}>
-            {Array.from({ length: TOTAL_STEPS }, (_, i) => {
-              const dotStep = i + 1;
-              const isActive = dotStep === step;
-              const isCompleted = dotStep < step;
-              return (
-                <div
-                  key={dotStep}
-                  style={{
-                    width: isActive ? "28px" : "10px",
-                    height: "10px",
-                    borderRadius: "5px",
-                    background: isActive || isCompleted
-                      ? "var(--accent, #3b82f6)"
-                      : "var(--border-default, var(--card-border, #e2e8f0))",
-                    transition: "width 0.25s ease, background 0.2s",
-                  }}
-                />
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── Card ──────────────────────────────────────────────────────────────── */}
-        <div
-          style={{
-            background: "var(--card, #ffffff)",
-            border: "1px solid var(--border-default, var(--card-border, #e2e8f0))",
-            borderRadius: "14px",
-            padding: "40px",
-            boxShadow: "0 4px 24px rgba(0,0,0,0.07)",
-          }}
-        >
-
-          {/* ════════════════════════════════════════════════════════════════════
-              STEP 1 – WELCOME
-          ════════════════════════════════════════════════════════════════════ */}
-          {step === 1 && (
-            <div>
-              {/* Hero icon */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: "24px",
-                }}
-              >
-                <div
-                  style={{
-                    width: "72px",
-                    height: "72px",
-                    borderRadius: "18px",
-                    background: "linear-gradient(135deg, var(--accent, #3b82f6) 0%, #6366f1 100%)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    boxShadow: "0 8px 24px rgba(59,130,246,0.3)",
-                  }}
-                >
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path
-                      d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
-                      stroke="#fff"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+        {/* Step 1 — Business */}
+        {step === 0 && (
+          <div className="space-y-5">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900">Tell us about your business</h2>
+              <p className="text-gray-500 mt-1 text-sm">This helps us tailor articles to your brand and audience</p>
+            </div>
+            <Card>
+              <div className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Business name <span className="text-red-500">*</span></label>
+                    <input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Article Sauce" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Website URL <span className="text-red-500">*</span></label>
+                    <input value={businessUrl} onChange={(e) => setBusinessUrl(e.target.value)} placeholder="https://yourblog.com" className={inputCls} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Niche / Industry</label>
+                  <input value={niche} onChange={(e) => setNiche(e.target.value)} placeholder="e.g. SaaS, E-commerce, Health & Fitness" className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">What does your business do?</label>
+                  <textarea
+                    value={businessDesc}
+                    onChange={(e) => setBusinessDesc(e.target.value)}
+                    placeholder="We help SaaS founders grow their organic traffic with AI-generated articles..."
+                    rows={3}
+                    className={`${inputCls} resize-none`}
+                  />
                 </div>
               </div>
+            </Card>
+          </div>
+        )}
 
-              <h1
-                style={{
-                  margin: "0 0 10px",
-                  fontSize: "26px",
-                  fontWeight: 700,
-                  color: "var(--foreground)",
-                  textAlign: "center",
-                  letterSpacing: "-0.4px",
-                }}
-              >
-                Welcome to ArticleGen
-              </h1>
-              <p
-                style={{
-                  margin: "0 0 28px",
-                  color: "var(--muted, #64748b)",
-                  fontSize: "15px",
-                  lineHeight: 1.6,
-                  textAlign: "center",
-                }}
-              >
-                Generate SEO-optimized articles in seconds using AI. Publish directly
-                to WordPress, Medium, Ghost, and more — all from one place.
-              </p>
+        {/* Step 2 — Audience & Competitors */}
+        {step === 1 && (
+          <div className="space-y-5">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900">Define your Target Audience and Competitors</h2>
+              <p className="text-gray-500 mt-1 text-sm">Understanding your audience and competition ensures we generate the most effective keywords</p>
+            </div>
+            <Card>
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-sm">Target Audiences</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Enter your target audience groups to create relevant content. Better audience understanding improves results</p>
+                </div>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{audiences.length}/7</span>
+              </div>
+              <TagInput
+                tags={audiences}
+                onAdd={(t) => setAudiences((a) => [...a, t])}
+                onRemove={(i) => setAudiences((a) => a.filter((_, idx) => idx !== i))}
+                placeholder="e.g. Developers, Project Managers"
+                max={7}
+              />
+            </Card>
+            <Card>
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-sm">Competitors</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Enter competitors to discover the SEO keywords they rank for. Bigger competitors provide more valuable insights</p>
+                </div>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{competitors.length}/7</span>
+              </div>
+              <TagInput
+                tags={competitors}
+                onAdd={(t) => setCompetitors((a) => [...a, t])}
+                onRemove={(i) => setCompetitors((a) => a.filter((_, idx) => idx !== i))}
+                placeholder="e.g. https://competitor.ai or competitor.ai"
+                max={7}
+              />
+            </Card>
+          </div>
+        )}
 
-              {/* Benefits */}
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "12px",
-                  marginBottom: "32px",
-                }}
-              >
-                {[
-                  {
-                    icon: "✦",
-                    title: "AI-powered writing",
-                    desc: "High-quality, long-form articles generated in under a minute",
-                  },
-                  {
-                    icon: "✦",
-                    title: "One-click publishing",
-                    desc: "Connect your platforms and publish without leaving the dashboard",
-                  },
-                  {
-                    icon: "✦",
-                    title: "SEO optimised",
-                    desc: "Every article is crafted to rank — headings, meta, and structure included",
-                  },
-                ].map((b) => (
-                  <div
-                    key={b.title}
-                    style={{
-                      display: "flex",
-                      gap: "12px",
-                      padding: "14px",
-                      borderRadius: "10px",
-                      background: "var(--background, #f8fafc)",
-                      border: "1px solid var(--border-default, var(--card-border, #e2e8f0))",
-                    }}
+        {/* Step 3 — Blog */}
+        {step === 2 && (
+          <div className="space-y-5">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900">Help us understand your content</h2>
+              <p className="text-gray-500 mt-1 text-sm">Share your content details to help us create more relevant and targeted blog posts for your audience</p>
+            </div>
+            <Card>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Sitemap URL
+                    <span className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] cursor-help" title="Your XML sitemap helps us understand your existing content">?</span>
+                  </label>
+                  <input value={sitemapUrl} onChange={(e) => setSitemapUrl(e.target.value)} placeholder="https://yourblog.com/sitemap.xml" className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Main blog address
+                    <span className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] cursor-help" title="The URL where your blog posts live">?</span>
+                  </label>
+                  <input value={blogUrl} onChange={(e) => setBlogUrl(e.target.value)} placeholder="https://yourblog.com/blog" className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Your best article examples URL
+                    <span className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] cursor-help" title="Examples of articles you're proud of — we'll match their style">?</span>
+                  </label>
+                  <div className="space-y-2">
+                    {exampleUrls.map((url, i) => (
+                      <input
+                        key={i}
+                        value={url}
+                        onChange={(e) => setExampleUrls((prev) => { const n = [...prev]; n[i] = e.target.value; return n; })}
+                        placeholder={`Your top article URL #${i + 1}`}
+                        className={inputCls}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3.5 rounded-lg bg-gray-50 border border-gray-200">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Connect Google Search Console</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Avoid suggesting keywords you already rank for</p>
+                  </div>
+                  <a
+                    href="/api/gsc/auth"
+                    className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                    style={{ background: "#1a1a1a" }}
                   >
-                    <span
-                      style={{
-                        color: "var(--accent, #3b82f6)",
-                        fontSize: "16px",
-                        flexShrink: 0,
-                        marginTop: "1px",
-                      }}
-                    >
-                      {b.icon}
-                    </span>
-                    <div>
-                      <div
-                        style={{
-                          fontSize: "13px",
-                          fontWeight: 600,
-                          color: "var(--foreground)",
-                          marginBottom: "2px",
-                        }}
+                    Connect GSC
+                  </a>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Step 4 — Articles */}
+        {step === 3 && (
+          <div className="space-y-5">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900">Configure your article preferences</h2>
+              <p className="text-gray-500 mt-1 text-sm">Set your preferences once to ensure all future articles maintain your quality standards and brand consistency</p>
+            </div>
+
+            <Card>
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Content & SEO</h3>
+              <div className="space-y-5">
+                {/* Auto publish */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Auto-publish</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Publish new articles automatically</p>
+                  </div>
+                  <Toggle checked={autoPublish} onChange={setAutoPublish} />
+                </div>
+
+                {/* Article style + Internal links */}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                      Article Style
+                      <span className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] cursor-help" title="The primary style of your articles">?</span>
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={articleStyle}
+                        onChange={(e) => setArticleStyle(e.target.value)}
+                        className={`${inputCls} pr-8 appearance-none cursor-pointer`}
                       >
-                        {b.title}
-                      </div>
-                      <div style={{ fontSize: "13px", color: "var(--muted, #64748b)", lineHeight: 1.4 }}>
-                        {b.desc}
-                      </div>
+                        {ARTICLE_STYLES.map((s) => <option key={s}>{s}</option>)}
+                      </select>
+                      <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
                     </div>
                   </div>
-                ))}
-              </div>
-
-              <button
-                onClick={() => setStep(2)}
-                style={primaryBtnStyle(false)}
-              >
-                Get started →
-              </button>
-            </div>
-          )}
-
-          {/* ════════════════════════════════════════════════════════════════════
-              STEP 2 – SITE SETUP
-          ════════════════════════════════════════════════════════════════════ */}
-          {step === 2 && (
-            <div>
-              <h1
-                style={{
-                  margin: "0 0 6px",
-                  fontSize: "22px",
-                  fontWeight: 700,
-                  color: "var(--foreground)",
-                  letterSpacing: "-0.3px",
-                }}
-              >
-                Set up your site
-              </h1>
-              <p
-                style={{
-                  margin: "0 0 24px",
-                  color: "var(--muted, #64748b)",
-                  fontSize: "14px",
-                  lineHeight: 1.5,
-                }}
-              >
-                Tell us about your website so we can tailor content for you.
-              </p>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
-
-                {/* Domain (required) */}
-                <div>
-                  <label style={labelStyle}>
-                    Domain
-                    <span style={{ color: "#ef4444", marginLeft: "2px" }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={domain}
-                    onChange={(e) => {
-                      setDomain(e.target.value);
-                      if (fieldErrors.domain) setFieldErrors((p) => ({ ...p, domain: undefined }));
-                    }}
-                    placeholder="yourblog.com"
-                    style={fieldErrors.domain ? inputErrorStyle : inputStyle}
-                    aria-describedby={fieldErrors.domain ? "domain-error" : undefined}
-                  />
-                  {fieldErrors.domain && (
-                    <p id="domain-error" style={inlineErrorStyle}>{fieldErrors.domain}</p>
-                  )}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                      Internal Links
+                      <span className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] cursor-help" title="How many internal links per article">?</span>
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={internalLinks}
+                        onChange={(e) => setInternalLinks(e.target.value)}
+                        className={`${inputCls} pr-8 appearance-none cursor-pointer`}
+                      >
+                        {INTERNAL_LINK_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+                      </select>
+                      <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Site name (required) */}
+                {/* Global instructions */}
                 <div>
-                  <label style={labelStyle}>
-                    Site name
-                    <span style={{ color: "#ef4444", marginLeft: "2px" }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={siteName}
-                    onChange={(e) => {
-                      setSiteName(e.target.value);
-                      if (fieldErrors.site_name) setFieldErrors((p) => ({ ...p, site_name: undefined }));
-                    }}
-                    placeholder="My Awesome Blog"
-                    style={fieldErrors.site_name ? inputErrorStyle : inputStyle}
-                    aria-describedby={fieldErrors.site_name ? "sitename-error" : undefined}
-                  />
-                  {fieldErrors.site_name && (
-                    <p id="sitename-error" style={inlineErrorStyle}>{fieldErrors.site_name}</p>
-                  )}
-                </div>
-
-                {/* Site about (optional) */}
-                <div>
-                  <label style={labelStyle}>
-                    What is your site about?
-                    <span style={optionalBadgeStyle}>optional</span>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                    Global Article Instructions
+                    <span className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-gray-200 text-gray-500 text-[10px] cursor-help" title="Instructions applied to every article">?</span>
                   </label>
                   <textarea
-                    value={siteAbout}
-                    onChange={(e) => setSiteAbout(e.target.value)}
-                    placeholder="A blog about technology, productivity, and modern life..."
+                    value={globalInstructions}
+                    onChange={(e) => setGlobalInstructions(e.target.value)}
+                    placeholder="Enter global instructions for all articles (e.g., 'Always include practical examples', 'Focus on actionable insights')..."
                     rows={3}
-                    style={{
-                      ...inputStyle,
-                      resize: "vertical",
-                      minHeight: "80px",
-                    }}
+                    className={`${inputCls} resize-none`}
                   />
                 </div>
+              </div>
+            </Card>
 
-                {/* Author name (optional) */}
+            <Card>
+              <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Engagement</h3>
+              <div className="space-y-5">
+                {/* Brand color */}
                 <div>
-                  <label style={labelStyle}>
-                    Author name
-                    <span style={optionalBadgeStyle}>optional</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={authorName}
-                    onChange={(e) => setAuthorName(e.target.value)}
-                    placeholder="Jane Smith"
-                    style={inputStyle}
-                  />
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Brand Color</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={brandColor}
+                      onChange={(e) => setBrandColor(e.target.value)}
+                      className="w-9 h-9 rounded cursor-pointer border border-gray-200 p-0.5 bg-white"
+                    />
+                    <input
+                      type="text"
+                      value={brandColor}
+                      onChange={(e) => setBrandColor(e.target.value)}
+                      className="px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-100 w-32 font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Image style */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2">Image Style</label>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {IMAGE_STYLES.map((style) => (
+                      <button
+                        key={style}
+                        type="button"
+                        onClick={() => setImageStyle(style)}
+                        className="flex flex-col items-center gap-1.5 p-2.5 rounded-lg border-2 transition-all text-xs font-medium"
+                        style={{
+                          borderColor: imageStyle === style ? "#7c3aed" : "#e5e7eb",
+                          background: imageStyle === style ? "#f5f3ff" : "#fff",
+                          color: imageStyle === style ? "#7c3aed" : "#374151",
+                        }}
+                      >
+                        <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center text-lg">
+                          {style === "Brand & Text" ? "🏷" : style === "Watercolor" ? "🎨" : style === "Cinematic" ? "🎬" : style === "Illustration" ? "✏️" : style === "Sketch" ? "🖊" : "📷"}
+                        </div>
+                        {style}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
+            </Card>
+          </div>
+        )}
 
-              {saveError && (
-                <p style={{ ...inlineErrorStyle, marginTop: "14px", fontSize: "13px" }}>
-                  {saveError}
-                </p>
-              )}
-
-              {/* Actions */}
-              <div style={{ display: "flex", gap: "10px", marginTop: "28px" }}>
-                <button
-                  onClick={() => setStep(1)}
-                  style={{ ...ghostBtnStyle, flexShrink: 0 }}
-                  disabled={saving}
-                >
-                  ← Back
-                </button>
-                <button
-                  onClick={handleSaveSettings}
-                  disabled={saving}
-                  style={{ ...primaryBtnStyle(saving), flex: 1 }}
-                >
-                  {saving ? "Saving…" : "Save & continue →"}
-                </button>
-              </div>
+        {/* Step 5 — Integration */}
+        {step === 4 && (
+          <div className="space-y-5">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900">Create Integrations</h2>
+              <p className="text-gray-500 mt-1 text-sm">Connect your blog to publish articles automatically, or set this up later in your dashboard.</p>
             </div>
-          )}
-
-          {/* ════════════════════════════════════════════════════════════════════
-              STEP 3 – PLATFORM CONNECT
-          ════════════════════════════════════════════════════════════════════ */}
-          {step === 3 && (
-            <div>
-              <h1
-                style={{
-                  margin: "0 0 6px",
-                  fontSize: "22px",
-                  fontWeight: 700,
-                  color: "var(--foreground)",
-                  letterSpacing: "-0.3px",
-                }}
-              >
-                Connect a platform
-              </h1>
-              <p
-                style={{
-                  margin: "0 0 24px",
-                  color: "var(--muted, #64748b)",
-                  fontSize: "14px",
-                  lineHeight: 1.5,
-                }}
-              >
-                Connect a publishing platform to start sending articles directly from
-                ArticleGen. You can always do this later in Settings.
-              </p>
-
-              {/* Platform cards */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "24px" }}>
-                {PLATFORMS.map((p) => (
+            <div className="grid grid-cols-3 gap-3">
+              {INTEGRATIONS.map((intg) => (
+                <button
+                  key={intg.id}
+                  type="button"
+                  onClick={() => setSelectedIntegration(selectedIntegration === intg.id ? null : intg.id)}
+                  className="flex flex-col items-center gap-2 p-5 rounded-xl border-2 transition-all"
+                  style={{
+                    borderColor: selectedIntegration === intg.id ? "#7c3aed" : "#e5e7eb",
+                    background: selectedIntegration === intg.id ? "#f5f3ff" : intg.bg,
+                  }}
+                >
                   <div
-                    key={p.name}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "14px",
-                      padding: "14px 16px",
-                      borderRadius: "10px",
-                      border: "1px solid var(--border-default, var(--card-border, #e2e8f0))",
-                      background: "var(--background, #f8fafc)",
-                    }}
+                    className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold"
+                    style={{ background: intg.bg, color: intg.color, border: `1px solid ${intg.color}20` }}
                   >
-                    <div style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
-                      {p.icon}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontSize: "14px",
-                          fontWeight: 600,
-                          color: "var(--foreground)",
-                          marginBottom: "2px",
-                        }}
-                      >
-                        {p.name}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: "12px",
-                          color: "var(--muted, #94a3b8)",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {p.description}
-                      </div>
-                    </div>
-                    <a
-                      href="/app/settings"
-                      style={{
-                        flexShrink: 0,
-                        padding: "7px 14px",
-                        borderRadius: "7px",
-                        border: "1px solid var(--border-default, var(--card-border, #e2e8f0))",
-                        background: "var(--card, #fff)",
-                        color: "var(--foreground)",
-                        fontSize: "13px",
-                        fontWeight: 500,
-                        textDecoration: "none",
-                        display: "inline-block",
-                        transition: "border-color 0.15s",
-                        whiteSpace: "nowrap",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = "var(--accent, #3b82f6)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "var(--border-default, var(--card-border, #e2e8f0))";
-                      }}
-                    >
-                      Connect
-                    </a>
+                    {intg.icon}
                   </div>
-                ))}
-              </div>
+                  <span className="text-xs font-medium text-gray-800">{intg.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
-              {completeError && (
-                <p style={{ ...inlineErrorStyle, fontSize: "13px", marginBottom: "14px" }}>
-                  {completeError}
-                </p>
-              )}
+        {/* Error */}
+        {error && (
+          <p className="text-center text-sm text-red-500 mt-4">{error}</p>
+        )}
 
-              {/* Primary CTA */}
+        {/* Nav buttons */}
+        <div className="flex items-center justify-between mt-8">
+          <button
+            type="button"
+            onClick={() => step > 0 ? setStep((s) => s - 1) : router.push("/")}
+            className="px-5 py-2.5 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Back
+          </button>
+
+          {step < 4 ? (
+            <button
+              type="button"
+              onClick={saveAndNext}
+              disabled={saving}
+              className="px-6 py-2.5 text-sm font-semibold rounded-lg text-white transition-opacity disabled:opacity-60"
+              style={{ background: "#7c3aed" }}
+            >
+              {saving ? "Saving…" : "Continue"}
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
               <button
-                onClick={handleComplete}
-                disabled={completing}
-                style={primaryBtnStyle(completing)}
+                type="button"
+                onClick={finish}
+                disabled={saving}
+                className="text-sm text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
               >
-                {completing ? "Just a moment…" : "Finish setup →"}
+                {saving ? "…" : "Skip & Get Started"}
               </button>
-
-              {/* Skip */}
-              <div style={{ textAlign: "center", marginTop: "14px" }}>
-                <button
-                  onClick={handleComplete}
-                  disabled={completing}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "var(--muted, #94a3b8)",
-                    fontSize: "13px",
-                    cursor: completing ? "not-allowed" : "pointer",
-                    padding: "4px 8px",
-                    textDecoration: "underline",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  Skip for now
-                </button>
-              </div>
-
-              {/* Back link */}
-              <div style={{ textAlign: "center", marginTop: "6px" }}>
-                <button
-                  onClick={() => setStep(2)}
-                  disabled={completing}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "var(--muted, #94a3b8)",
-                    fontSize: "13px",
-                    cursor: completing ? "not-allowed" : "pointer",
-                    padding: "4px 8px",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  ← Back
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={finish}
+                disabled={saving}
+                className="px-6 py-2.5 text-sm font-semibold rounded-lg text-white transition-opacity disabled:opacity-60"
+                style={{ background: "#7c3aed" }}
+              >
+                {saving ? "Finishing…" : selectedIntegration ? `Connect ${INTEGRATIONS.find((i) => i.id === selectedIntegration)?.name ?? ""} →` : "Skip & Get Started"}
+              </button>
             </div>
           )}
-
         </div>
-
-        {/* ── Footer note ──────────────────────────────────────────────────────── */}
-        <p
-          style={{
-            textAlign: "center",
-            marginTop: "20px",
-            fontSize: "12px",
-            color: "var(--muted, #94a3b8)",
-          }}
-        >
-          You can update these settings at any time in{" "}
-          <a
-            href="/app/settings"
-            style={{ color: "var(--accent, #3b82f6)", textDecoration: "none" }}
-          >
-            Settings
-          </a>
-          .
-        </p>
-
       </div>
     </div>
   );
