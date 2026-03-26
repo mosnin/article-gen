@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { createClient } from "@/lib/supabase-browser";
 import { Toaster } from "sonner";
+import { LowCreditBanner } from "./components/LowCreditBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +112,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onMobileClose={() => setMobileNavOpen(false)}
       />
       <div className="lg:pl-[var(--sidebar-width)] flex min-h-screen flex-col">
+        <LowCreditBanner />
         <Topbar
           title={pageTitle}
           onMenuClick={() => setMobileNavOpen(true)}

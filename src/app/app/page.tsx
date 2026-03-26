@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { createClient } from "@/lib/supabase-browser";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
+import { CreditForecast } from "./components/CreditForecast";
 
 interface Article {
   id: string;
@@ -200,12 +201,7 @@ export default function DashboardPage() {
           description="Posted to WordPress"
           loading={loading}
         />
-        <StatCard
-          label="Credits Left"
-          value={stats.credits}
-          description="Available to use"
-          loading={loading}
-        />
+        <CreditForecast />
       </div>
 
       {/* Quick Actions */}
