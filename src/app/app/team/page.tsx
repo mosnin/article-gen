@@ -65,17 +65,20 @@ export default function TeamPage() {
         invitedAt: new Date().toISOString(),
       };
       const updated = [...invitedUsers, newInvite];
-      setInvitedUsers(updated);
 
-      await supabase.from("user_settings").upsert(
+      const { error } = await supabase.from("user_settings").upsert(
         { user_id: user.id, team_invites: updated },
         { onConflict: "user_id" }
       );
 
+      if (error) throw error;
+
+      // Update UI only after confirmed backend write
+      setInvitedUsers(updated);
       setEmail("");
-      toast.success(`Invitation sent to ${newInvite.email}`);
+      toast.success(`Invitation recorded for ${newInvite.email}`);
     } catch {
-      toast.error("Failed to send invitation");
+      toast.error("Failed to save invitation");
     } finally {
       setInviting(false);
     }
@@ -85,11 +88,19 @@ export default function TeamPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const updated = invitedUsers.filter((u) => u.id !== id);
-    setInvitedUsers(updated);
-    await supabase.from("user_settings").upsert(
+
+    const { error } = await supabase.from("user_settings").upsert(
       { user_id: user.id, team_invites: updated },
       { onConflict: "user_id" }
     );
+
+    if (error) {
+      toast.error("Failed to remove user");
+      return;
+    }
+
+    // Update UI only after confirmed backend write
+    setInvitedUsers(updated);
     toast.success("User removed");
   };
 
