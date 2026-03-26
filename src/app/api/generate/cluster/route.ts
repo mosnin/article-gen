@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
+import { checkCredits, deductCredit } from "@/lib/credits";
 
 export const maxDuration = 60;
 
@@ -24,6 +25,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const creditCheck = await checkCredits(supabase, user.id);
+    if (!creditCheck.allowed) {
+      return NextResponse.json(
+        { error: "Insufficient credits. Please upgrade your plan or wait for your monthly reset." },
+        { status: 403 }
+      );
+    }
+
     const { pillarTopic, pillarKeyword, count } = await req.json();
 
     if (!pillarTopic) {
@@ -35,6 +44,14 @@ export async function POST(req: NextRequest) {
 
     if (typeof pillarTopic !== "string" || pillarTopic.length > 300) {
       return NextResponse.json({ error: "Pillar topic must be 300 characters or fewer" }, { status: 400 });
+    }
+
+    // Deduct credit before making OpenAI calls
+    if (!creditCheck.isAdmin) {
+      const deduction = await deductCredit(supabase, user.id, undefined, "Cluster generation");
+      if (!deduction.success) {
+        return NextResponse.json({ error: "Insufficient credits" }, { status: 402 });
+      }
     }
 
     const apiKey = process.env.OPENAI_API_KEY;

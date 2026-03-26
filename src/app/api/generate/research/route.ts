@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
-import { checkCredits } from "@/lib/credits";
+import { checkCredits, deductCredit } from "@/lib/credits";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
@@ -34,6 +34,17 @@ export async function POST(req: NextRequest) {
     }
 
     const { topic, focusKeyword } = await req.json();
+
+    // Deduct credit before making OpenAI calls
+    if (!creditCheck.isAdmin) {
+      const deduction = await deductCredit(supabase, user.id, undefined, "Research generation");
+      if (!deduction.success) {
+        return NextResponse.json(
+          { error: "Insufficient credits" },
+          { status: 402 }
+        );
+      }
+    }
 
     if (!topic) {
       return NextResponse.json(
