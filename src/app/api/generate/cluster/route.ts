@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
 import { checkCredits, deductCredit } from "@/lib/credits";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -119,9 +120,8 @@ Generate exactly ${articleCount} cluster article ideas.`,
       clusterArticles: parsed.clusterArticles || [],
     });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "An unexpected error occurred";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to generate cluster", error);
+    return NextResponse.json({ error: "Failed to generate cluster" }, { status: 500 });
   } finally {
     await releaseGenerationSlot(supabase, user.id);
   }

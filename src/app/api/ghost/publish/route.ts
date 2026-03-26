@@ -6,6 +6,7 @@ import type { GhostBlog } from "@/lib/publish-platforms";
 import { marked } from "marked";
 import { logPublishEvent } from "@/lib/publish-log";
 import { safeFetch, validatePublicUrl } from "@/lib/ssrf";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -156,7 +157,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, postId: post.id, postUrl: post.url, editUrl });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to publish to Ghost", error);
+    return NextResponse.json({ error: "Failed to publish to Ghost" }, { status: 500 });
   }
 }

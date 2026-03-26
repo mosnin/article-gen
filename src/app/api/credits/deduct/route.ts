@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { deductCredit } from "@/lib/credits";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, credits: result.credits });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Unexpected error in credits/deduct", error);
+    return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
   }
 }

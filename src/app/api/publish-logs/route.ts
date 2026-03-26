@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
+import { logger } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   try {
@@ -22,10 +23,14 @@ export async function GET(req: NextRequest) {
     }
 
     const { data, error } = await query;
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      logger.error("Failed to fetch publish logs", error, { userId: user.id, errorCode: error.code });
+      return NextResponse.json({ error: "Failed to load logs" }, { status: 500 });
+    }
 
     return NextResponse.json({ logs: data ?? [] });
   } catch (error: unknown) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+    logger.error("Unexpected error in publish-logs", error);
+    return NextResponse.json({ error: "Failed to load logs" }, { status: 500 });
   }
 }

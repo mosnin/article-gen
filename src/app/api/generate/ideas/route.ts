@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -93,9 +94,8 @@ Generate exactly ${articleCount} ideas.`,
 
     return NextResponse.json({ ideas: parsed.ideas || [] });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "An unexpected error occurred";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to generate ideas", error);
+    return NextResponse.json({ error: "Failed to generate ideas" }, { status: 500 });
   } finally {
     await releaseGenerationSlot(supabase, user.id);
   }

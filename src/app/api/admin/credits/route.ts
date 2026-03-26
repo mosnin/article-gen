@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { getOrCreateProfile } from "@/lib/credits";
+import { logger } from "@/lib/logger";
 
 // Business policy limits — prevents runaway credit grants
 const MAX_CREDITS_PER_GRANT = 10_000;
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, credits: updatedRows.credits });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Unexpected error in admin/credits", error);
+    return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
   }
 }

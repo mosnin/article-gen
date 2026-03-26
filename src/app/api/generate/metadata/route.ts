@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -129,9 +130,8 @@ The 5 keywords should be high-intent keywords related to the topic. They should 
 
     return NextResponse.json(metadata);
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "An unexpected error occurred";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to generate metadata", error);
+    return NextResponse.json({ error: "Failed to generate metadata" }, { status: 500 });
   } finally {
     await releaseGenerationSlot(supabase, user.id);
   }

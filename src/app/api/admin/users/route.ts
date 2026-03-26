@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { getOrCreateProfile } from "@/lib/credits";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -13,6 +14,7 @@ export async function GET() {
 
     const profile = await getOrCreateProfile(supabase, user.id);
     if (profile.role !== "admin") {
+      logger.warn("Unauthorized admin access attempt", { userId: user.id, endpoint: "/api/admin/users" });
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -23,7 +25,8 @@ export async function GET() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      logger.error("Failed to fetch user profiles", error, { userId: user.id, errorCode: error.code });
+      return NextResponse.json({ error: "Failed to load users" }, { status: 500 });
     }
 
     // For each profile, get article count and recent transactions

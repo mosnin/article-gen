@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { decryptCredential } from "@/lib/wp-crypto";
+import { logger } from "@/lib/logger";
 
 interface WpBlog {
   id: string;
@@ -84,8 +85,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ categories: formatted });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to load categories", error);
+    return NextResponse.json({ error: "Failed to load categories" }, { status: 500 });
   }
 }
 
@@ -139,7 +140,7 @@ export async function POST(req: NextRequest) {
       category: { id: category.id, name: category.name, slug: category.slug, count: 0 },
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to load categories", error);
+    return NextResponse.json({ error: "Failed to load categories" }, { status: 500 });
   }
 }

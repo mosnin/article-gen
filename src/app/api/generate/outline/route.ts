@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
 import OpenAI from "openai";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 30;
 
@@ -93,9 +94,8 @@ Generate a well-structured SEO outline.`;
       outline: parsed.outline || [],
     });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "An unexpected error occurred";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to generate outline", error);
+    return NextResponse.json({ error: "Failed to generate outline" }, { status: 500 });
   } finally {
     await releaseGenerationSlot(supabase, user.id);
   }

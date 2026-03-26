@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server";
 import { uploadImage, getPublicUrl } from "@/lib/supabase-admin";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
 import { checkCredits, deductCredit } from "@/lib/credits";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -103,8 +104,8 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to generate images", error);
+    return NextResponse.json({ error: "Failed to generate images" }, { status: 500 });
   } finally {
     await releaseGenerationSlot(supabase, user.id);
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { encryptCredential, decryptCredential, isEncrypted } from "@/lib/wp-crypto";
+import { logger } from "@/lib/logger";
 import type {
   ShopifyAccount,
   MediumAccount,
@@ -134,7 +135,8 @@ export async function GET() {
       .single();
 
     if (error && error.code !== "PGRST116") {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      logger.error("Failed to fetch user settings", error, { userId: user.id, errorCode: error.code });
+      return NextResponse.json({ error: "Failed to load settings" }, { status: 500 });
     }
     if (!settings) return NextResponse.json({ settings: null });
 
@@ -172,8 +174,8 @@ export async function GET() {
       },
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Unexpected error in GET /api/settings", error);
+    return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
   }
 }
 
@@ -241,11 +243,13 @@ export async function POST(req: NextRequest) {
       ? await supabase.from("user_settings").update(payload).eq("user_id", user.id)
       : await supabase.from("user_settings").insert({ user_id: user.id, ...payload });
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      logger.error("Failed to save user settings", error, { userId: user.id, errorCode: error.code });
+      return NextResponse.json({ error: "Failed to save settings" }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
   }
 }

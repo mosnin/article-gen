@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase-server";
 import { logPublishEvent } from "@/lib/publish-log";
 import { marked } from "marked";
 import { safeFetch, validatePublicUrl } from "@/lib/ssrf";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -140,7 +141,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, webhookUrl: webhook.url, statusCode: res.status });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to deliver webhook", error);
+    return NextResponse.json({ error: "Failed to deliver webhook" }, { status: 500 });
   }
 }

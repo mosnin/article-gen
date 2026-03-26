@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
 import { checkCredits, deductCredit } from "@/lib/credits";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -134,17 +135,8 @@ Format each fact with its source URL. Make sure all information is accurate and 
 
     return NextResponse.json({ articleContext, researchContext });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "An unexpected error occurred";
-
-    if (message.includes("API key") || message.includes("auth")) {
-      return NextResponse.json(
-        { error: "Invalid API key. Please check your OpenAI API key." },
-        { status: 401 }
-      );
-    }
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to generate research", error);
+    return NextResponse.json({ error: "Failed to generate research" }, { status: 500 });
   } finally {
     await releaseGenerationSlot(supabase, user.id);
   }
