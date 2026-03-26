@@ -143,7 +143,8 @@ export async function POST(req: NextRequest) {
     await supabase
       .from("articles")
       .update({ posted: true, published_platform: "ghost", updated_at: new Date().toISOString() })
-      .eq("id", articleId);
+      .eq("id", articleId)
+      .eq("user_id", user.id);
 
     await logPublishEvent(supabase, {
       userId: user.id,

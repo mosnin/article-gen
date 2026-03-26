@@ -62,6 +62,9 @@ export async function POST(req: NextRequest) {
     if (!Array.isArray(allKeywords) || allKeywords.length > 20) {
       return NextResponse.json({ error: "Keywords must be an array of 20 items or fewer" }, { status: 400 });
     }
+    if (!allKeywords.every((kw: unknown) => typeof kw === "string" && kw.length > 0 && kw.length <= 100)) {
+      return NextResponse.json({ error: "Each keyword must be 1–100 characters" }, { status: 400 });
+    }
 
     const targetWordCountNum = typeof targetWordCount === "number" ? targetWordCount : parseInt(targetWordCount, 10);
     if (isNaN(targetWordCountNum) || targetWordCountNum < 500 || targetWordCountNum > 8000) {
