@@ -104,6 +104,16 @@ export default function AdminDashboard() {
     pro: "#af52de",
   };
 
+  // Don't render anything until auth check completes — prevents flash of admin UI
+  // Note: middleware already enforces admin role, but this adds defense-in-depth
+  if (loading && users.length === 0) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "var(--background)" }}>
+        <svg className="progress-spinner" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+      </div>
+    );
+  }
+
   return (
     <div style={{ background: "var(--background)", minHeight: "100vh" }}>
       {/* Header */}
