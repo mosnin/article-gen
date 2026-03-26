@@ -27,6 +27,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Disable source maps in production to prevent source code exposure
+  productionBrowserSourceMaps: false,
   async headers() {
     return [
       {
