@@ -34,7 +34,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { topic, focusKeyword } = await req.json();
+    const { topic, focusKeyword, tone: rawTone, targetAudience: rawTargetAudience } = await req.json();
+
+    const tone =
+      typeof rawTone === "string" && rawTone.length <= 100
+        ? rawTone
+        : "Informative";
+    const targetAudience =
+      typeof rawTargetAudience === "string" && rawTargetAudience.length <= 100
+        ? rawTargetAudience
+        : "General audience";
 
     // Deduct credit before making OpenAI calls
     if (!creditCheck.isAdmin) {
@@ -90,6 +99,10 @@ export async function POST(req: NextRequest) {
             role: "user",
             content: `Organize the context for a comprehensive, SEO-optimized article about: "${topic}"${focusKeyword ? `. The main focus keyword is: "${focusKeyword}"` : ""}.
 
+WRITING TONE: ${tone}
+TARGET AUDIENCE: ${targetAudience}
+Tailor the content strategy, depth, and angle to match the specified tone and audience sophistication level.
+
 Please provide:
 1. The main theme and angle of the article
 2. Target audience
@@ -115,6 +128,9 @@ Format your response clearly with labeled sections.`,
           {
             role: "user",
             content: `Research and provide approximately 1000 words of factual context about: "${topic}"
+
+TARGET AUDIENCE: ${targetAudience}
+Adjust research depth and technical detail to match the audience sophistication level.
 
 Include:
 - Current statistics and data points

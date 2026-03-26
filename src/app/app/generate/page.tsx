@@ -146,6 +146,10 @@ export default function Home() {
   const [showGscPicker, setShowGscPicker] = useState(false);
   const [gscQueries, setGscQueries] = useState<Array<{ query: string; impressions: number; clicks: number }>>([]);
 
+  // Brand voice settings (from selected preset)
+  const [activeTone, setActiveTone] = useState("Informative");
+  const [activeTargetAudience, setActiveTargetAudience] = useState("General audience");
+
   // AI Image generation toggles
   const [generateImages, setGenerateImages] = useState(false);
   const [batchGenerateImages, setBatchGenerateImages] = useState(false);
@@ -496,13 +500,15 @@ export default function Home() {
       focusKeyword: string | undefined,
       quality: "standard" | "premium" = "premium",
       withImages: boolean = false,
-      blogId?: string
+      blogId?: string,
+      tone: string = "Informative",
+      targetAudience: string = "General audience"
     ) => {
       try {
         // Batch 1: Context + Research (parallel inside the route)
         const { data: researchData } = await safeFetch(
           "/api/generate/research",
-          { topic, focusKeyword }
+          { topic, focusKeyword, tone, targetAudience }
         );
 
         updateSession(id, { currentStep: 1 });
@@ -515,6 +521,8 @@ export default function Home() {
             focusKeyword,
             articleContext: researchData.articleContext,
             researchContext: researchData.researchContext,
+            tone,
+            targetAudience,
           }
         );
 
@@ -546,6 +554,8 @@ export default function Home() {
             allKeywords,
             targetWordCount,
             advancedSettings: effectiveSettings,
+            tone,
+            targetAudience,
           }
         );
 
@@ -643,7 +653,7 @@ export default function Home() {
 
       await Promise.all(
         batch.map((item) =>
-          runGeneration(item.id, item.topic, item.focusKeyword, item.quality, item.withImages, item.blogId)
+          runGeneration(item.id, item.topic, item.focusKeyword, item.quality, item.withImages, item.blogId, item.tone || "Informative", item.targetAudience || "General audience")
         )
       );
 
@@ -707,7 +717,7 @@ export default function Home() {
     setFormKeyword("");
     setFormError("");
 
-    runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined);
+    runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined, activeTone, activeTargetAudience);
   };
 
   const handlePreviewOutline = async () => {
@@ -725,6 +735,8 @@ export default function Home() {
           topic: formTopic.trim(),
           focusKeyword: formKeyword.trim() || undefined,
           advancedSettings,
+          tone: activeTone,
+          targetAudience: activeTargetAudience,
         }),
       });
       const data = await res.json() as { title?: string; outline?: Array<{ level: number; heading: string; notes?: string }>; error?: string };
@@ -784,7 +796,7 @@ export default function Home() {
     setFormKeyword("");
     setFormError("");
 
-    runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined);
+    runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined, activeTone, activeTargetAudience);
     setGeneratingWithOutline(false);
     setOutline([]);
   };
@@ -844,6 +856,8 @@ export default function Home() {
         quality: batchQuality,
         withImages: batchGenerateImages,
         blogId: selectedBlogId || undefined,
+        tone: activeTone,
+        targetAudience: activeTargetAudience,
       }))
     );
 
@@ -865,7 +879,11 @@ export default function Home() {
       session.id,
       session.topic,
       session.focusKeyword || undefined,
-      session.quality
+      session.quality,
+      false,
+      undefined,
+      activeTone,
+      activeTargetAudience
     );
   };
 
@@ -1094,6 +1112,8 @@ export default function Home() {
         body: JSON.stringify({
           niche: ideasNiche.trim(),
           count: ideasCount,
+          tone: activeTone,
+          targetAudience: activeTargetAudience,
         }),
       });
       const data = await res.json();
@@ -1159,12 +1179,14 @@ export default function Home() {
       focusKeyword: string | undefined,
       quality: "standard" | "premium",
       interlinking?: Record<string, unknown>,
-      withImages: boolean = false
+      withImages: boolean = false,
+      tone: string = "Informative",
+      targetAudience: string = "General audience"
     ) => {
       try {
         const { data: researchData } = await safeFetch(
           "/api/generate/research",
-          { topic, focusKeyword }
+          { topic, focusKeyword, tone, targetAudience }
         );
 
         updateClusterArticle(clusterId, articleId, { currentStep: 1 });
@@ -1176,6 +1198,8 @@ export default function Home() {
             focusKeyword,
             articleContext: researchData.articleContext,
             researchContext: researchData.researchContext,
+            tone,
+            targetAudience,
           }
         );
 
@@ -1207,6 +1231,8 @@ export default function Home() {
             targetWordCount,
             advancedSettings: clusterSettings,
             interlinking,
+            tone,
+            targetAudience,
           }
         );
 
@@ -1345,6 +1371,8 @@ export default function Home() {
           pillarTopic: clusterPillarTopic.trim(),
           pillarKeyword: clusterPillarKeyword.trim() || undefined,
           count: articleCount,
+          tone: activeTone,
+          targetAudience: activeTargetAudience,
         }),
       });
       const data = await res.json();
@@ -1429,7 +1457,9 @@ export default function Home() {
           clusterPillarKeyword.trim() || undefined,
           "premium",
           undefined,
-          withImages
+          withImages,
+          activeTone,
+          activeTargetAudience
         );
 
         if (!pillarSlug) {
@@ -1497,7 +1527,9 @@ export default function Home() {
                 pillarTopic: clusterPillarTopic.trim(),
                 siblingUrls,
               },
-              withImages
+              withImages,
+              activeTone,
+              activeTargetAudience
             );
           })
         );
@@ -1558,7 +1590,9 @@ export default function Home() {
             isPillar: true,
             clusterUrls: allClusterUrls,
           },
-          withImages
+          withImages,
+          activeTone,
+          activeTargetAudience
         );
       }
 

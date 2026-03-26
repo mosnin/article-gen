@@ -25,7 +25,16 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { niche, count } = await req.json();
+    const { niche, count, tone: rawTone, targetAudience: rawTargetAudience } = await req.json();
+
+    const tone =
+      typeof rawTone === "string" && rawTone.length <= 100
+        ? rawTone
+        : "Informative";
+    const targetAudience =
+      typeof rawTargetAudience === "string" && rawTargetAudience.length <= 100
+        ? rawTargetAudience
+        : "General audience";
 
     if (!niche) {
       return NextResponse.json(
@@ -64,6 +73,10 @@ export async function POST(req: NextRequest) {
         {
           role: "user",
           content: `Generate exactly ${articleCount} unique, high-value SEO article ideas for the niche: "${niche}"
+
+WRITING TONE: ${tone}
+TARGET AUDIENCE: ${targetAudience}
+Generate ideas that match the specified tone and appeal to the target audience.
 
 REQUIREMENTS:
 - Each idea should target a specific, searchable topic with clear user intent

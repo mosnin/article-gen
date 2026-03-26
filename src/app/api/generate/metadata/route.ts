@@ -25,8 +25,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { topic, focusKeyword, articleContext, researchContext } =
+    const { topic, focusKeyword, articleContext, researchContext, tone: rawTone, targetAudience: rawTargetAudience } =
       await req.json();
+
+    const tone =
+      typeof rawTone === "string" && rawTone.length <= 100
+        ? rawTone
+        : "Informative";
+    const targetAudience =
+      typeof rawTargetAudience === "string" && rawTargetAudience.length <= 100
+        ? rawTargetAudience
+        : "General audience";
 
     if (!topic || !articleContext || !researchContext) {
       return NextResponse.json(
@@ -65,6 +74,10 @@ ${researchContext}
 
 TOPIC: ${topic}
 ${focusKeyword ? `PREFERRED FOCUS KEYWORD: ${focusKeyword}` : ""}
+
+WRITING TONE: ${tone}
+TARGET AUDIENCE: ${targetAudience}
+Ensure the title and meta description match the specified tone and appeal to the target audience.
 
 Generate the following in EXACTLY this JSON format:
 {

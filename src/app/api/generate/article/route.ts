@@ -37,7 +37,18 @@ export async function POST(req: NextRequest) {
       targetWordCount,
       advancedSettings,
       interlinking,
+      tone: rawTone,
+      targetAudience: rawTargetAudience,
     } = await req.json();
+
+    const tone =
+      typeof rawTone === "string" && rawTone.length <= 100
+        ? rawTone
+        : "Informative";
+    const targetAudience =
+      typeof rawTargetAudience === "string" && rawTargetAudience.length <= 100
+        ? rawTargetAudience
+        : "General audience";
 
     const wordCount = targetWordCount || 4000;
     const settings = advancedSettings || {};
@@ -125,6 +136,10 @@ REQUIREMENTS:
 16. Write in a natural, humanized tone. Vary sentence length and rhythm. Use contractions, rhetorical questions, and direct address ("you") to sound like a real person, not AI
 17. ABSOLUTELY NEVER use em dashes (—) or en dashes (–) anywhere in the article under any circumstances. Use commas, periods, colons, semicolons, or parentheses instead. This is a strict formatting rule with zero exceptions.
 18. Avoid filler phrases like "In today's world", "It's important to note", "In this article we will", "Let's dive in", or similar AI-sounding cliches
+
+WRITING TONE: ${tone}
+TARGET AUDIENCE: ${targetAudience}
+Adapt your writing style, vocabulary complexity, and examples to match the specified tone and audience level.
 ${links ? `
 INTERNAL LINKING REQUIREMENTS (CRITICAL - follow these exactly):
 ${links.pillarUrl ? `- This is a CLUSTER article. You MUST include 2-3 contextual internal links back to the pillar page: [relevant anchor text](${links.pillarUrl})` : ""}

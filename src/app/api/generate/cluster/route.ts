@@ -34,7 +34,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { pillarTopic, pillarKeyword, count } = await req.json();
+    const { pillarTopic, pillarKeyword, count, tone: rawTone, targetAudience: rawTargetAudience } = await req.json();
+
+    const tone =
+      typeof rawTone === "string" && rawTone.length <= 100
+        ? rawTone
+        : "Informative";
+    const targetAudience =
+      typeof rawTargetAudience === "string" && rawTargetAudience.length <= 100
+        ? rawTargetAudience
+        : "General audience";
 
     if (!pillarTopic) {
       return NextResponse.json(
@@ -79,6 +88,10 @@ export async function POST(req: NextRequest) {
           content: `Generate exactly ${articleCount} cluster (supporting) article ideas for a topic cluster.
 
 PILLAR PAGE TOPIC: "${pillarTopic}"
+
+WRITING TONE: ${tone}
+TARGET AUDIENCE: ${targetAudience}
+Generate cluster article ideas that match the specified tone and appeal to the target audience.
 ${pillarKeyword ? `PILLAR FOCUS KEYWORD: "${pillarKeyword}"` : ""}
 
 A topic cluster consists of:

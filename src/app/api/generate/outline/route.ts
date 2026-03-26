@@ -26,8 +26,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { topic, focusKeyword, wordCount = 2000, advancedSettings } =
+    const { topic, focusKeyword, wordCount = 2000, advancedSettings, tone: rawTone, targetAudience: rawTargetAudience } =
       await req.json();
+
+    const tone =
+      typeof rawTone === "string" && rawTone.length <= 100
+        ? rawTone
+        : "Informative";
+    const targetAudience =
+      typeof rawTargetAudience === "string" && rawTargetAudience.length <= 100
+        ? rawTargetAudience
+        : "General audience";
 
     if (!topic || typeof topic !== "string" || topic.length > 300) {
       return NextResponse.json(
@@ -62,6 +71,10 @@ Use ${Math.round(wordCount / 200)} to ${Math.round(wordCount / 150)} H2/H3 headi
 Focus keyword: ${focusKeyword || topic}
 ${advancedSettings?.domain ? `Site domain: ${advancedSettings.domain}` : ""}
 ${advancedSettings?.siteAbout ? `Site about: ${advancedSettings.siteAbout}` : ""}
+
+WRITING TONE: ${tone}
+TARGET AUDIENCE: ${targetAudience}
+Structure the outline to match the specified tone and audience level. Choose section topics and depth appropriate for this audience.
 
 Generate a well-structured SEO outline.`;
 
