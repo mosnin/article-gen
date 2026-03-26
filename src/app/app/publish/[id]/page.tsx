@@ -115,6 +115,12 @@ export default function PublishPage() {
   const [scheduling, setScheduling] = useState(false);
   const [scheduleResult, setScheduleResult] = useState<{ scheduledAt: string } | null>(null);
 
+  // Batch publish state
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Set<Platform>>(new Set());
+  const [batchPublishing, setBatchPublishing] = useState(false);
+  const [batchResults, setBatchResults] = useState<Array<{ platform: string; success: boolean; postUrl?: string; editUrl?: string; error?: string }> | null>(null);
+
   const availableImages = article?.generated_images?.filter((i) => i.success && i.publicUrl) ?? [];
 
   const fetchData = useCallback(async () => {
@@ -340,6 +346,68 @@ export default function PublishPage() {
       setError("Failed to schedule article");
     }
     setScheduling(false);
+  };
+
+  const togglePlatformSelection = (p: Platform) => {
+    setSelectedPlatforms((prev) => {
+      const next = new Set(prev);
+      if (next.has(p)) next.delete(p);
+      else next.add(p);
+      return next;
+    });
+  };
+
+  const handleBatchPublish = async () => {
+    if (selectedPlatforms.size === 0) return;
+    setBatchPublishing(true);
+    setError("");
+    setBatchResults(null);
+    try {
+      const platforms = Array.from(selectedPlatforms).map((p) => {
+        const entry: { platform: string; accountId?: string; options?: Record<string, unknown> } = { platform: p };
+        if (p === "wordpress") {
+          entry.accountId = activeBlogId || undefined;
+          entry.options = { status: postStatus, categoryIds: selectedCategories, includeImages };
+        } else if (p === "shopify") {
+          entry.accountId = activeShopifyId || undefined;
+        } else if (p === "medium") {
+          entry.accountId = activeMediumId || undefined;
+          const tags = tagInput.split(",").map((t) => t.trim()).filter(Boolean);
+          entry.options = { status: mediumStatus, tags, canonicalUrl: mediumCanonical || undefined };
+        } else if (p === "ghost") {
+          entry.accountId = activeGhostId || undefined;
+          const tags = tagInput.split(",").map((t) => t.trim()).filter(Boolean);
+          entry.options = { status: ghostStatus, tags };
+        } else if (p === "devto") {
+          entry.accountId = activeDevtoId || undefined;
+          const tags = tagInput.split(",").map((t) => t.trim()).filter(Boolean);
+          entry.options = { published: devtoPublished, tags, canonicalUrl: devtoCanonical || undefined };
+        }
+        return entry;
+      });
+
+      const res = await fetch("/api/publish/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ articleId, platforms }),
+      });
+
+      const data = await res.json();
+      if (data.results) {
+        setBatchResults(data.results);
+        const anySuccess = data.results.some((r: { success: boolean }) => r.success);
+        if (anySuccess) {
+          setArticle((prev) => prev ? { ...prev, posted: true } : prev);
+          const logsRes = await fetch(`/api/publish-logs?articleId=${articleId}`);
+          if (logsRes.ok) { const { logs } = await logsRes.json(); setPublishLogs(logs ?? []); }
+        }
+      } else {
+        setError(data.error || "Failed to batch publish");
+      }
+    } catch {
+      setError("Failed to batch publish");
+    }
+    setBatchPublishing(false);
   };
 
   const platformLabel: Record<Platform, string> = {
