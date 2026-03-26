@@ -41,6 +41,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Protect /api/admin/* - require authentication + admin role
+  if (request.nextUrl.pathname.startsWith("/api/admin")) {
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile || profile.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
   // Protect /app/admin route - check admin role
   if (user && request.nextUrl.pathname.startsWith("/app/admin")) {
     const { data: profile } = await supabase
@@ -60,5 +77,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/app/:path*"],
+  matcher: ["/app/:path*", "/api/admin/:path*"],
 };

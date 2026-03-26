@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { logPublishEvent } from "@/lib/publish-log";
 import { marked } from "marked";
+import { safeFetch, validatePublicUrl } from "@/lib/ssrf";
 
 export const maxDuration = 60;
 
@@ -37,6 +38,16 @@ export async function POST(req: NextRequest) {
     if (!webhook?.url) {
       return NextResponse.json(
         { error: "No webhook configured. Add one in Settings → Integrations." },
+        { status: 400 }
+      );
+    }
+
+    // Validate webhook URL to prevent SSRF
+    try {
+      validatePublicUrl(webhook.url);
+    } catch (e) {
+      return NextResponse.json(
+        { error: `Invalid webhook URL: ${(e as Error).message}` },
         { status: 400 }
       );
     }
@@ -96,11 +107,12 @@ export async function POST(req: NextRequest) {
       headers["X-ArticleGen-Signature"] = `sha256=${hex}`;
     }
 
-    // Send webhook
-    const res = await fetch(webhook.url, {
+    // Send webhook (safeFetch validates URL and enforces timeout)
+    const res = await safeFetch(webhook.url, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
+      timeoutMs: 15_000,
     });
 
     if (!res.ok) {

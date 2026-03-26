@@ -4,6 +4,7 @@ import { downloadImage } from "@/lib/supabase-admin";
 import { marked } from "marked";
 import { decryptCredential } from "@/lib/wp-crypto";
 import { logPublishEvent } from "@/lib/publish-log";
+import { validatePublicUrl } from "@/lib/ssrf";
 
 export const maxDuration = 60;
 
@@ -188,6 +189,16 @@ export async function POST(req: NextRequest) {
 
     const wpUrl = creds.wpUrl;
     const auth = creds.auth;
+
+    // Validate WordPress URL to prevent SSRF
+    try {
+      validatePublicUrl(wpUrl);
+    } catch (e) {
+      return NextResponse.json(
+        { error: `Invalid WordPress URL: ${(e as Error).message}` },
+        { status: 400 }
+      );
+    }
 
     // Upload images from Supabase Storage to WordPress
     const uploadedImages: ImageUploadResult[] = [];

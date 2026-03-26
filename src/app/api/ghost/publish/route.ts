@@ -5,6 +5,7 @@ import { createGhostJwt } from "@/lib/publish-platforms";
 import type { GhostBlog } from "@/lib/publish-platforms";
 import { marked } from "marked";
 import { logPublishEvent } from "@/lib/publish-log";
+import { safeFetch, validatePublicUrl } from "@/lib/ssrf";
 
 export const maxDuration = 60;
 
@@ -63,6 +64,16 @@ export async function POST(req: NextRequest) {
     const adminApiKey = decryptCredential(blog.adminApiKey);
     const ghostUrl = blog.url.replace(/\/$/, "");
 
+    // Validate Ghost URL to prevent SSRF
+    try {
+      validatePublicUrl(ghostUrl);
+    } catch (e) {
+      return NextResponse.json(
+        { error: `Invalid Ghost blog URL: ${(e as Error).message}` },
+        { status: 400 }
+      );
+    }
+
     let jwt: string;
     try {
       jwt = createGhostJwt(adminApiKey);
@@ -98,13 +109,14 @@ export async function POST(req: NextRequest) {
       postPayload.feature_image_alt = featuredImage.altText;
     }
 
-    const res = await fetch(`${ghostUrl}/ghost/api/admin/posts/`, {
+    const res = await safeFetch(`${ghostUrl}/ghost/api/admin/posts/`, {
       method: "POST",
       headers: {
         Authorization: `Ghost ${jwt}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ posts: [postPayload] }),
+      timeoutMs: 20_000,
     });
 
     if (!res.ok) {

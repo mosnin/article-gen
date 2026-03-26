@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import { marked } from "marked";
+import DOMPurify from "isomorphic-dompurify";
 
 type Platform = "wordpress" | "shopify" | "medium" | "ghost" | "devto";
 
@@ -130,7 +131,7 @@ export default function PublishPage() {
     if (!art) { setError("Article not found"); setLoading(false); return; }
 
     setArticle(art as Article);
-    const html = await marked(art.article_markdown || "");
+    const html = DOMPurify.sanitize(await marked(art.article_markdown || ""));
     setPreviewHtml(html);
 
     // Load publish history

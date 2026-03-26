@@ -2,12 +2,14 @@
 
 import { useState, useMemo } from "react";
 import { marked } from "marked";
+import DOMPurify from "isomorphic-dompurify";
 
 export function ArticlePreview({ article }: { article: string }) {
   const [copied, setCopied] = useState(false);
 
   const html = useMemo(() => {
-    return marked.parse(article, { async: false }) as string;
+    const raw = marked.parse(article, { async: false }) as string;
+    return DOMPurify.sanitize(raw);
   }, [article]);
 
   const handleCopyPlainText = async () => {

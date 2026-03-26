@@ -2,10 +2,19 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+const SAFE_PATH = /^\/[a-zA-Z0-9/_-]*$/;
+
+function safeRedirectPath(next: string | null): string {
+  if (next && next.startsWith("/") && !next.startsWith("//") && SAFE_PATH.test(next)) {
+    return next;
+  }
+  return "/app";
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/app";
+  const next = safeRedirectPath(searchParams.get("next"));
 
   if (code) {
     const cookieStore = await cookies();

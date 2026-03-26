@@ -15,6 +15,9 @@ export async function GET(req: NextRequest) {
   const { origin } = new URL(req.url);
   const redirectUri = `${origin}/api/gsc/callback`;
 
+  // Generate a cryptographically random state to prevent CSRF
+  const state = crypto.randomUUID();
+
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
@@ -22,8 +25,18 @@ export async function GET(req: NextRequest) {
     scope: "https://www.googleapis.com/auth/webmasters.readonly",
     access_type: "offline",
     prompt: "consent",
-    state: user.id, // passed back in callback for verification
+    state,
   });
 
-  return NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+  const response = NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+
+  // Store state in a short-lived HttpOnly cookie for CSRF validation in callback
+  response.cookies.set("gsc_oauth_state", state, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 600, // 10 minutes
+  });
+
+  return response;
 }

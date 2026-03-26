@@ -4,6 +4,7 @@ import { decryptCredential } from "@/lib/wp-crypto";
 import type { ShopifyAccount } from "@/lib/publish-platforms";
 import { marked } from "marked";
 import { logPublishEvent } from "@/lib/publish-log";
+import { safeFetch } from "@/lib/ssrf";
 
 export const maxDuration = 60;
 
@@ -15,10 +16,31 @@ interface StoredImage {
   success: boolean;
 }
 
+/** Validates that the shopDomain looks like a myshopify.com domain or custom domain
+ *  but is NOT a private/internal host. Also rejects bare IPs. */
+function validateShopDomain(domain: string): void {
+  // Must not contain path separators or protocol
+  if (domain.includes("/") || domain.includes("://")) {
+    throw new Error("Invalid shop domain format");
+  }
+  // Block internal hosts
+  const lower = domain.toLowerCase();
+  if (
+    lower === "localhost" ||
+    lower.startsWith("127.") ||
+    lower.startsWith("10.") ||
+    lower.startsWith("192.168.") ||
+    lower === "::1"
+  ) {
+    throw new Error("Shop domain resolves to a blocked host");
+  }
+}
+
 async function getShopifyBlogId(shopDomain: string, auth: string): Promise<number | null> {
   try {
-    const res = await fetch(`https://${shopDomain}/admin/api/2024-01/blogs.json`, {
+    const res = await safeFetch(`https://${shopDomain}/admin/api/2024-01/blogs.json`, {
       headers: { "X-Shopify-Access-Token": auth, "Content-Type": "application/json" },
+      timeoutMs: 10_000,
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -76,6 +98,16 @@ export async function POST(req: NextRequest) {
     const accessToken = decryptCredential(account.accessToken);
     const shopDomain = account.shopDomain.replace(/\/$/, "");
 
+    // Validate domain to prevent SSRF
+    try {
+      validateShopDomain(shopDomain);
+    } catch (e) {
+      return NextResponse.json(
+        { error: `Invalid Shopify domain: ${(e as Error).message}` },
+        { status: 400 }
+      );
+    }
+
     // Get the first available blog in the Shopify store
     const blogId = await getShopifyBlogId(shopDomain, accessToken);
     if (!blogId) {
@@ -108,9 +140,13 @@ export async function POST(req: NextRequest) {
           for (let i = inlineImgs.length - 1; i >= 0; i--) {
             const pos = positions[Math.min(i + 1, positions.length - 1)];
             const img = inlineImgs[i];
+            // Sanitize alt text to prevent XSS in figcaption
+            const safeAlt = img.altText.replace(/[<>"'&]/g, (c) =>
+              ({ "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;", "&": "&amp;" }[c] ?? c)
+            );
             bodyHtml =
               bodyHtml.slice(0, pos) +
-              `\n<figure><img src="${img.publicUrl}" alt="${img.altText.replace(/"/g, "&quot;")}" /><figcaption>${img.altText}</figcaption></figure>\n\n` +
+              `\n<figure><img src="${img.publicUrl}" alt="${safeAlt}" /><figcaption>${safeAlt}</figcaption></figure>\n\n` +
               bodyHtml.slice(pos);
           }
         }
@@ -129,7 +165,7 @@ export async function POST(req: NextRequest) {
       articlePayload.image = { src: featuredImageUrl, alt: article.title || article.topic };
     }
 
-    const res = await fetch(
+    const res = await safeFetch(
       `https://${shopDomain}/admin/api/2024-01/blogs/${blogId}/articles.json`,
       {
         method: "POST",
@@ -138,6 +174,7 @@ export async function POST(req: NextRequest) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ article: articlePayload }),
+        timeoutMs: 20_000,
       }
     );
 

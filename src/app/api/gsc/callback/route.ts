@@ -7,6 +7,13 @@ export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
   const code = searchParams.get("code");
   const error = searchParams.get("error");
+  const stateParam = searchParams.get("state");
+
+  // Validate CSRF state
+  const storedState = req.cookies.get("gsc_oauth_state")?.value;
+  if (!storedState || !stateParam || storedState !== stateParam) {
+    return NextResponse.redirect(`${origin}/app/settings?gsc_error=invalid_state`);
+  }
 
   if (error || !code) {
     return NextResponse.redirect(`${origin}/app/settings?gsc_error=${error || "no_code"}`);
@@ -58,5 +65,7 @@ export async function GET(req: NextRequest) {
     await supabase.from("user_settings").insert({ user_id: user.id, ...patch });
   }
 
-  return NextResponse.redirect(`${origin}/app/settings?gsc_connected=1`);
+  const successResponse = NextResponse.redirect(`${origin}/app/settings?gsc_connected=1`);
+  successResponse.cookies.delete("gsc_oauth_state");
+  return successResponse;
 }
