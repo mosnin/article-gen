@@ -80,7 +80,7 @@ export async function GET() {
     }));
 
     return NextResponse.json({ queries, siteUrl });
-  } catch (error: unknown) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Failed to fetch queries" }, { status: 500 });
   }
 }
