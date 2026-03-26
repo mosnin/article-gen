@@ -143,7 +143,7 @@ export async function GET() {
 
       if (!metrics) continue;
 
-      const articleData = log.articles as { title: string } | null;
+      const articleData = log.articles as unknown as { title: string } | null;
       articles.push({
         articleId: log.article_id as string,
         title: articleData?.title ?? "Untitled",
