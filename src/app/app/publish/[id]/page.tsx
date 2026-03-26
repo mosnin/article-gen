@@ -457,6 +457,50 @@ export default function PublishPage() {
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
         {!article ? (
           <div style={{ textAlign: "center", padding: 60, color: "var(--error)" }}>{error || "Article not found"}</div>
+        ) : batchResults ? (
+          /* Batch publish results */
+          <div style={{ maxWidth: 560, margin: "0 auto", paddingTop: 40 }}>
+            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 20, textAlign: "center" }}>Batch Publish Results</h1>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {batchResults.map((r, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderRadius: 10, background: "var(--card)", border: "1px solid var(--card-border)" }}>
+                  {r.success ? (
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(52, 199, 89, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    </div>
+                  ) : (
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(239, 68, 68, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--error)" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, textTransform: "capitalize" }}>{platformLabel[r.platform as Platform] ?? r.platform}</div>
+                    {r.success ? (
+                      <div style={{ fontSize: 12, color: "var(--success)" }}>Published successfully</div>
+                    ) : (
+                      <div style={{ fontSize: 12, color: "var(--error)" }}>{r.error || "Failed"}</div>
+                    )}
+                  </div>
+                  {r.success && r.postUrl && (
+                    <a href={r.postUrl} target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize: 12, color: "var(--accent)", whiteSpace: "nowrap", textDecoration: "none", fontWeight: 600 }}>
+                      View →
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div style={{ textAlign: "center", marginTop: 24, display: "flex", gap: 12, justifyContent: "center" }}>
+              <button onClick={() => { setBatchResults(null); setBatchMode(false); setSelectedPlatforms(new Set()); }}
+                style={{ padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600, background: "var(--card)", border: "1px solid var(--card-border)", color: "var(--foreground)", cursor: "pointer" }}>
+                Publish More
+              </button>
+              <button onClick={() => router.push("/app")}
+                style={{ padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer" }}>
+                Back to Dashboard
+              </button>
+            </div>
+          </div>
         ) : publishResult ? (
           /* Success */
           <div style={{ maxWidth: 500, margin: "0 auto", textAlign: "center", paddingTop: 40 }}>
@@ -542,6 +586,36 @@ export default function PublishPage() {
                   </div>
 
                   <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+                    {/* Batch mode toggle */}
+                    {Object.values(hasPlatform).filter(Boolean).length > 1 && (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <label style={{ ...labelStyle, marginBottom: 0 }}>Publish to Multiple Platforms</label>
+                        <div onClick={() => { setBatchMode(!batchMode); setError(""); setBatchResults(null); if (!batchMode) setSelectedPlatforms(new Set()); }}
+                          style={{ width: 36, height: 20, borderRadius: 10, background: batchMode ? "var(--accent)" : "var(--card-border)", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
+                          <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: batchMode ? 18 : 2, transition: "left 0.2s" }} />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Batch mode: platform checkboxes */}
+                    {batchMode && (
+                      <>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {PLATFORMS.filter((p) => hasPlatform[p.id]).map((p) => (
+                            <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, cursor: "pointer", background: selectedPlatforms.has(p.id) ? "rgba(0,0,0,0.04)" : "transparent", fontSize: 13, fontWeight: 500 }}>
+                              <input type="checkbox" checked={selectedPlatforms.has(p.id)} onChange={() => togglePlatformSelection(p.id)} style={{ accentColor: "var(--accent)" }} />
+                              {p.label}
+                            </label>
+                          ))}
+                        </div>
+                        {selectedPlatforms.size > 0 && (
+                          <p style={{ fontSize: 11, color: "var(--muted)", marginTop: -8 }}>
+                            {selectedPlatforms.size} platform{selectedPlatforms.size > 1 ? "s" : ""} selected. Each platform will use its default options configured below.
+                          </p>
+                        )}
+                      </>
+                    )}
+
                     {/* WordPress options */}
                     {activePlatform === "wordpress" && (
                       <>
@@ -765,8 +839,13 @@ export default function PublishPage() {
                       </div>
                     )}
 
-                    {/* Publish / Schedule button */}
-                    {scheduleMode ? (
+                    {/* Publish / Schedule / Batch button */}
+                    {batchMode ? (
+                      <button onClick={handleBatchPublish} disabled={batchPublishing || selectedPlatforms.size === 0}
+                        style={{ width: "100%", padding: 12, borderRadius: 10, fontSize: 14, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: (batchPublishing || selectedPlatforms.size === 0) ? 0.6 : 1 }}>
+                        {batchPublishing ? "Publishing..." : `Publish to ${selectedPlatforms.size} Platform${selectedPlatforms.size !== 1 ? "s" : ""}`}
+                      </button>
+                    ) : scheduleMode ? (
                       <button onClick={handleSchedule} disabled={scheduling || !scheduleDateTime}
                         style={{ width: "100%", padding: 12, borderRadius: 10, fontSize: 14, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: (scheduling || !scheduleDateTime) ? 0.6 : 1 }}>
                         {scheduling ? "Scheduling..." : `Schedule for ${platformLabel[activePlatform]}`}
