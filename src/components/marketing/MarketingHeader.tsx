@@ -219,14 +219,14 @@ function MobileDrawer({
         {/* CTA area */}
         <div className="px-4 pb-6 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3">
           <Link
-            href="/login"
+            href="/?auth=login"
             onClick={onClose}
             className="block text-center px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             Log in
           </Link>
           <Link
-            href="/signup"
+            href="/trial"
             onClick={onClose}
             className="block text-center px-4 py-2.5 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm"
           >
@@ -332,13 +332,13 @@ export function MarketingHeader() {
             {/* Right: CTA */}
             <div className="hidden md:flex items-center gap-3 shrink-0">
               <Link
-                href="/login"
+                href="/?auth=login"
                 className="px-3 py-2 text-[15px] font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-150"
               >
                 Log in
               </Link>
               <Link
-                href="/signup"
+                href="/trial"
                 className="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white transition-colors duration-150 shadow-sm shadow-blue-600/20"
               >
                 Start Free Trial

@@ -311,9 +311,13 @@ async function handleCron(req: NextRequest): Promise<Response> {
     } else if (article.scheduled_platform === "shopify") {
       result = await publishShopify(article, settings);
     } else {
-      // For other platforms: mark as posted with a TODO note
-      // TODO: implement Medium, Ghost, Dev.to inline publishing
-      result = { success: true };
+      // Do not mark unsupported platforms as published.
+      // Keep the article in an unposted state so users can retry manually
+      // or after platform-specific cron support is implemented.
+      result = {
+        success: false,
+        error: `Scheduled publishing is not implemented for platform: ${article.scheduled_platform}`,
+      };
     }
 
     if (result.success) {
