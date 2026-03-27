@@ -154,6 +154,19 @@ export default function AnalyticsPage() {
         description="Track how your published articles perform in Google Search (last 28 days)."
       />
 
+      {/* Sub-navigation */}
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center rounded-lg bg-[var(--accent-light)] px-3 py-1.5 text-xs font-medium text-[var(--accent)]">
+          Performance
+        </span>
+        <Link
+          href="/app/analytics/content-gaps"
+          className="inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] transition-colors"
+        >
+          Content Gaps
+        </Link>
+      </div>
+
       {/* Loading state */}
       {loading && (
         <Card>

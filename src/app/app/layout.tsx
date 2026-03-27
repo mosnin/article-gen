@@ -29,6 +29,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/app/backlinks": "Backlink Exchange",
   "/app/free-tools": "Free Tools Builder",
   "/app/analytics": "Analytics",
+  "/app/analytics/content-gaps": "Content Gap Analyzer",
   "/app/team": "Team",
   "/app/general-settings": "General Settings",
 };
