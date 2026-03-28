@@ -103,6 +103,45 @@ async function exaGetContents(url: string): Promise<string> {
   }
 }
 
+// ─── Direct fetch fallback (no Exa needed) ─────────────────────────────────
+
+async function fetchSiteDirectly(url: string): Promise<string> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; ArticleSauce/1.0)",
+        Accept: "text/html",
+      },
+      signal: controller.signal,
+      redirect: "follow",
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return "";
+
+    const html = await res.text();
+
+    // Strip scripts, styles, and tags to get raw text
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<nav[\s\S]*?<\/nav>/gi, "")
+      .replace(/<footer[\s\S]*?<\/footer>/gi, "")
+      .replace(/<header[\s\S]*?<\/header>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&[a-z]+;/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    // Return first 3000 chars of meaningful content
+    return text.slice(0, 3000);
+  } catch {
+    return "";
+  }
+}
+
 // ─── Route ────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -131,24 +170,29 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Gather context in parallel ──────────────────────────────────────────────
-  const [siteContent, similarSites, searchResults] = await Promise.all([
+  const hasExa = !!process.env.EXA_API_KEY;
+
+  const [siteContent, similarSites, searchResults, directContent] = await Promise.all([
     exaGetContents(normalizedUrl),
     exaFindSimilar(normalizedUrl, 6),
     exaSearch(`site:${domain} blog articles`, 4),
+    hasExa ? Promise.resolve("") : fetchSiteDirectly(normalizedUrl),
   ]);
 
-  const hasExaData = siteContent.length > 0 || similarSites.length > 0;
+  // Use Exa content if available, otherwise use direct fetch
+  const pageContent = siteContent.length > 0 ? siteContent : directContent;
+  const hasRealData = pageContent.length > 0;
 
   // Build context string for GPT
   const contextParts: string[] = [];
-  if (siteContent) contextParts.push(`Website content from ${domain}:\n${siteContent}`);
+  if (pageContent) contextParts.push(`Website content from ${domain}:\n${pageContent}`);
   if (searchResults.length > 0) contextParts.push(`Related content found:\n${searchResults.join("\n\n")}`);
   if (similarSites.length > 0) {
     contextParts.push(`Similar websites (potential competitors):\n${similarSites.map((s) => `- ${s.url}: ${s.title}`).join("\n")}`);
   }
   if (niche) contextParts.push(`User-provided niche: ${niche}`);
-  if (!hasExaData) {
-    contextParts.push(`Note: No website data was retrieved. Make educated guesses based on the domain name "${domain}" and any provided niche.`);
+  if (!hasRealData) {
+    contextParts.push(`IMPORTANT: No website content could be retrieved. You MUST only use the domain name "${domain}" and user-provided niche (if any). Do NOT fabricate or guess what the business does. If unsure, use generic placeholders like "Digital Business" for niche and ask the user to fill in details manually.`);
   }
 
   const context = contextParts.join("\n\n---\n\n");
@@ -216,6 +260,6 @@ Rules:
     contentThemes: analysis.contentThemes ?? [],
     suggestedSitemapUrl: analysis.suggestedSitemapUrl ?? `https://${domain}/sitemap.xml`,
     suggestedBlogUrl: analysis.suggestedBlogUrl ?? `https://${domain}/blog`,
-    dataSource: hasExaData ? "exa+openai" : "openai",
+    dataSource: hasRealData ? (hasExa ? "exa+openai" : "direct+openai") : "openai-only",
   });
 }
