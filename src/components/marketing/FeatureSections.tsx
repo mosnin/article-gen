@@ -1,26 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
-/* ─── Reusable scroll-entrance hook ─── */
-function useVisible(threshold = 0.1) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold }
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [threshold]);
-  return { ref, visible };
-}
+import { BlurFade } from "@/components/ui/blur-fade";
+import { MagicCard } from "@/components/ui/magic-card";
 
 /* ─── Checkmark SVG ─── */
 function CheckIcon() {
@@ -42,50 +23,55 @@ function CheckIcon() {
 /* ─── Section 1 visual: dark terminal article generation card ─── */
 function ArticleGenerationCard() {
   return (
-    <div className="rounded-2xl bg-[#0f172a] overflow-hidden w-full max-w-lg">
-      {/* Title bar */}
-      <div className="flex items-center gap-2 px-5 py-3 border-b border-white/10">
-        <span className="w-3 h-3 rounded-full bg-red-500" />
-        <span className="w-3 h-3 rounded-full bg-yellow-400" />
-        <span className="w-3 h-3 rounded-full bg-green-500" />
-        <span className="ml-3 text-[12px] text-white/40">article-generation.md</span>
-      </div>
-
-      {/* Skeleton content */}
-      <div className="px-5 py-5 space-y-4">
-        {/* Fake H1 */}
-        <div className="h-3 rounded bg-white/20" style={{ width: "72%" }} />
-        {/* Fake body block 1 */}
-        <div className="space-y-1.5">
-          <div className="h-2 rounded bg-white/10" style={{ width: "96%" }} />
-          <div className="h-2 rounded bg-white/10" style={{ width: "89%" }} />
-          <div className="h-2 rounded bg-white/10" style={{ width: "93%" }} />
-          <div className="h-2 rounded bg-white/10" style={{ width: "62%" }} />
-        </div>
-        {/* Fake H2 */}
-        <div className="h-2.5 rounded bg-white/15 mt-3" style={{ width: "50%" }} />
-        {/* Fake body block 2 */}
-        <div className="space-y-1.5">
-          <div className="h-2 rounded bg-white/10" style={{ width: "91%" }} />
-          <div className="h-2 rounded bg-white/10" style={{ width: "85%" }} />
-          <div className="h-2 rounded bg-white/10" style={{ width: "74%" }} />
-        </div>
-        {/* Fake H2 */}
-        <div className="h-2.5 rounded bg-white/15 mt-3" style={{ width: "44%" }} />
-        <div className="space-y-1.5">
-          <div className="h-2 rounded bg-white/10" style={{ width: "88%" }} />
-          <div className="h-2 rounded bg-white/10" style={{ width: "79%" }} />
+    <MagicCard
+      className="rounded-2xl overflow-hidden w-full max-w-lg"
+      gradientColor="#1e40af30"
+    >
+      <div className="rounded-2xl bg-[#0f172a] overflow-hidden w-full max-w-lg">
+        {/* Title bar */}
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-white/10">
+          <span className="w-3 h-3 rounded-full bg-red-500" />
+          <span className="w-3 h-3 rounded-full bg-yellow-400" />
+          <span className="w-3 h-3 rounded-full bg-green-500" />
+          <span className="ml-3 text-[12px] text-white/40">article-generation.md</span>
         </div>
 
-        {/* Status footer */}
-        <div className="flex items-center gap-3 pt-3 border-t border-white/10">
-          <span className="text-[12px] text-white/40">2,847 words</span>
-          <span className="text-white/20">·</span>
-          <span className="text-[12px] text-white/40">SEO:</span>
-          <span className="text-[12px] font-bold text-white">94</span>
+        {/* Skeleton content */}
+        <div className="px-5 py-5 space-y-4">
+          {/* Fake H1 */}
+          <div className="h-3 rounded bg-white/20" style={{ width: "72%" }} />
+          {/* Fake body block 1 */}
+          <div className="space-y-1.5">
+            <div className="h-2 rounded bg-white/10" style={{ width: "96%" }} />
+            <div className="h-2 rounded bg-white/10" style={{ width: "89%" }} />
+            <div className="h-2 rounded bg-white/10" style={{ width: "93%" }} />
+            <div className="h-2 rounded bg-white/10" style={{ width: "62%" }} />
+          </div>
+          {/* Fake H2 */}
+          <div className="h-2.5 rounded bg-white/15 mt-3" style={{ width: "50%" }} />
+          {/* Fake body block 2 */}
+          <div className="space-y-1.5">
+            <div className="h-2 rounded bg-white/10" style={{ width: "91%" }} />
+            <div className="h-2 rounded bg-white/10" style={{ width: "85%" }} />
+            <div className="h-2 rounded bg-white/10" style={{ width: "74%" }} />
+          </div>
+          {/* Fake H2 */}
+          <div className="h-2.5 rounded bg-white/15 mt-3" style={{ width: "44%" }} />
+          <div className="space-y-1.5">
+            <div className="h-2 rounded bg-white/10" style={{ width: "88%" }} />
+            <div className="h-2 rounded bg-white/10" style={{ width: "79%" }} />
+          </div>
+
+          {/* Status footer */}
+          <div className="flex items-center gap-3 pt-3 border-t border-white/10">
+            <span className="text-[12px] text-white/40">2,847 words</span>
+            <span className="text-white/20">·</span>
+            <span className="text-[12px] text-white/40">SEO:</span>
+            <span className="text-[12px] font-bold text-white">94</span>
+          </div>
         </div>
       </div>
-    </div>
+    </MagicCard>
   );
 }
 
@@ -103,40 +89,45 @@ const publishPlatforms = [
 
 function PublishingCard() {
   return (
-    <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)] w-full max-w-lg">
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-6">
-        <div className="w-8 h-8 rounded-full bg-[#111827] flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-[11px] font-bold">AG</span>
-        </div>
-        <span className="text-[14px] font-semibold text-[#111827]">ArticleGen</span>
-        <span className="ml-auto text-[12px] bg-[#F1F3F5] px-2 py-1 rounded-full text-[#6B7280]">
-          Publishing...
-        </span>
-      </div>
-
-      {/* 4x2 platform grid */}
-      <div className="grid grid-cols-4 gap-2">
-        {publishPlatforms.map((platform) => (
-          <div
-            key={platform}
-            className="bg-[#F8F9FA] border border-[#E5E7EB] rounded-lg p-3 text-center"
-          >
-            <span className="text-[13px] font-semibold text-[#111827] leading-tight">
-              {platform}
-            </span>
+    <MagicCard
+      className="rounded-2xl overflow-hidden w-full max-w-lg"
+      gradientColor="#3B82F620"
+    >
+      <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)] w-full max-w-lg">
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-8 h-8 rounded-full bg-[#111827] flex items-center justify-center flex-shrink-0">
+            <span className="text-white text-[11px] font-bold">AG</span>
           </div>
-        ))}
-      </div>
-
-      {/* Progress bar */}
-      <div className="mt-5 flex items-center gap-3">
-        <div className="flex-1 h-1.5 rounded-full bg-[#E5E7EB] overflow-hidden">
-          <div className="h-full rounded-full bg-[#2563EB] w-full" />
+          <span className="text-[14px] font-semibold text-[#111827]">ArticleGen</span>
+          <span className="ml-auto text-[12px] bg-[#F1F3F5] px-2 py-1 rounded-full text-[#6B7280]">
+            Publishing...
+          </span>
         </div>
-        <span className="text-[12px] text-[#9CA3AF] flex-shrink-0">8 / 8 published</span>
+
+        {/* 4x2 platform grid */}
+        <div className="grid grid-cols-4 gap-2">
+          {publishPlatforms.map((platform) => (
+            <div
+              key={platform}
+              className="bg-[#F8F9FA] border border-[#E5E7EB] rounded-lg p-3 text-center"
+            >
+              <span className="text-[13px] font-semibold text-[#111827] leading-tight">
+                {platform}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Progress bar */}
+        <div className="mt-5 flex items-center gap-3">
+          <div className="flex-1 h-1.5 rounded-full bg-[#E5E7EB] overflow-hidden">
+            <div className="h-full rounded-full bg-[#2563EB] w-full" />
+          </div>
+          <span className="text-[12px] text-[#9CA3AF] flex-shrink-0">8 / 8 published</span>
+        </div>
       </div>
-    </div>
+    </MagicCard>
   );
 }
 
@@ -151,37 +142,42 @@ const rankingData = [
 
 function AnalyticsCard() {
   return (
-    <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)] w-full max-w-lg">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#6B7280]">
-          Keyword Rankings
-        </span>
-        <span className="text-[12px] text-[#9CA3AF]">Last 30 days</span>
-      </div>
+    <MagicCard
+      className="rounded-2xl overflow-hidden w-full max-w-lg"
+      gradientColor="#3B82F620"
+    >
+      <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)] w-full max-w-lg">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#6B7280]">
+            Keyword Rankings
+          </span>
+          <span className="text-[12px] text-[#9CA3AF]">Last 30 days</span>
+        </div>
 
-      {/* Keyword rows */}
-      <div className="space-y-3">
-        {rankingData.map((row) => (
-          <div key={row.keyword}>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[14px] text-[#111827] truncate max-w-[240px]">
-                {row.keyword}
-              </span>
-              <span className="text-[13px] font-bold text-[#111827] flex-shrink-0 ml-2">
-                {row.position}
-              </span>
+        {/* Keyword rows */}
+        <div className="space-y-3">
+          {rankingData.map((row) => (
+            <div key={row.keyword}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[14px] text-[#111827] truncate max-w-[240px]">
+                  {row.keyword}
+                </span>
+                <span className="text-[13px] font-bold text-[#111827] flex-shrink-0 ml-2">
+                  {row.position}
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-[#E5E7EB] overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[#2563EB]"
+                  style={{ width: `${row.bar}%` }}
+                />
+              </div>
             </div>
-            <div className="h-2 rounded-full bg-[#E5E7EB] overflow-hidden">
-              <div
-                className="h-full rounded-full bg-[#2563EB]"
-                style={{ width: `${row.bar}%` }}
-              />
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
+    </MagicCard>
   );
 }
 
@@ -199,49 +195,46 @@ type FeatureData = {
 
 /* ─── Single feature section ─── */
 function FeatureSection({ data }: { data: FeatureData }) {
-  const { ref, visible } = useVisible(0.1);
-
   const textBlock = (
-    <div className="flex flex-col justify-center">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#3B82F6] mb-2">
-        {data.label}
-      </p>
-      <h2 className="text-[28px] lg:text-[36px] font-bold text-[#111827] leading-[1.2] tracking-[-0.01em] mt-2">
-        {data.headline}
-      </h2>
-      <p className="text-[16px] text-[#6B7280] leading-[1.6] max-w-[480px] mt-4">
-        {data.description}
-      </p>
-      <ul className="mt-4 space-y-2">
-        {data.bullets.map((bullet, i) => (
-          <li key={i} className="flex items-start gap-2">
-            <CheckIcon />
-            <span className="text-[14px] text-[#6B7280]">{bullet}</span>
-          </li>
-        ))}
-      </ul>
-      <a
-        href="#"
-        className="mt-6 inline-flex items-center gap-1 text-[16px] font-medium text-[#3B82F6] hover:text-[#2563EB] transition-colors w-fit"
-      >
-        {data.cta} &rarr;
-      </a>
-    </div>
+    <BlurFade inView delay={0.1}>
+      <div className="flex flex-col justify-center">
+        <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#3B82F6] mb-2">
+          {data.label}
+        </p>
+        <h2 className="text-[28px] lg:text-[36px] font-bold text-[#111827] leading-[1.2] tracking-[-0.01em] mt-2">
+          {data.headline}
+        </h2>
+        <p className="text-[16px] text-[#6B7280] leading-[1.6] max-w-[480px] mt-4">
+          {data.description}
+        </p>
+        <ul className="mt-4 space-y-2">
+          {data.bullets.map((bullet, i) => (
+            <li key={i} className="flex items-start gap-2">
+              <CheckIcon />
+              <span className="text-[14px] text-[#6B7280]">{bullet}</span>
+            </li>
+          ))}
+        </ul>
+        <a
+          href="#"
+          className="mt-6 inline-flex items-center gap-1 text-[16px] font-medium text-[#3B82F6] hover:text-[#2563EB] transition-colors w-fit"
+        >
+          {data.cta} &rarr;
+        </a>
+      </div>
+    </BlurFade>
   );
 
   const visualBlock = (
-    <div className="flex items-center justify-center">{data.visual}</div>
+    <BlurFade inView delay={0.2}>
+      <div className="flex items-center justify-center">{data.visual}</div>
+    </BlurFade>
   );
 
   return (
     <section className={`${data.bg} py-16 lg:py-20`}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div
-          ref={ref}
-          className={`grid lg:grid-cols-2 gap-12 lg:gap-16 items-center transition-all duration-500 ease-out ${
-            visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-          }`}
-        >
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {data.visualLeft ? (
             <>
               {visualBlock}

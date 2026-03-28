@@ -1,5 +1,9 @@
 "use client";
 
+import { Marquee } from "@/components/ui/marquee";
+import { MagicCard } from "@/components/ui/magic-card";
+import { BlurFade } from "@/components/ui/blur-fade";
+
 interface Testimonial {
   quote: string;
   name: string;
@@ -112,26 +116,23 @@ const row2: Testimonial[] = [
 
 function TestimonialCard({ t }: { t: Testimonial }) {
   return (
-    <div className="bg-[#F8F9FA] border border-[#E5E7EB] rounded-xl p-6 flex-shrink-0 w-[360px] flex flex-col">
-      <p className="text-[18px] text-[#111827] italic leading-[1.6] flex-1">
-        &ldquo;{t.quote}&rdquo;
-      </p>
-      <div className="mt-4 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-[#111827] flex items-center justify-center flex-shrink-0">
-          <span className="text-[12px] font-semibold text-white select-none">
+    <MagicCard
+      className="w-[320px] md:w-[360px] rounded-xl cursor-default"
+      gradientColor="#3B82F615"
+    >
+      <div className="p-6 flex flex-col gap-4">
+        <p className="text-[16px] text-[#111827] italic leading-[1.6]">"{t.quote}"</p>
+        <div className="flex items-center gap-3 mt-auto">
+          <div className="w-10 h-10 rounded-full bg-[#111827] flex items-center justify-center text-white text-[12px] font-semibold flex-shrink-0">
             {t.initials}
-          </span>
-        </div>
-        <div>
-          <p className="text-[14px] font-semibold text-[#111827] leading-tight">
-            {t.name}
-          </p>
-          <p className="text-[14px] text-[#6B7280] leading-snug">
-            {t.role}, {t.company}
-          </p>
+          </div>
+          <div>
+            <p className="text-[14px] font-semibold text-[#111827]">{t.name}</p>
+            <p className="text-[14px] text-[#6B7280]">{t.role}, {t.company}</p>
+          </div>
         </div>
       </div>
-    </div>
+    </MagicCard>
   );
 }
 
@@ -139,63 +140,40 @@ export function TestimonialMarquee() {
   return (
     <section
       style={{ fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" }}
-      className="bg-[#F8F9FA] py-20 overflow-hidden"
+      className="bg-[#F8F9FA] py-20"
     >
-      <style>{`
-        @keyframes marquee-left {
-          from { transform: translateX(0); }
-          to   { transform: translateX(-50%); }
-        }
-        @keyframes marquee-right {
-          from { transform: translateX(-50%); }
-          to   { transform: translateX(0); }
-        }
-        .animate-marquee-left {
-          animation: marquee-left 45s linear infinite;
-        }
-        .animate-marquee-right {
-          animation: marquee-right 30s linear infinite;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .animate-marquee-left,
-          .animate-marquee-right {
-            animation-play-state: paused;
-          }
-        }
-      `}</style>
-
       {/* Section heading */}
-      <div className="text-center mb-12 px-6">
-        <h2 className="text-[28px] lg:text-[36px] font-bold text-[#111827] leading-[1.2]">
-          Loved by content teams
-        </h2>
-        <p className="text-[16px] text-[#6B7280] mt-3 leading-[1.6]">
-          Trusted by 2,400+ teams to write faster and rank higher.
-        </p>
-      </div>
+      <BlurFade inView delay={0.1}>
+        <div className="text-center mb-12 px-6">
+          <h2 className="text-[28px] lg:text-[36px] font-bold text-[#111827] leading-[1.2]">
+            Loved by content teams
+          </h2>
+          <p className="text-[16px] text-[#6B7280] mt-3 leading-[1.6]">
+            Trusted by 2,400+ teams to write faster and rank higher.
+          </p>
+        </div>
+      </BlurFade>
 
       {/* Row 1 — scrolls left at 45s */}
-      <div className="overflow-hidden mb-4" aria-hidden="true">
-        <div className="flex items-stretch gap-4 w-max animate-marquee-left">
-          {row1.map((t, i) => (
-            <TestimonialCard key={`r1a-${i}`} t={t} />
+      <div className="overflow-hidden relative mb-4">
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-24 z-10 bg-gradient-to-r from-[#F8F9FA] to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-24 z-10 bg-gradient-to-l from-[#F8F9FA] to-transparent" />
+        <Marquee pauseOnHover className="[--duration:45s]">
+          {row1.map((t) => (
+            <TestimonialCard key={t.name} t={t} />
           ))}
-          {row1.map((t, i) => (
-            <TestimonialCard key={`r1b-${i}`} t={t} />
-          ))}
-        </div>
+        </Marquee>
       </div>
 
-      {/* Row 2 — scrolls right at 30s */}
-      <div className="overflow-hidden" aria-hidden="true">
-        <div className="flex items-stretch gap-4 w-max animate-marquee-right">
-          {row2.map((t, i) => (
-            <TestimonialCard key={`r2a-${i}`} t={t} />
+      {/* Row 2 — scrolls right at 35s */}
+      <div className="overflow-hidden relative">
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-24 z-10 bg-gradient-to-r from-[#F8F9FA] to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-24 z-10 bg-gradient-to-l from-[#F8F9FA] to-transparent" />
+        <Marquee reverse pauseOnHover className="[--duration:35s]">
+          {row2.map((t) => (
+            <TestimonialCard key={t.name} t={t} />
           ))}
-          {row2.map((t, i) => (
-            <TestimonialCard key={`r2b-${i}`} t={t} />
-          ))}
-        </div>
+        </Marquee>
       </div>
     </section>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { BlurFade } from "@/components/ui/blur-fade";
 
 interface FaqItem {
   question: string;
@@ -99,20 +100,24 @@ export function FaqSection() {
       className="bg-[#FFFFFF] py-16 lg:py-20"
     >
       <div className="max-w-[720px] mx-auto px-6">
-        <h2 className="text-center text-[28px] lg:text-[36px] font-bold text-[#111827] leading-[1.2] mb-12">
-          Frequently asked questions
-        </h2>
+        <BlurFade inView delay={0.1}>
+          <h2 className="text-center text-[28px] lg:text-[36px] font-bold text-[#111827] leading-[1.2] mb-12">
+            Frequently asked questions
+          </h2>
+        </BlurFade>
 
-        <div>
-          {faqs.map((item, i) => (
-            <FaqAccordionItem
-              key={i}
-              item={item}
-              isOpen={openIndex === i}
-              onToggle={() => toggle(i)}
-            />
-          ))}
-        </div>
+        <BlurFade inView delay={0.2}>
+          <div>
+            {faqs.map((item, i) => (
+              <FaqAccordionItem
+                key={i}
+                item={item}
+                isOpen={openIndex === i}
+                onToggle={() => toggle(i)}
+              />
+            ))}
+          </div>
+        </BlurFade>
       </div>
     </section>
   );

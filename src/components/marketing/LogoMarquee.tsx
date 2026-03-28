@@ -1,5 +1,8 @@
 "use client";
 
+import { Marquee } from "@/components/ui/marquee";
+import { cn } from "@/lib/utils";
+
 const logos = [
   "WordPress",
   "Shopify",
@@ -15,38 +18,24 @@ const logos = [
 
 export function LogoMarquee() {
   return (
-    <section className="py-12 bg-white border-y border-[#E5E7EB] overflow-hidden">
-      <style>{`
-        @keyframes marquee {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-        .marquee-track {
-          animation: marquee 30s linear infinite;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .marquee-track {
-            animation: none;
-          }
-        }
-      `}</style>
-
-      <p className="text-[12px] text-[#9CA3AF] text-center mb-8 uppercase tracking-[0.06em]">
+    <section className="py-12 bg-white border-y border-[#E5E7EB]">
+      <p className="text-center text-[12px] text-[#9CA3AF] uppercase tracking-[0.06em] mb-8">
         Integrates with your existing stack
       </p>
-
-      <div className="overflow-hidden">
-        <div className="marquee-track flex items-center gap-12 w-max">
-          {[...logos, ...logos].map((logo, i) => (
-            <span
-              key={i}
-              className="text-[15px] font-semibold text-[#111827] whitespace-nowrap"
-              style={{ opacity: 0.5 }}
+      <div className="relative">
+        <Marquee pauseOnHover className="[--duration:30s]">
+          {logos.map((logo) => (
+            <div
+              key={logo}
+              className="mx-8 text-[15px] font-semibold text-[#111827] opacity-40 hover:opacity-70 transition-opacity whitespace-nowrap select-none"
             >
               {logo}
-            </span>
+            </div>
           ))}
-        </div>
+        </Marquee>
+        {/* Fade edges */}
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-white to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-white to-transparent" />
       </div>
     </section>
   );

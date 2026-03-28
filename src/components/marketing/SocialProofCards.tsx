@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { MagicCard } from "@/components/ui/magic-card";
+import { BlurFade } from "@/components/ui/blur-fade";
 
 const tabs = ["Bloggers", "eCommerce", "Agencies", "SaaS"] as const;
 type Tab = (typeof tabs)[number];
@@ -11,6 +13,7 @@ type CardEntry = {
   metricLabel: string;
   name: string;
   role: string;
+  logo?: string;
 };
 
 const testimonials: Record<Tab, CardEntry[]> = {
@@ -22,6 +25,7 @@ const testimonials: Record<Tab, CardEntry[]> = {
       metricLabel: "in 90 days",
       name: "Sarah Chen",
       role: "Founder, The Content Lab",
+      logo: "The Content Lab",
     },
     {
       quote:
@@ -30,6 +34,7 @@ const testimonials: Record<Tab, CardEntry[]> = {
       metricLabel: "output increase",
       name: "James Holloway",
       role: "Solo Blogger, NicheSite Pro",
+      logo: "NicheSite Pro",
     },
     {
       quote:
@@ -38,6 +43,7 @@ const testimonials: Record<Tab, CardEntry[]> = {
       metricLabel: "in 3 months",
       name: "Mia Torres",
       role: "Editor, Ranker Weekly",
+      logo: "Ranker Weekly",
     },
   ],
   eCommerce: [
@@ -48,6 +54,7 @@ const testimonials: Record<Tab, CardEntry[]> = {
       metricLabel: "traffic from blog",
       name: "Marcus Webb",
       role: "Marketing Dir., Stackify",
+      logo: "Stackify",
     },
     {
       quote:
@@ -56,6 +63,7 @@ const testimonials: Record<Tab, CardEntry[]> = {
       metricLabel: "lower cost",
       name: "Leila Park",
       role: "Head of Growth, BoldCart",
+      logo: "BoldCart",
     },
     {
       quote:
@@ -64,6 +72,7 @@ const testimonials: Record<Tab, CardEntry[]> = {
       metricLabel: "SEO score",
       name: "David Kim",
       role: "CEO, TrueGoods",
+      logo: "TrueGoods",
     },
   ],
   Agencies: [
@@ -74,6 +83,7 @@ const testimonials: Record<Tab, CardEntry[]> = {
       metricLabel: "new clients in Q1",
       name: "Priya Nair",
       role: "Ops Lead, Velocity Agency",
+      logo: "Velocity Agency",
     },
     {
       quote:
@@ -82,6 +92,7 @@ const testimonials: Record<Tab, CardEntry[]> = {
       metricLabel: "margin improvement",
       name: "Tom Bradley",
       role: "Founder, ContentScale",
+      logo: "ContentScale",
     },
     {
       quote:
@@ -90,6 +101,7 @@ const testimonials: Record<Tab, CardEntry[]> = {
       metricLabel: "client retention",
       name: "Nina Shaw",
       role: "Account Dir., Ink & Rank",
+      logo: "Ink & Rank",
     },
   ],
   SaaS: [
@@ -100,6 +112,7 @@ const testimonials: Record<Tab, CardEntry[]> = {
       metricLabel: "in 90 days",
       name: "Ryan Foster",
       role: "Head of Marketing, Lateral Inc.",
+      logo: "Lateral Inc.",
     },
     {
       quote:
@@ -108,6 +121,7 @@ const testimonials: Record<Tab, CardEntry[]> = {
       metricLabel: "per article",
       name: "Priya Nair",
       role: "SEO Lead, Vesper",
+      logo: "Vesper",
     },
     {
       quote:
@@ -116,42 +130,38 @@ const testimonials: Record<Tab, CardEntry[]> = {
       metricLabel: "more articles/month",
       name: "Marcus Webb",
       role: "Marketing Dir., Stackify",
+      logo: "Stackify",
     },
   ],
 };
 
 function TestimonialCard({ card }: { card: CardEntry }) {
-  const initials = card.name
-    .split(" ")
-    .map((n) => n[0])
-    .join("");
-
   return (
-    <div className="relative bg-[#F8F9FA] border border-[#E5E7EB] rounded-xl p-6 flex flex-col">
-      {/* Metric badge — top right */}
-      <div className="absolute top-5 right-5 text-right">
-        <p className="text-[24px] font-bold text-[#111827] leading-none">
-          {card.metric}
-        </p>
-        <p className="text-[12px] text-[#6B7280] mt-0.5">{card.metricLabel}</p>
-      </div>
-
-      {/* Quote */}
-      <p className="text-[16px] text-[#111827] italic leading-[1.6] flex-1 pr-20">
-        &ldquo;{card.quote}&rdquo;
-      </p>
-
-      {/* Attribution */}
-      <div className="mt-4 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-[#111827] flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-[12px] font-semibold">{initials}</span>
+    <MagicCard
+      className="rounded-xl cursor-default h-full"
+      gradientColor="#2563EB12"
+    >
+      <div className="p-6 flex flex-col h-full gap-4">
+        {/* Metric badge top-right */}
+        <div className="flex items-start justify-between gap-4">
+          <span className="text-[11px] font-bold tracking-widest text-[#9CA3AF] uppercase">{card.logo}</span>
+          <div className="text-right flex-shrink-0">
+            <p className="text-[24px] font-bold text-[#111827] leading-none">{card.metric}</p>
+            <p className="text-[11px] text-[#9CA3AF] mt-0.5">{card.metricLabel}</p>
+          </div>
         </div>
-        <div>
-          <p className="text-[14px] font-semibold text-[#111827]">{card.name}</p>
-          <p className="text-[14px] text-[#6B7280]">{card.role}</p>
+        <p className="text-[15px] leading-relaxed text-[#374151] italic flex-1">"{card.quote}"</p>
+        <div className="border-t border-[#E5E7EB] pt-4 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-[#111827] flex items-center justify-center text-white text-[11px] font-semibold flex-shrink-0">
+            {card.name.split(' ').map((n: string) => n[0]).join('')}
+          </div>
+          <div>
+            <p className="text-[13px] font-semibold text-[#111827]">{card.name}</p>
+            <p className="text-[11px] text-[#6B7280]">{card.role}</p>
+          </div>
         </div>
       </div>
-    </div>
+    </MagicCard>
   );
 }
 
@@ -162,14 +172,16 @@ export function SocialProofCards() {
     <section className="bg-[#F8F9FA] py-20 lg:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section headline */}
-        <div className="text-center mb-12">
-          <h2 className="text-[28px] lg:text-[36px] font-bold text-[#111827] leading-[1.2]">
-            Real results from content teams
-          </h2>
-          <p className="text-[16px] text-[#6B7280] mt-3">
-            See what teams are publishing with ArticleGen
-          </p>
-        </div>
+        <BlurFade inView delay={0.1}>
+          <div className="text-center mb-12">
+            <h2 className="text-[28px] lg:text-[36px] font-bold text-[#111827] leading-[1.2]">
+              Real results from content teams
+            </h2>
+            <p className="text-[16px] text-[#6B7280] mt-3">
+              See what teams are publishing with ArticleGen
+            </p>
+          </div>
+        </BlurFade>
 
         {/* Tab bar */}
         <div className="flex justify-center mb-10">
@@ -194,11 +206,13 @@ export function SocialProofCards() {
         </div>
 
         {/* Cards grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {testimonials[activeTab].map((card) => (
-            <TestimonialCard key={card.name + card.role} card={card} />
-          ))}
-        </div>
+        <BlurFade inView delay={0.15}>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {testimonials[activeTab].map((card) => (
+              <TestimonialCard key={card.name + card.role} card={card} />
+            ))}
+          </div>
+        </BlurFade>
       </div>
     </section>
   );
