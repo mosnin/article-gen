@@ -7,6 +7,9 @@ export function CtaBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -14,15 +17,17 @@ export function CtaBanner() {
           observer.disconnect();
         }
       },
-      { threshold: 0.2 }
+      { threshold: 0.15 }
     );
-    if (ref.current) observer.observe(ref.current);
+
+    observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
   return (
     <section
       ref={ref}
+      style={{ fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" }}
       className={`w-full bg-[#F0F4FF] py-16 px-4 transition-all duration-700 ease-out ${
         visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
       }`}
