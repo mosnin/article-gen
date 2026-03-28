@@ -50,22 +50,14 @@ const faqs: FaqItem[] = [
   },
 ];
 
-function ChevronIcon({ open }: { open: boolean }) {
+function PlusMinusIcon({ open }: { open: boolean }) {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 20 20"
-      fill="currentColor"
-      className={`w-5 h-5 flex-shrink-0 transition-transform duration-300 text-gray-400 dark:text-gray-500 ${
-        open ? "rotate-180" : "rotate-0"
-      }`}
+    <span
+      aria-hidden="true"
+      className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-gray-400 text-xl leading-none select-none"
     >
-      <path
-        fillRule="evenodd"
-        d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
-        clipRule="evenodd"
-      />
-    </svg>
+      {open ? "−" : "+"}
+    </span>
   );
 }
 
@@ -79,16 +71,16 @@ function FaqAccordionItem({
   onToggle: () => void;
 }) {
   return (
-    <div className="border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+    <div className="border-b border-gray-200 last:border-b-0">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between gap-4 py-5 text-left group"
+        className="w-full flex items-center justify-between gap-4 py-5 text-left"
         aria-expanded={isOpen}
       >
-        <span className="text-base font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+        <span className="text-base font-semibold text-gray-900">
           {item.question}
         </span>
-        <ChevronIcon open={isOpen} />
+        <PlusMinusIcon open={isOpen} />
       </button>
 
       <div
@@ -96,7 +88,7 @@ function FaqAccordionItem({
           isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <p className="pb-5 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+        <p className="pb-5 text-sm leading-relaxed text-gray-500">
           {item.answer}
         </p>
       </div>
@@ -112,20 +104,18 @@ export function FaqSection() {
   };
 
   return (
-    <section className="py-20 lg:py-28 bg-white dark:bg-gray-950">
+    <section className="py-20 lg:py-28 bg-white">
       <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
-        {/* Heading */}
         <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900">
             Common questions
           </h2>
-          <p className="mt-3 text-base text-gray-500 dark:text-gray-400">
+          <p className="mt-3 text-base text-gray-500">
             Everything you need to know about ArticleGen.
           </p>
         </div>
 
-        {/* Accordion */}
-        <div className="divide-y divide-gray-200 dark:divide-gray-700 border-t border-gray-200 dark:border-gray-700">
+        <div className="border-t border-gray-200">
           {faqs.map((item, i) => (
             <FaqAccordionItem
               key={i}
@@ -136,12 +126,11 @@ export function FaqSection() {
           ))}
         </div>
 
-        {/* Footer nudge */}
-        <p className="mt-10 text-center text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-10 text-center text-sm text-gray-500">
           Still have questions?{" "}
           <a
             href="#"
-            className="font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+            className="font-semibold text-gray-900 hover:underline"
           >
             Talk to us →
           </a>

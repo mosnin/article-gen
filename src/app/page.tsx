@@ -21,14 +21,6 @@ export default function HomePage() {
         Skip to content
       </a>
 
-      {/* Announcement bar */}
-      <div className="bg-blue-600 text-white text-sm font-medium text-center py-2.5 px-4">
-        <span>🎉 New: Content Gap Analyzer — find your quick-win keywords instantly.</span>
-        <a href="/app" className="underline ml-2 hover:no-underline">
-          Try it free →
-        </a>
-      </div>
-
       {/* Sticky pill header with mega menu */}
       <MarketingHeader />
 
@@ -49,9 +41,7 @@ export default function HomePage() {
         <FeatureSections />
 
         {/* Mid-page CTA banner */}
-        <section className="py-16 px-4">
-          <CtaBanner />
-        </section>
+        <CtaBanner />
 
         {/* Animated dual-row testimonial marquee */}
         <TestimonialMarquee />
