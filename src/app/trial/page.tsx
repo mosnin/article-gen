@@ -63,6 +63,20 @@ function TrialPageContent() {
     const check = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // Check if user already has a subscription before sending to checkout
+        try {
+          const res = await fetch("/api/credits");
+          const data = await res.json();
+          if (data.plan && data.plan !== "free") {
+            // Already subscribed — check onboarding status
+            const onbRes = await fetch("/api/onboarding/status");
+            const onbData = await onbRes.json();
+            router.replace(onbData.complete ? "/app" : "/app/onboarding");
+            return;
+          }
+        } catch {
+          // If check fails, proceed to trial checkout
+        }
         router.replace("/app/trial-checkout");
         return;
       }
