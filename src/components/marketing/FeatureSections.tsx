@@ -1,57 +1,95 @@
 "use client";
 
-/* ─── Section 1: Article Generation ─── */
+import { useEffect, useRef, useState } from "react";
+
+/* ─── Reusable scroll-entrance hook ─── */
+function useVisible(threshold = 0.1) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [threshold]);
+  return { ref, visible };
+}
+
+/* ─── Checkmark SVG ─── */
+function CheckIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className="w-4 h-4 text-[#3B82F6] flex-shrink-0 mt-0.5"
+    >
+      <path
+        fillRule="evenodd"
+        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+/* ─── Section 1 visual: dark terminal article generation card ─── */
 function ArticleGenerationCard() {
   return (
-    <div className="rounded-2xl bg-[#0a0a0a] border border-gray-800 overflow-hidden w-full max-w-lg">
-      {/* Input bar */}
-      <div className="px-5 py-4 border-b border-gray-800">
-        <div className="flex items-center gap-3 bg-[#1a1a1a] rounded-lg px-4 py-3 border border-gray-700">
-          <span className="text-gray-500 text-xs flex-shrink-0">Prompt</span>
-          <span className="text-gray-300 text-sm">
-            Write me an article about best SEO practices in 2025
-          </span>
-        </div>
+    <div className="rounded-2xl bg-[#0f172a] overflow-hidden w-full max-w-lg">
+      {/* Title bar */}
+      <div className="flex items-center gap-2 px-5 py-3 border-b border-white/10">
+        <span className="w-3 h-3 rounded-full bg-red-500" />
+        <span className="w-3 h-3 rounded-full bg-yellow-400" />
+        <span className="w-3 h-3 rounded-full bg-green-500" />
+        <span className="ml-3 text-[12px] text-white/40">article-generation.md</span>
       </div>
 
-      {/* Output panel */}
+      {/* Skeleton content */}
       <div className="px-5 py-5 space-y-4">
-        <span className="text-[10px] font-bold tracking-widest text-gray-500 uppercase">
-          Article Output
-        </span>
-
-        <div className="space-y-2.5">
-          {/* Fake title line */}
-          <div className="h-3 rounded bg-gray-700" style={{ width: "78%" }} />
-          {/* Fake body lines */}
-          <div className="space-y-1.5 pt-1">
-            <div className="h-2 rounded bg-gray-800" style={{ width: "95%" }} />
-            <div className="h-2 rounded bg-gray-800" style={{ width: "88%" }} />
-            <div className="h-2 rounded bg-gray-800" style={{ width: "92%" }} />
-            <div className="h-2 rounded bg-gray-800" style={{ width: "65%" }} />
-          </div>
-          {/* Fake subheading */}
-          <div className="h-2.5 rounded bg-gray-700 mt-3" style={{ width: "52%" }} />
-          <div className="space-y-1.5 pt-1">
-            <div className="h-2 rounded bg-gray-800" style={{ width: "90%" }} />
-            <div className="h-2 rounded bg-gray-800" style={{ width: "84%" }} />
-            <div className="h-2 rounded bg-gray-800" style={{ width: "72%" }} />
-          </div>
+        {/* Fake H1 */}
+        <div className="h-3 rounded bg-white/20" style={{ width: "72%" }} />
+        {/* Fake body block 1 */}
+        <div className="space-y-1.5">
+          <div className="h-2 rounded bg-white/10" style={{ width: "96%" }} />
+          <div className="h-2 rounded bg-white/10" style={{ width: "89%" }} />
+          <div className="h-2 rounded bg-white/10" style={{ width: "93%" }} />
+          <div className="h-2 rounded bg-white/10" style={{ width: "62%" }} />
+        </div>
+        {/* Fake H2 */}
+        <div className="h-2.5 rounded bg-white/15 mt-3" style={{ width: "50%" }} />
+        {/* Fake body block 2 */}
+        <div className="space-y-1.5">
+          <div className="h-2 rounded bg-white/10" style={{ width: "91%" }} />
+          <div className="h-2 rounded bg-white/10" style={{ width: "85%" }} />
+          <div className="h-2 rounded bg-white/10" style={{ width: "74%" }} />
+        </div>
+        {/* Fake H2 */}
+        <div className="h-2.5 rounded bg-white/15 mt-3" style={{ width: "44%" }} />
+        <div className="space-y-1.5">
+          <div className="h-2 rounded bg-white/10" style={{ width: "88%" }} />
+          <div className="h-2 rounded bg-white/10" style={{ width: "79%" }} />
         </div>
 
-        {/* Footer stats */}
-        <div className="flex items-center gap-4 pt-2 border-t border-gray-800">
-          <span className="text-xs text-gray-500">2,847 words</span>
-          <span className="text-gray-700">·</span>
-          <span className="text-xs text-gray-500">SEO Score:</span>
-          <span className="text-xs font-bold text-white">94</span>
+        {/* Status footer */}
+        <div className="flex items-center gap-3 pt-3 border-t border-white/10">
+          <span className="text-[12px] text-white/40">2,847 words</span>
+          <span className="text-white/20">·</span>
+          <span className="text-[12px] text-white/40">SEO:</span>
+          <span className="text-[12px] font-bold text-white">94</span>
         </div>
       </div>
     </div>
   );
 }
 
-/* ─── Section 2: Publishing platforms card ─── */
+/* ─── Section 2 visual: publishing platforms card ─── */
 const publishPlatforms = [
   "WordPress",
   "Shopify",
@@ -65,173 +103,217 @@ const publishPlatforms = [
 
 function PublishingCard() {
   return (
-    <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden w-full max-w-lg p-6">
+    <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)] w-full max-w-lg">
+      {/* Header */}
       <div className="flex items-center gap-2 mb-6">
-        <div className="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center">
-          <span className="text-white text-xs font-bold">AG</span>
+        <div className="w-8 h-8 rounded-full bg-[#111827] flex items-center justify-center flex-shrink-0">
+          <span className="text-white text-[11px] font-bold">AG</span>
         </div>
-        <span className="text-sm font-semibold text-gray-800">ArticleGen</span>
-        <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+        <span className="text-[14px] font-semibold text-[#111827]">ArticleGen</span>
+        <span className="ml-auto text-[12px] bg-[#F1F3F5] px-2 py-1 rounded-full text-[#6B7280]">
           Publishing...
         </span>
       </div>
 
+      {/* 4x2 platform grid */}
       <div className="grid grid-cols-4 gap-2">
-        {publishPlatforms.map((p) => (
+        {publishPlatforms.map((platform) => (
           <div
-            key={p}
-            className="flex items-center justify-center px-2 py-3 rounded-lg border border-gray-200 bg-gray-50 text-center"
+            key={platform}
+            className="bg-[#F8F9FA] border border-[#E5E7EB] rounded-lg p-3 text-center"
           >
-            <span className="text-xs font-semibold text-gray-700 leading-tight">
-              {p}
+            <span className="text-[13px] font-semibold text-[#111827] leading-tight">
+              {platform}
             </span>
           </div>
         ))}
       </div>
 
-      <div className="mt-5 flex items-center gap-2">
-        <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-          <div className="h-full rounded-full bg-gray-900" style={{ width: "100%" }} />
+      {/* Progress bar */}
+      <div className="mt-5 flex items-center gap-3">
+        <div className="flex-1 h-1.5 rounded-full bg-[#E5E7EB] overflow-hidden">
+          <div className="h-full rounded-full bg-[#2563EB] w-full" />
         </div>
-        <span className="text-xs text-gray-400 flex-shrink-0">8 / 8 published</span>
+        <span className="text-[12px] text-[#9CA3AF] flex-shrink-0">8 / 8 published</span>
       </div>
     </div>
   );
 }
 
-/* ─── Section 3: Analytics bar chart ─── */
+/* ─── Section 3 visual: analytics keyword rankings card ─── */
 const rankingData = [
-  { keyword: "best SEO practices", position: 2, bar: 90, color: "bg-gray-900" },
-  { keyword: "content marketing tools", position: 4, bar: 72, color: "bg-gray-700" },
-  { keyword: "AI article generator", position: 6, bar: 58, color: "bg-gray-500" },
-  { keyword: "blog automation", position: 9, bar: 38, color: "bg-gray-400" },
-  { keyword: "publish to WordPress", position: 14, bar: 22, color: "bg-gray-300" },
+  { keyword: "best SEO practices", position: "#2", bar: 90 },
+  { keyword: "content marketing tools", position: "#4", bar: 72 },
+  { keyword: "AI article generator", position: "#6", bar: 58 },
+  { keyword: "blog automation", position: "#9", bar: 38 },
+  { keyword: "publish to WordPress", position: "#14", bar: 22 },
 ];
 
-function AnalyticsChart() {
+function AnalyticsCard() {
   return (
-    <div className="w-full max-w-lg space-y-3">
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+    <div className="bg-white border border-[#E5E7EB] rounded-2xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)] w-full max-w-lg">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#6B7280]">
           Keyword Rankings
         </span>
-        <span className="text-xs text-gray-400">Last 30 days</span>
+        <span className="text-[12px] text-[#9CA3AF]">Last 30 days</span>
       </div>
 
-      {rankingData.map((row) => (
-        <div key={row.keyword} className="space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-700 truncate max-w-[260px]">
-              {row.keyword}
-            </span>
-            <span className="text-xs font-bold text-gray-900 flex-shrink-0 ml-2">
-              #{row.position}
-            </span>
+      {/* Keyword rows */}
+      <div className="space-y-3">
+        {rankingData.map((row) => (
+          <div key={row.keyword}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[14px] text-[#111827] truncate max-w-[240px]">
+                {row.keyword}
+              </span>
+              <span className="text-[13px] font-bold text-[#111827] flex-shrink-0 ml-2">
+                {row.position}
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-[#E5E7EB] overflow-hidden">
+              <div
+                className="h-full rounded-full bg-[#2563EB]"
+                style={{ width: `${row.bar}%` }}
+              />
+            </div>
           </div>
-          <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-            <div
-              className={`h-full rounded-full ${row.color}`}
-              style={{ width: `${row.bar}%` }}
-            />
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
+  );
+}
+
+/* ─── Feature section data ─── */
+type FeatureData = {
+  label: string;
+  headline: string;
+  description: string;
+  bullets: string[];
+  cta: string;
+  bg: string;
+  visualLeft: boolean;
+  visual: React.ReactNode;
+};
+
+/* ─── Single feature section ─── */
+function FeatureSection({ data }: { data: FeatureData }) {
+  const { ref, visible } = useVisible(0.1);
+
+  const textBlock = (
+    <div className="flex flex-col justify-center">
+      <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#3B82F6] mb-2">
+        {data.label}
+      </p>
+      <h2 className="text-[28px] lg:text-[36px] font-bold text-[#111827] leading-[1.2] tracking-[-0.01em] mt-2">
+        {data.headline}
+      </h2>
+      <p className="text-[16px] text-[#6B7280] leading-[1.6] max-w-[480px] mt-4">
+        {data.description}
+      </p>
+      <ul className="mt-4 space-y-2">
+        {data.bullets.map((bullet, i) => (
+          <li key={i} className="flex items-start gap-2">
+            <CheckIcon />
+            <span className="text-[14px] text-[#6B7280]">{bullet}</span>
+          </li>
+        ))}
+      </ul>
+      <a
+        href="#"
+        className="mt-6 inline-flex items-center gap-1 text-[16px] font-medium text-[#3B82F6] hover:text-[#2563EB] transition-colors w-fit"
+      >
+        {data.cta} &rarr;
+      </a>
+    </div>
+  );
+
+  const visualBlock = (
+    <div className="flex items-center justify-center">{data.visual}</div>
+  );
+
+  return (
+    <section className={`${data.bg} py-16 lg:py-20`}>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div
+          ref={ref}
+          className={`grid lg:grid-cols-2 gap-12 lg:gap-16 items-center transition-all duration-500 ease-out ${
+            visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+          }`}
+        >
+          {data.visualLeft ? (
+            <>
+              {visualBlock}
+              {textBlock}
+            </>
+          ) : (
+            <>
+              {textBlock}
+              {visualBlock}
+            </>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
 /* ─── Main export ─── */
 export function FeatureSections() {
+  const sections: FeatureData[] = [
+    {
+      label: "AI Generation",
+      headline: "From keyword to publish-ready article in 60 seconds",
+      description:
+        "ArticleGen researches your topic, builds a structured outline, and writes a full SEO-optimized article — complete with headings, internal links, and metadata.",
+      bullets: [
+        "Keyword research built-in",
+        "2,000–4,000 word articles",
+        "SEO score of 90+ guaranteed",
+      ],
+      cta: "See how it works",
+      bg: "bg-[#FFFFFF]",
+      visualLeft: true,
+      visual: <ArticleGenerationCard />,
+    },
+    {
+      label: "Publishing",
+      headline: "Publish to 8 platforms with one click",
+      description:
+        "Connect WordPress, Shopify, Ghost, Medium, Dev.to, Notion, Webflow, and HubSpot once — then reach all of them simultaneously.",
+      bullets: [
+        "No reformatting needed",
+        "Schedule or publish instantly",
+        "Per-platform custom settings",
+      ],
+      cta: "View integrations",
+      bg: "bg-[#F1F3F5]",
+      visualLeft: false,
+      visual: <PublishingCard />,
+    },
+    {
+      label: "Analytics",
+      headline: "See exactly what ranks and why",
+      description:
+        "Connect Google Search Console and surface which articles are climbing, which are stalling, and where to focus next.",
+      bullets: [
+        "GSC integration built-in",
+        "Keyword position tracking",
+        "Article update recommendations",
+      ],
+      cta: "Explore analytics",
+      bg: "bg-[#FFFFFF]",
+      visualLeft: true,
+      visual: <AnalyticsCard />,
+    },
+  ];
+
   return (
     <>
-      {/* ── Section 1: dark card left, text right ── */}
-      <section className="py-24 bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Left: dark UI card */}
-            <div className="flex justify-center lg:justify-start">
-              <ArticleGenerationCard />
-            </div>
-
-            {/* Right: text */}
-            <div className="space-y-6">
-              <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                AI Generation
-              </p>
-              <h2 className="text-4xl sm:text-5xl font-bold leading-tight tracking-tight text-gray-900">
-                From keyword to publish-ready article in 60 seconds
-              </h2>
-              <p className="text-base leading-relaxed text-gray-500 max-w-md">
-                ArticleGen researches your topic, builds a structured outline, and
-                writes a full SEO-optimized article — complete with headings,
-                internal links, and metadata — ready to publish the moment it
-                finishes.
-              </p>
-              <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:border-gray-900 hover:text-gray-900 transition-colors">
-                See how it works →
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Section 2: text left, light card right ── */}
-      <section className="py-24 bg-[#f9f9f9]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Left: text */}
-            <div className="space-y-6">
-              <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                Publishing
-              </p>
-              <h2 className="text-4xl sm:text-5xl font-bold leading-tight tracking-tight text-gray-900">
-                Publish to 8 platforms with one click
-              </h2>
-              <p className="text-base leading-relaxed text-gray-500 max-w-md">
-                Connect WordPress, Shopify, Ghost, Medium, Dev.to, Notion,
-                Webflow, and HubSpot once. Then hit publish and reach all of
-                them simultaneously — no copy-pasting, no reformatting.
-              </p>
-              <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:border-gray-900 hover:text-gray-900 transition-colors">
-                View integrations →
-              </button>
-            </div>
-
-            {/* Right: platform grid card */}
-            <div className="flex justify-center lg:justify-end">
-              <PublishingCard />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Section 3: dark/light split ── */}
-      <section className="min-h-[480px] flex flex-col lg:flex-row">
-        {/* Left half: dark */}
-        <div className="lg:w-1/2 bg-[#0a0a0a] px-8 sm:px-12 lg:px-16 py-24 flex items-center">
-          <div className="max-w-md space-y-6">
-            <p className="text-xs font-bold uppercase tracking-widest text-gray-500">
-              Analytics
-            </p>
-            <h2 className="text-4xl sm:text-5xl font-bold leading-tight tracking-tight text-white">
-              See exactly what&apos;s ranking and why
-            </h2>
-            <p className="text-base leading-relaxed text-gray-400">
-              Connect Google Search Console and instantly surface which articles
-              are climbing, which are stalling, and where to focus your next
-              piece. Turn data into your next publish.
-            </p>
-            <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-700 text-sm font-semibold text-gray-300 hover:border-gray-400 hover:text-white transition-colors">
-              Explore analytics →
-            </button>
-          </div>
-        </div>
-
-        {/* Right half: light */}
-        <div className="lg:w-1/2 bg-[#f9f9f9] px-8 sm:px-12 lg:px-16 py-24 flex items-center">
-          <AnalyticsChart />
-        </div>
-      </section>
+      {sections.map((section) => (
+        <FeatureSection key={section.label} data={section} />
+      ))}
     </>
   );
 }

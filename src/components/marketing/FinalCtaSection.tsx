@@ -2,30 +2,29 @@
 
 export function FinalCtaSection() {
   return (
-    <section className="bg-white py-24">
-      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
-        <h2 className="text-4xl sm:text-5xl lg:text-[52px] font-bold leading-tight tracking-tight text-gray-900 mb-6">
-          The content engine for teams that want to rank
+    <section className="bg-[#FFFFFF] py-20 lg:py-24">
+      <div className="max-w-[600px] mx-auto px-6 flex flex-col items-center">
+        <h2 className="text-[28px] lg:text-[36px] font-bold text-[#111827] leading-[1.2] text-center">
+          Ready to grow your content?
         </h2>
 
-        <p className="text-lg text-gray-500 mb-10 max-w-xl mx-auto">
-          Join 2,400+ teams writing faster, ranking higher, and publishing everywhere.
+        <p className="text-[20px] text-[#6B7280] mt-3 text-center leading-[1.5]">
+          Start your free trial today. No credit card required.
         </p>
 
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <a
-            href="#"
-            className="inline-flex items-center justify-center h-11 px-7 rounded-md bg-gray-900 text-white font-medium text-sm hover:bg-black transition-colors"
-          >
-            Start writing free
-          </a>
-          <a
-            href="#"
-            className="inline-flex items-center justify-center h-11 px-7 rounded-md border border-gray-300 text-gray-700 font-medium text-sm hover:border-gray-400 hover:text-gray-900 transition-colors"
-          >
-            Talk to us
-          </a>
-        </div>
+        <a
+          href="#"
+          className="mt-8 inline-flex items-center justify-center h-[52px] px-8 text-base font-semibold rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors"
+        >
+          Start Free Trial
+        </a>
+
+        <a
+          href="#"
+          className="mt-3 text-[15px] font-medium text-[#6B7280] hover:text-[#111827] transition-colors"
+        >
+          Talk to sales &rarr;
+        </a>
       </div>
     </section>
   );

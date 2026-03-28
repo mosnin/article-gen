@@ -9,57 +9,41 @@ interface FaqItem {
 
 const faqs: FaqItem[] = [
   {
-    question: "Is there a free tier?",
+    question: "How does the free trial work?",
     answer:
-      "Yes. You get 3 free article credits when you sign up — no credit card required. After that, plans start at $29/month.",
-  },
-  {
-    question: "How is ArticleGen different from ChatGPT or Jasper?",
-    answer:
-      "ArticleGen is purpose-built for SEO content: it integrates with Google Search Console, generates full articles with proper structure and keyword density, and publishes directly to your CMS. ChatGPT doesn't publish. Jasper doesn't optimize for search.",
-  },
-  {
-    question: "Does it work with WordPress multisites and multiple blogs?",
-    answer:
-      "Yes. You can connect up to 3 WordPress blogs on Starter, unlimited on Growth and Pro. Each article can be published to a specific blog.",
-  },
-  {
-    question: "Will Google penalize AI-generated content?",
-    answer:
-      "Not if it's high-quality and genuinely helpful. ArticleGen follows Google's E-E-A-T guidelines and generates content that reads like an expert wrote it. Our customers rank on Page 1 consistently.",
-  },
-  {
-    question: "How does the Google Search Console integration work?",
-    answer:
-      "Connect your GSC account with one click. ArticleGen imports your top queries — keywords where you already have impressions but low CTR — and helps you create articles targeting those exact opportunities.",
-  },
-  {
-    question: "Can I export my articles or cancel anytime?",
-    answer:
-      "Yes to both. Your articles are yours — export to markdown, HTML, or via API at any time. Cancel anytime from your billing settings, no questions asked.",
+      "Start your 14-day free trial with full access — no credit card required. After the trial, choose the plan that fits your team.",
   },
   {
     question: "What platforms can I publish to?",
     answer:
-      "WordPress, Shopify, Ghost, Medium, Dev.to, Notion, Webflow, and any custom endpoint via webhook. We add new platforms regularly.",
+      "ArticleGen connects to WordPress, Shopify, Ghost, Medium, Dev.to, Notion, Webflow, and HubSpot. More integrations are added regularly.",
   },
   {
-    question: "How does billing work?",
+    question: "How is ArticleGen different from ChatGPT?",
     answer:
-      "Credit-based: each article generation costs 1 credit. Credits reset monthly with your plan. Unused credits don't roll over, but you can buy add-on packs. No surprise charges.",
+      "ArticleGen is purpose-built for SEO content. It researches keywords, structures articles for search engines, scores content against SEO benchmarks, and publishes directly to your platforms — ChatGPT does none of this.",
+  },
+  {
+    question: "Will Google penalize AI-generated content?",
+    answer:
+      "Google rewards helpful, accurate content regardless of how it was produced. ArticleGen generates factual, well-structured articles with proper citations, headings, and keyword integration that aligns with Google's helpful content guidelines.",
+  },
+  {
+    question: "Can I edit articles before publishing?",
+    answer:
+      "Yes. Every article goes through a review step before publishing. You can edit, rewrite sections, or adjust the outline at any point in the workflow.",
+  },
+  {
+    question: "Do you offer agency or team plans?",
+    answer:
+      "Yes. Our Agency plan supports multiple clients with separate workspaces, custom branding, and white-label reporting. Contact us for volume pricing.",
+  },
+  {
+    question: "How do I connect Google Search Console?",
+    answer:
+      "Go to Settings > Integrations and click Connect GSC. We use OAuth — no API keys needed. Once connected, keyword data flows directly into your generation workflow.",
   },
 ];
-
-function PlusMinusIcon({ open }: { open: boolean }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-gray-400 text-xl leading-none select-none"
-    >
-      {open ? "−" : "+"}
-    </span>
-  );
-}
 
 function FaqAccordionItem({
   item,
@@ -71,16 +55,21 @@ function FaqAccordionItem({
   onToggle: () => void;
 }) {
   return (
-    <div className="border-b border-gray-200 last:border-b-0">
+    <div className="border-b border-[#E5E7EB]">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between gap-4 py-5 text-left"
+        className="w-full flex items-center justify-between gap-4 py-4 text-left cursor-pointer"
         aria-expanded={isOpen}
       >
-        <span className="text-base font-semibold text-gray-900">
+        <span className="text-[16px] font-medium text-[#111827]">
           {item.question}
         </span>
-        <PlusMinusIcon open={isOpen} />
+        <span
+          aria-hidden="true"
+          className="flex-shrink-0 text-[#9CA3AF] text-[20px] leading-none select-none"
+        >
+          {isOpen ? "−" : "+"}
+        </span>
       </button>
 
       <div
@@ -88,7 +77,7 @@ function FaqAccordionItem({
           isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <p className="pb-5 text-sm leading-relaxed text-gray-500">
+        <p className="text-[16px] text-[#6B7280] leading-[1.6] pb-4">
           {item.answer}
         </p>
       </div>
@@ -97,25 +86,20 @@ function FaqAccordionItem({
 }
 
 export function FaqSection() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   const toggle = (i: number) => {
     setOpenIndex((prev) => (prev === i ? null : i));
   };
 
   return (
-    <section className="py-20 lg:py-28 bg-white">
-      <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900">
-            Common questions
-          </h2>
-          <p className="mt-3 text-base text-gray-500">
-            Everything you need to know about ArticleGen.
-          </p>
-        </div>
+    <section className="bg-[#FFFFFF] py-16 lg:py-20">
+      <div className="max-w-[720px] mx-auto px-6">
+        <h2 className="text-center text-[28px] lg:text-[36px] font-bold text-[#111827] leading-[1.2] mb-12">
+          Frequently asked questions
+        </h2>
 
-        <div className="border-t border-gray-200">
+        <div>
           {faqs.map((item, i) => (
             <FaqAccordionItem
               key={i}
@@ -125,16 +109,6 @@ export function FaqSection() {
             />
           ))}
         </div>
-
-        <p className="mt-10 text-center text-sm text-gray-500">
-          Still have questions?{" "}
-          <a
-            href="#"
-            className="font-semibold text-gray-900 hover:underline"
-          >
-            Talk to us →
-          </a>
-        </p>
       </div>
     </section>
   );

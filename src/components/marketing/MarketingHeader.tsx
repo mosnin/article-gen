@@ -62,10 +62,10 @@ const navLinks = [
 function Logo() {
   return (
     <Link href="/" className="flex items-center gap-2 shrink-0 select-none">
-      <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-gray-900">
+      <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#111827]">
         <Sparkles className="w-4 h-4 text-white" />
       </span>
-      <span className="font-bold text-[17px] tracking-tight text-gray-900">
+      <span className="font-bold text-[17px] tracking-tight text-[#111827]">
         ArticleGen
       </span>
     </Link>
@@ -77,13 +77,13 @@ function Logo() {
 function FeaturesMenu({ onClose }: { onClose: () => void }) {
   return (
     <div
-      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[520px] rounded-xl bg-white border border-gray-200 shadow-xl shadow-gray-900/10 p-4 z-50"
+      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[520px] rounded-xl bg-white border border-[#E5E7EB] p-4 z-50"
+      style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
       onMouseLeave={onClose}
     >
-      {/* Arrow pointer */}
-      <div className="absolute -top-[6px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-white border-l border-t border-gray-200" />
+      <div className="absolute -top-[6px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-white border-l border-t border-[#E5E7EB]" />
 
-      <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3 px-1">
+      <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF] mb-3 px-1">
         Platform Features
       </p>
 
@@ -93,16 +93,16 @@ function FeaturesMenu({ onClose }: { onClose: () => void }) {
             key={card.href}
             href={card.href}
             onClick={onClose}
-            className="group flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors duration-150"
+            className="group flex items-start gap-3 p-3 rounded-lg hover:bg-[#F8F9FA] transition-colors duration-150"
           >
-            <span className="mt-0.5 flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-white border border-gray-200/60 shrink-0 transition-colors duration-150">
+            <span className="mt-0.5 flex items-center justify-center w-9 h-9 rounded-lg bg-[#F1F3F5] group-hover:bg-white border border-[#E5E7EB] shrink-0 transition-colors duration-150">
               {card.icon}
             </span>
             <div>
-              <p className="text-sm font-semibold text-gray-900 leading-snug">
+              <p className="text-sm font-semibold text-[#111827] leading-snug">
                 {card.title}
               </p>
-              <p className="text-xs text-gray-500 mt-0.5 leading-snug">
+              <p className="text-xs text-[#6B7280] mt-0.5 leading-snug">
                 {card.description}
               </p>
             </div>
@@ -110,14 +110,14 @@ function FeaturesMenu({ onClose }: { onClose: () => void }) {
         ))}
       </div>
 
-      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between px-1">
-        <p className="text-xs text-gray-400">Explore the full platform</p>
+      <div className="mt-3 pt-3 border-t border-[#E5E7EB] flex items-center justify-between px-1">
+        <p className="text-xs text-[#9CA3AF]">Explore the full platform</p>
         <Link
           href="/features"
           onClick={onClose}
-          className="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
+          className="text-xs font-medium text-[#2563EB] hover:text-[#1D4ED8] transition-colors"
         >
-          View all features →
+          View all features &rarr;
         </Link>
       </div>
     </div>
@@ -135,7 +135,6 @@ function MobileDrawer({
 }) {
   const [featuresOpen, setFeaturesOpen] = useState(false);
 
-  // Lock body scroll when drawer is open
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -151,49 +150,44 @@ function MobileDrawer({
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Panel */}
       <div className="relative ml-auto w-full max-w-sm h-full bg-white shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E5E7EB]">
           <Logo />
           <button
             onClick={onClose}
             aria-label="Close menu"
-            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+            className="p-1.5 rounded-lg text-[#6B7280] hover:bg-[#F1F3F5] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Nav items */}
         <nav className="flex-1 overflow-y-auto px-4 py-5 space-y-1">
-          {/* Features accordion */}
           <button
             onClick={() => setFeaturesOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-[15px] font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-[15px] font-medium text-[#111827] hover:bg-[#F8F9FA] transition-colors"
           >
             Features
             <ChevronDown
-              className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${featuresOpen ? "rotate-180" : ""}`}
+              className={`w-4 h-4 text-[#9CA3AF] transition-transform duration-200 ${featuresOpen ? "rotate-180" : ""}`}
             />
           </button>
 
           {featuresOpen && (
-            <div className="ml-3 mt-1 space-y-1 border-l-2 border-gray-100 pl-4">
+            <div className="ml-3 mt-1 space-y-1 border-l-2 border-[#E5E7EB] pl-4">
               {featureCards.map((card) => (
                 <Link
                   key={card.href}
                   href={card.href}
                   onClick={onClose}
-                  className="flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-[#6B7280] hover:text-[#111827] hover:bg-[#F8F9FA] transition-colors"
                 >
-                  <span className="flex items-center justify-center w-7 h-7 rounded-md bg-gray-100 shrink-0">
+                  <span className="flex items-center justify-center w-7 h-7 rounded-md bg-[#F1F3F5] shrink-0">
                     {card.icon}
                   </span>
                   {card.title}
@@ -207,26 +201,25 @@ function MobileDrawer({
               key={link.href}
               href={link.href}
               onClick={onClose}
-              className="block px-3 py-2.5 rounded-lg text-[15px] font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="block px-3 py-2.5 rounded-lg text-[15px] font-medium text-[#111827] hover:bg-[#F8F9FA] transition-colors"
             >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        {/* CTA area */}
-        <div className="px-4 pb-6 pt-4 border-t border-gray-100 space-y-3">
+        <div className="px-4 pb-6 pt-4 border-t border-[#E5E7EB] space-y-3">
           <Link
             href="/login"
             onClick={onClose}
-            className="block text-center px-4 py-2.5 rounded-md text-sm font-medium text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors"
+            className="block text-center h-11 px-6 flex items-center justify-center rounded-lg text-[15px] font-medium text-[#111827] border border-[#E5E7EB] hover:bg-[#F8F9FA] transition-colors"
           >
             Log in
           </Link>
           <Link
             href="/trial"
             onClick={onClose}
-            className="block text-center px-4 py-2.5 rounded-md text-sm font-semibold bg-gray-900 hover:bg-gray-800 text-white transition-colors"
+            className="block text-center h-11 px-6 flex items-center justify-center rounded-lg text-[15px] font-semibold bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors"
           >
             Start Free Trial
           </Link>
@@ -242,22 +235,20 @@ export function MarketingHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const featuresRef = useRef<HTMLDivElement>(null);
+  const featuresWrapperRef = useRef<HTMLDivElement>(null);
   const featuresButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Track scroll
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Close features menu on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (
-        featuresRef.current &&
-        !featuresRef.current.contains(e.target as Node) &&
+        featuresWrapperRef.current &&
+        !featuresWrapperRef.current.contains(e.target as Node) &&
         featuresButtonRef.current &&
         !featuresButtonRef.current.contains(e.target as Node)
       ) {
@@ -272,27 +263,32 @@ export function MarketingHeader() {
 
   return (
     <>
-      <header
-        className={`fixed top-0 left-0 right-0 z-50 bg-white transition-all duration-200 ${
-          scrolled ? "border-b border-gray-200" : "border-b border-transparent"
-        }`}
-      >
-        <div className="max-w-[1200px] mx-auto px-6 flex items-center justify-between h-16">
+      <div className="fixed top-3 inset-x-0 z-50 mx-auto w-full max-w-[1200px] px-6 pointer-events-none">
+        <header
+          className="pointer-events-auto w-full h-16 flex items-center justify-between px-6 rounded-3xl transition-all duration-200"
+          style={{
+            background: "rgba(255,255,255,0.80)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            boxShadow: scrolled
+              ? "0 8px 24px rgba(0,0,0,0.08)"
+              : "0 2px 8px rgba(0,0,0,0.06)",
+          }}
+        >
           {/* Logo */}
           <Logo />
 
           {/* Desktop nav — centered */}
-          <nav className="hidden md:flex items-center gap-0.5 absolute left-1/2 -translate-x-1/2">
-            {/* Features with mega menu */}
-            <div className="relative" ref={featuresRef}>
+          <nav className="hidden lg:flex items-center gap-0.5 absolute left-1/2 -translate-x-1/2">
+            <div className="relative" ref={featuresWrapperRef}>
               <button
                 ref={featuresButtonRef}
                 onMouseEnter={() => setFeaturesOpen(true)}
                 onClick={() => setFeaturesOpen((v) => !v)}
                 className={`flex items-center gap-1 px-3 py-2 text-[15px] font-medium transition-colors duration-150 ${
                   featuresOpen
-                    ? "text-gray-900"
-                    : "text-gray-600 hover:text-gray-900"
+                    ? "text-[#111827]"
+                    : "text-[#6B7280] hover:text-[#111827]"
                 }`}
                 aria-expanded={featuresOpen}
                 aria-haspopup="true"
@@ -304,9 +300,7 @@ export function MarketingHeader() {
               </button>
 
               {featuresOpen && (
-                <div ref={featuresRef}>
-                  <FeaturesMenu onClose={() => setFeaturesOpen(false)} />
-                </div>
+                <FeaturesMenu onClose={() => setFeaturesOpen(false)} />
               )}
             </div>
 
@@ -314,7 +308,7 @@ export function MarketingHeader() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="px-3 py-2 text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors duration-150"
+                className="px-3 py-2 text-[15px] font-medium text-[#6B7280] hover:text-[#111827] transition-colors duration-150"
               >
                 {link.label}
               </Link>
@@ -322,16 +316,16 @@ export function MarketingHeader() {
           </nav>
 
           {/* Right: CTAs */}
-          <div className="hidden md:flex items-center gap-2 shrink-0">
+          <div className="hidden lg:flex items-center gap-2 shrink-0">
             <Link
               href="/login"
-              className="px-3 py-2 text-[15px] font-medium text-gray-600 hover:text-gray-900 transition-colors duration-150"
+              className="px-3 py-2 text-[15px] font-medium text-[#6B7280] hover:text-[#111827] transition-colors duration-150"
             >
               Log in
             </Link>
             <Link
               href="/trial"
-              className="px-4 py-2 rounded-md text-sm font-semibold bg-gray-900 hover:bg-gray-800 text-white transition-colors duration-150"
+              className="inline-flex items-center justify-center h-11 px-6 text-[15px] font-semibold rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors duration-150"
             >
               Start Free Trial
             </Link>
@@ -339,16 +333,15 @@ export function MarketingHeader() {
 
           {/* Mobile hamburger */}
           <button
-            className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+            className="lg:hidden p-2 rounded-lg text-[#6B7280] hover:bg-[#F1F3F5] transition-colors"
             aria-label="Open menu"
             onClick={() => setMobileOpen(true)}
           >
             <Menu className="w-5 h-5" />
           </button>
-        </div>
-      </header>
+        </header>
+      </div>
 
-      {/* Mobile drawer */}
       <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} />
     </>
   );

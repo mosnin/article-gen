@@ -8,10 +8,10 @@ interface Testimonial {
   initials: string;
 }
 
-const testimonials: Testimonial[] = [
+const row1: Testimonial[] = [
   {
     quote:
-      "We went from publishing 2 articles/month to 20. ArticleGen does in 20 minutes what used to take us a full day.",
+      "We went from 2 articles/month to 20. ArticleGen does in 20 minutes what used to take a full day.",
     name: "Alex Kim",
     role: "SEO Manager",
     company: "CloudSync",
@@ -19,7 +19,7 @@ const testimonials: Testimonial[] = [
   },
   {
     quote:
-      "The GSC integration alone is worth it. I can see exactly which articles to update for quick traffic wins.",
+      "The GSC integration alone is worth it. I see exactly which articles to update for quick traffic wins.",
     name: "Emma Torres",
     role: "Content Lead",
     company: "Growthly",
@@ -59,19 +59,74 @@ const testimonials: Testimonial[] = [
   },
 ];
 
+const row2: Testimonial[] = [
+  {
+    quote:
+      "Our domain authority jumped 14 points in three months just from the volume ArticleGen gave us.",
+    name: "Mia Torres",
+    role: "Editor",
+    company: "Ranker Weekly",
+    initials: "MT",
+  },
+  {
+    quote:
+      "We onboarded 12 new clients in Q1 because ArticleGen let us scale delivery without hiring more writers.",
+    name: "Priya Nair",
+    role: "Ops Lead",
+    company: "Velocity Agency",
+    initials: "PN",
+  },
+  {
+    quote:
+      "Retainer margins improved 35% after switching to ArticleGen for first drafts. Editors spend time on strategy now.",
+    name: "Tom Bradley",
+    role: "Founder",
+    company: "ContentScale",
+    initials: "TB",
+  },
+  {
+    quote:
+      "Product blog traffic now drives 22% of our store visits. ArticleGen writes product guides that convert.",
+    name: "Marcus Webb",
+    role: "Marketing Dir.",
+    company: "Stackify",
+    initials: "MW",
+  },
+  {
+    quote:
+      "We tripled organic traffic in 90 days by publishing two cluster articles per week.",
+    name: "Ryan Foster",
+    role: "Head of Marketing",
+    company: "Lateral Inc.",
+    initials: "RF",
+  },
+  {
+    quote:
+      "What used to take a full day of research now takes a coffee break — with better SEO scores.",
+    name: "Leila Park",
+    role: "Head of Growth",
+    company: "BoldCart",
+    initials: "LP",
+  },
+];
+
 function TestimonialCard({ t }: { t: Testimonial }) {
   return (
-    <div className="flex flex-col justify-between bg-white border border-gray-200 rounded-lg p-6">
-      <p className="text-sm text-gray-800 leading-relaxed mb-6">
+    <div className="bg-[#F8F9FA] border border-[#E5E7EB] rounded-xl p-6 flex-shrink-0 w-[360px] flex flex-col">
+      <p className="text-[18px] text-[#111827] italic leading-[1.6]">
         &ldquo;{t.quote}&rdquo;
       </p>
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-gray-900 flex items-center justify-center flex-shrink-0">
-          <span className="text-xs font-semibold text-white">{t.initials}</span>
+      <div className="mt-4 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-[#111827] flex items-center justify-center flex-shrink-0">
+          <span className="text-[12px] font-semibold text-white">
+            {t.initials}
+          </span>
         </div>
         <div>
-          <p className="text-sm font-semibold text-gray-900 leading-tight">{t.name}</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-[14px] font-semibold text-[#111827] leading-tight">
+            {t.name}
+          </p>
+          <p className="text-[14px] text-[#6B7280]">
             {t.role}, {t.company}
           </p>
         </div>
@@ -82,20 +137,59 @@ function TestimonialCard({ t }: { t: Testimonial }) {
 
 export function TestimonialMarquee() {
   return (
-    <section className="py-20 bg-white">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900">
-            Loved by content teams
-          </h2>
-          <p className="mt-3 text-base text-gray-500">
-            Trusted by 2,400+ teams to write faster and rank higher.
-          </p>
-        </div>
+    <section className="bg-[#F8F9FA] py-20 overflow-hidden">
+      <style>{`
+        @keyframes marquee-left {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-50%); }
+        }
+        @keyframes marquee-right {
+          from { transform: translateX(-50%); }
+          to   { transform: translateX(0); }
+        }
+        .animate-marquee-left {
+          animation: marquee-left 45s linear infinite;
+        }
+        .animate-marquee-right {
+          animation: marquee-right 30s linear infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .animate-marquee-left,
+          .animate-marquee-right {
+            animation-play-state: paused;
+          }
+        }
+      `}</style>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {testimonials.map((t, i) => (
-            <TestimonialCard key={i} t={t} />
+      <div className="text-center mb-12 px-6">
+        <h2 className="text-[28px] lg:text-[36px] font-bold text-[#111827] leading-[1.2]">
+          Loved by content teams
+        </h2>
+        <p className="text-[16px] text-[#6B7280] mt-3 leading-[1.6]">
+          Trusted by 2,400+ teams to write faster and rank higher.
+        </p>
+      </div>
+
+      {/* Row 1 — scrolls left at 45s */}
+      <div className="overflow-hidden mb-4">
+        <div className="flex items-stretch gap-4 w-max animate-marquee-left">
+          {row1.map((t, i) => (
+            <TestimonialCard key={`r1a-${i}`} t={t} />
+          ))}
+          {row1.map((t, i) => (
+            <TestimonialCard key={`r1b-${i}`} t={t} />
+          ))}
+        </div>
+      </div>
+
+      {/* Row 2 — scrolls right at 30s */}
+      <div className="overflow-hidden">
+        <div className="flex items-stretch gap-4 w-max animate-marquee-right">
+          {row2.map((t, i) => (
+            <TestimonialCard key={`r2a-${i}`} t={t} />
+          ))}
+          {row2.map((t, i) => (
+            <TestimonialCard key={`r2b-${i}`} t={t} />
           ))}
         </div>
       </div>
