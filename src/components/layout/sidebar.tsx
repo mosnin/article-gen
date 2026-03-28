@@ -319,50 +319,6 @@ export function Sidebar({
           ))}
         </SectionHeader>
 
-        {/* Free Tools Builder */}
-        <NavLink
-          item={{
-            label: "Free Tools Builder",
-            href: "/app/free-tools",
-            badge: "NEW",
-            badgeVariant: "new",
-            icon: (
-              <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                <path fillRule="evenodd" d="M6.672 1.911a1 1 0 10-1.932.518l.259.966a1 1 0 001.932-.518l-.26-.966zM2.429 4.74a1 1 0 10-.517 1.932l.966.259a1 1 0 00.517-1.932l-.966-.26zm8.814-.569a1 1 0 00-1.415-1.414l-.707.707a1 1 0 101.415 1.415l.707-.708zm-7.071 7.072l.707-.707A1 1 0 003.465 9.12l-.708.707a1 1 0 001.415 1.415zm3.2-5.171a1 1 0 00-1.3 1.3l4 10a1 1 0 001.823.075l1.38-2.759 3.018 3.02a1 1 0 001.414-1.415l-3.019-3.02 2.76-1.379a1 1 0 00-.076-1.822l-10-4z" clipRule="evenodd" />
-              </svg>
-            ),
-          }}
-          collapsed={false}
-        />
-
-        {/* Add-ons section */}
-        <SectionHeader label="Add-ons" defaultOpen={false}>
-          <NavLink
-            item={{
-              label: "Human Curated Service",
-              href: "/app/addons/curated",
-              icon: (
-                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                </svg>
-              ),
-            }}
-            collapsed={false}
-          />
-          <NavLink
-            item={{
-              label: "Get 350+ Backlinks",
-              href: "/app/addons/backlinks",
-              icon: (
-                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                  <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
-                </svg>
-              ),
-            }}
-            collapsed={false}
-          />
-        </SectionHeader>
-
         {/* Account section */}
         <SectionHeader label="Account" defaultOpen={false}>
           <NavLink
@@ -385,17 +341,6 @@ export function Sidebar({
 
       {/* Bottom widget */}
       <div className="shrink-0 border-t border-[var(--border-default)] px-3 py-3 space-y-2.5">
-        {/* Join Referral Program */}
-        <Link
-          href="/app/referral"
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--border-default)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] transition-colors"
-        >
-          <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-[var(--accent)]">
-            <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-          </svg>
-          Join Referral Program
-        </Link>
-
         {/* Stats row */}
         <div className="flex items-center gap-3 px-1">
           <div className="flex items-center gap-1 text-[11px] text-[var(--text-tertiary)]">
