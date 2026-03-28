@@ -233,6 +233,16 @@ export async function POST(req: NextRequest) {
       payload.gsc_site_url = body.gsc_site_url;
     }
 
+    // Extended fields from general settings page
+    if (body.target_audiences !== undefined) payload.target_audiences = body.target_audiences;
+    if (body.competitors !== undefined) payload.competitors = body.competitors;
+    if (body.general_settings !== undefined) payload.general_settings = body.general_settings;
+    if (body.audience_settings !== undefined) payload.audience_settings = body.audience_settings;
+    if (body.gsc_settings !== undefined) payload.gsc_settings = body.gsc_settings;
+    if (body.website_url !== undefined) payload.website_url = body.website_url;
+    if (body.business_name !== undefined) payload.business_name = body.business_name;
+    if (body.niche !== undefined) payload.niche = body.niche;
+
     const { data: existing } = await supabase
       .from("user_settings")
       .select("id")

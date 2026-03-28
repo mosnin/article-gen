@@ -70,29 +70,36 @@ export default function GeneralSettingsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.replace("/"); return; }
 
-      const { data } = await supabase
-        .from("user_settings")
-        .select("general_settings, audience_settings, gsc_settings, website_url, business_name")
-        .eq("user_id", user.id)
-        .single();
+      const res = await fetch("/api/settings");
+      const json = await res.json();
+      const s = json.settings;
+      if (!s) return;
 
-      if (data) {
-        if (data.general_settings) {
-          setBusiness((prev) => ({ ...prev, ...(data.general_settings as Partial<BusinessInfo>) }));
-        }
-        if (data.audience_settings) {
-          setAudience((prev) => ({ ...prev, ...(data.audience_settings as Partial<AudienceInfo>) }));
-        }
-        if (data.gsc_settings) {
-          setGsc((prev) => ({ ...prev, ...(data.gsc_settings as Partial<GscInfo>) }));
-        }
-        // Prefill from existing top-level fields
-        if (data.website_url && !business.websiteUrl) {
-          setBusiness((prev) => ({ ...prev, websiteUrl: data.website_url as string }));
-        }
-        if (data.business_name && !business.businessName) {
-          setBusiness((prev) => ({ ...prev, businessName: data.business_name as string }));
-        }
+      // Map canonical settings fields (written by onboarding + settings API)
+      setBusiness((prev) => ({
+        ...prev,
+        websiteUrl: s.domain || s.website_url || prev.websiteUrl,
+        businessName: s.site_name || s.business_name || prev.businessName,
+        description: s.site_about || (s.general_settings as { description?: string })?.description || prev.description,
+        language: (s.general_settings as { language?: string })?.language || prev.language,
+        country: (s.general_settings as { country?: string })?.country || prev.country,
+      }));
+
+      // Audience data — try audience_settings blob first, fall back to top-level arrays
+      const savedAudience = s.audience_settings as Partial<AudienceInfo> | null;
+      setAudience((prev) => ({
+        targetAudiences: savedAudience?.targetAudiences ?? (s.target_audiences as string[] | undefined) ?? prev.targetAudiences,
+        competitors: savedAudience?.competitors ?? (s.competitors as string[] | undefined) ?? prev.competitors,
+        topKeywords: savedAudience?.topKeywords ?? prev.topKeywords,
+      }));
+
+      // GSC
+      if (s.gsc_connected || s.gsc_site_url) {
+        setGsc((prev) => ({
+          ...prev,
+          connected: !!s.gsc_connected,
+          siteUrl: s.gsc_site_url || prev.siteUrl,
+        }));
       }
     };
     load();
@@ -102,19 +109,25 @@ export default function GeneralSettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      await supabase.from("user_settings").upsert(
-        {
-          user_id: user.id,
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          // Canonical fields used by onboarding + generation
+          domain: business.websiteUrl,
+          site_name: business.businessName,
+          site_about: business.description,
+          target_audiences: audience.targetAudiences,
+          competitors: audience.competitors,
+          // Extended blobs for fields not in base schema
           general_settings: business,
           audience_settings: audience,
           gsc_settings: gsc,
           website_url: business.websiteUrl,
           business_name: business.businessName,
-        },
-        { onConflict: "user_id" }
-      );
+        }),
+      });
+      if (!res.ok) throw new Error("Failed");
       toast.success("Settings saved");
     } catch {
       toast.error("Failed to save settings");
