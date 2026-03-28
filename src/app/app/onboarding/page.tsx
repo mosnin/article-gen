@@ -350,11 +350,28 @@ export default function OnboardingPage() {
         });
       }
       await fetch("/api/onboarding/complete", { method: "POST" });
-      if (selectedIntegration && selectedIntegration !== "webhook") {
-        router.push("/app/settings");
-      } else {
-        router.push("/app");
+
+      // Fire plan generation in the background — don't await, autopilot page handles loading
+      if (niche.trim()) {
+        fetch("/api/autopilot/generate-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            niche: niche.trim(),
+            targetAudience: audiences.join(", ") || undefined,
+            competitors: competitors.length ? competitors : undefined,
+            startDate: new Date().toISOString().split("T")[0],
+            count: 30,
+          }),
+        }).catch(() => {/* silent — autopilot page allows manual regeneration */});
       }
+
+      // Always land on autopilot so user sees their 30-day plan immediately
+      router.push(
+        selectedIntegration && selectedIntegration !== "webhook"
+          ? `/app/autopilot?setup=${selectedIntegration}`
+          : "/app/autopilot"
+      );
     } catch {
       setError("Failed to finish. Please try again.");
     } finally {

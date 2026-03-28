@@ -187,6 +187,10 @@ function EditSlotModal({ slot, onSave, onClose }: {
 
 export default function AutopilotPage() {
   const router = useRouter();
+  const searchParams = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search)
+    : new URLSearchParams();
+  const isNewUser = searchParams.has("setup") || searchParams.get("new") === "1";
   const [slots, setSlots] = useState<AutopilotSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -213,6 +217,27 @@ export default function AutopilotPage() {
   }, []);
 
   useEffect(() => { loadPlan(); }, [loadPlan]);
+
+  // For new users arriving from onboarding, poll until the background plan generation completes
+  useEffect(() => {
+    if (!isNewUser) return;
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch("/api/autopilot/queue");
+        const data = await res.json();
+        if (data.slots?.length > 0) {
+          setSlots(data.slots);
+          setNiche(data.niche ?? "");
+          clearInterval(interval);
+        }
+      } catch { /* ignore */ }
+      if (attempts >= 20) clearInterval(interval); // stop after ~60s
+    }, 3000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleGeneratePlan = async () => {
     if (!niche.trim()) {
@@ -477,13 +502,24 @@ export default function AutopilotPage() {
       {slots.length === 0 && !generating && (
         <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
           <div className="w-16 h-16 rounded-2xl bg-[var(--surface-sunken)] flex items-center justify-center">
-            <svg className="w-8 h-8 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+            {isNewUser ? (
+              <svg className="w-8 h-8 text-[var(--accent)] animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <svg className="w-8 h-8 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            )}
           </div>
-          <p className="font-medium text-[var(--text-primary)]">No content plan yet</p>
+          <p className="font-medium text-[var(--text-primary)]">
+            {isNewUser ? "Building your 30-day content plan…" : "No content plan yet"}
+          </p>
           <p className="text-sm text-[var(--text-secondary)] max-w-xs">
-            Enter your niche above and generate a 30-day keyword-targeted content calendar.
+            {isNewUser
+              ? "We're generating 30 keyword-targeted article ideas based on your business. This takes about 20 seconds."
+              : "Enter your niche above and generate a 30-day keyword-targeted content calendar."}
           </p>
         </div>
       )}
