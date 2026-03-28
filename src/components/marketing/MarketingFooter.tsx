@@ -94,23 +94,29 @@ const footerColumns: FooterColumn[] = [
 ];
 
 const socialLinks = [
-  { label: "Twitter", href: "#", icon: <TwitterIcon /> },
-  { label: "LinkedIn", href: "#", icon: <LinkedInIcon /> },
-  { label: "GitHub", href: "#", icon: <GitHubIcon /> },
+  { label: "Twitter", href: "#", Icon: TwitterIcon },
+  { label: "LinkedIn", href: "#", Icon: LinkedInIcon },
+  { label: "GitHub", href: "#", Icon: GitHubIcon },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function MarketingFooter() {
   return (
-    <footer className="bg-[#FFFFFF] border-t border-[#E5E7EB]">
+    <footer
+      style={{ fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" }}
+      className="bg-[#FFFFFF] border-t border-[#E5E7EB]"
+    >
       <div className="max-w-[1200px] mx-auto px-6 py-16">
-        {/* Top grid */}
+        {/* Top grid: 2 cols on mobile, 5 cols on md+ */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
-          {/* Logo + description column */}
+          {/* Logo + description — spans 2 cols on mobile, 1 col on md */}
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="flex items-center gap-2 select-none w-fit">
-              <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#111827]">
+            <Link
+              href="/"
+              className="flex items-center gap-2 select-none w-fit"
+            >
+              <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#111827] flex-shrink-0">
                 <Sparkles className="w-4 h-4 text-white" />
               </span>
               <span className="font-bold text-[17px] text-[#111827]">
@@ -118,11 +124,12 @@ export function MarketingFooter() {
               </span>
             </Link>
             <p className="text-[14px] text-[#6B7280] mt-3 max-w-[220px] leading-[1.5]">
-              AI-powered content generation and multi-platform publishing for modern content teams.
+              AI-powered content generation and multi-platform publishing for
+              modern content teams.
             </p>
           </div>
 
-          {/* Nav columns */}
+          {/* 4 nav columns */}
           {footerColumns.map((col) => (
             <div key={col.heading}>
               <p className="text-[14px] font-semibold text-[#111827] mb-3">
@@ -150,17 +157,17 @@ export function MarketingFooter() {
           </p>
 
           <div className="flex items-center gap-4">
-            {socialLinks.map((social) => (
+            {socialLinks.map(({ label, href, Icon }) => (
               <a
-                key={social.label}
-                href={social.href}
+                key={label}
+                href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={social.label}
-                className="flex items-center gap-1 text-[14px] text-[#9CA3AF] hover:text-[#111827] transition-colors"
+                aria-label={label}
+                className="flex items-center gap-1.5 text-[14px] text-[#9CA3AF] hover:text-[#111827] transition-colors"
               >
-                {social.icon}
-                <span>{social.label}</span>
+                <Icon />
+                <span>{label}</span>
               </a>
             ))}
           </div>
