@@ -58,16 +58,16 @@ const footerColumns: FooterColumn[] = [
   {
     heading: "Product",
     links: [
-      { label: "Features", href: "#" },
-      { label: "Pricing", href: "#" },
-      { label: "Integrations", href: "#" },
+      { label: "Features", href: "/features" },
+      { label: "Pricing", href: "/pricing" },
+      { label: "Integrations", href: "/integrations" },
       { label: "Changelog", href: "#" },
     ],
   },
   {
     heading: "Resources",
     links: [
-      { label: "Blog", href: "#" },
+      { label: "Blog", href: "/blog" },
       { label: "Documentation", href: "#" },
       { label: "Case Studies", href: "#" },
       { label: "Status", href: "#" },
@@ -76,9 +76,9 @@ const footerColumns: FooterColumn[] = [
   {
     heading: "Company",
     links: [
-      { label: "About", href: "#" },
+      { label: "About", href: "/about" },
       { label: "Careers", href: "#" },
-      { label: "Contact", href: "#" },
+      { label: "Contact", href: "mailto:hello@articlesauce.com" },
       { label: "Press", href: "#" },
     ],
   },
