@@ -39,6 +39,7 @@ export default function GeneralSettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("business");
   const [saving, setSaving] = useState(false);
   const [autoFilling, setAutoFilling] = useState(false);
+  const [gscDisconnecting, setGscDisconnecting] = useState(false);
 
   const [business, setBusiness] = useState<BusinessInfo>({
     websiteUrl: "",
@@ -414,10 +415,23 @@ export default function GeneralSettingsPage() {
                     <p className="text-xs text-green-600">{gsc.siteUrl}</p>
                   </div>
                   <button
-                    onClick={() => setGsc({ connected: false, siteUrl: "", verifiedAt: null })}
-                    className="ml-auto text-xs text-[var(--error)] hover:underline"
+                    disabled={gscDisconnecting}
+                    onClick={async () => {
+                      setGscDisconnecting(true);
+                      try {
+                        const res = await fetch("/api/gsc/disconnect", { method: "POST" });
+                        if (!res.ok) throw new Error("Failed");
+                        setGsc({ connected: false, siteUrl: "", verifiedAt: null });
+                        toast.success("Google Search Console disconnected");
+                      } catch {
+                        toast.error("Failed to disconnect Google Search Console");
+                      } finally {
+                        setGscDisconnecting(false);
+                      }
+                    }}
+                    className="ml-auto text-xs text-[var(--error)] hover:underline disabled:opacity-50"
                   >
-                    Disconnect
+                    {gscDisconnecting ? "Disconnecting…" : "Disconnect"}
                   </button>
                 </div>
               </div>
@@ -438,7 +452,7 @@ export default function GeneralSettingsPage() {
                 </div>
                 <Button
                   onClick={() => {
-                    toast.info("Google Search Console OAuth coming soon. Enter your site URL below to proceed manually.");
+                    window.location.href = "/api/gsc/auth";
                   }}
                 >
                   Connect with Google
