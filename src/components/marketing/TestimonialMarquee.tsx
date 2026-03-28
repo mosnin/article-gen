@@ -113,12 +113,12 @@ const row2: Testimonial[] = [
 function TestimonialCard({ t }: { t: Testimonial }) {
   return (
     <div className="bg-[#F8F9FA] border border-[#E5E7EB] rounded-xl p-6 flex-shrink-0 w-[360px] flex flex-col">
-      <p className="text-[18px] text-[#111827] italic leading-[1.6]">
+      <p className="text-[18px] text-[#111827] italic leading-[1.6] flex-1">
         &ldquo;{t.quote}&rdquo;
       </p>
       <div className="mt-4 flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-[#111827] flex items-center justify-center flex-shrink-0">
-          <span className="text-[12px] font-semibold text-white">
+          <span className="text-[12px] font-semibold text-white select-none">
             {t.initials}
           </span>
         </div>
@@ -126,7 +126,7 @@ function TestimonialCard({ t }: { t: Testimonial }) {
           <p className="text-[14px] font-semibold text-[#111827] leading-tight">
             {t.name}
           </p>
-          <p className="text-[14px] text-[#6B7280]">
+          <p className="text-[14px] text-[#6B7280] leading-snug">
             {t.role}, {t.company}
           </p>
         </div>
@@ -137,7 +137,10 @@ function TestimonialCard({ t }: { t: Testimonial }) {
 
 export function TestimonialMarquee() {
   return (
-    <section className="bg-[#F8F9FA] py-20 overflow-hidden">
+    <section
+      style={{ fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" }}
+      className="bg-[#F8F9FA] py-20 overflow-hidden"
+    >
       <style>{`
         @keyframes marquee-left {
           from { transform: translateX(0); }
@@ -161,6 +164,7 @@ export function TestimonialMarquee() {
         }
       `}</style>
 
+      {/* Section heading */}
       <div className="text-center mb-12 px-6">
         <h2 className="text-[28px] lg:text-[36px] font-bold text-[#111827] leading-[1.2]">
           Loved by content teams
@@ -171,7 +175,7 @@ export function TestimonialMarquee() {
       </div>
 
       {/* Row 1 — scrolls left at 45s */}
-      <div className="overflow-hidden mb-4">
+      <div className="overflow-hidden mb-4" aria-hidden="true">
         <div className="flex items-stretch gap-4 w-max animate-marquee-left">
           {row1.map((t, i) => (
             <TestimonialCard key={`r1a-${i}`} t={t} />
@@ -183,7 +187,7 @@ export function TestimonialMarquee() {
       </div>
 
       {/* Row 2 — scrolls right at 30s */}
-      <div className="overflow-hidden">
+      <div className="overflow-hidden" aria-hidden="true">
         <div className="flex items-stretch gap-4 w-max animate-marquee-right">
           {row2.map((t, i) => (
             <TestimonialCard key={`r2a-${i}`} t={t} />

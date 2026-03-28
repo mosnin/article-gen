@@ -2,7 +2,10 @@
 
 export function FinalCtaSection() {
   return (
-    <section className="bg-[#FFFFFF] py-20 lg:py-24">
+    <section
+      style={{ fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" }}
+      className="bg-[#FFFFFF] py-20 lg:py-24"
+    >
       <div className="max-w-[600px] mx-auto px-6 flex flex-col items-center">
         <h2 className="text-[28px] lg:text-[36px] font-bold text-[#111827] leading-[1.2] text-center">
           Ready to grow your content?

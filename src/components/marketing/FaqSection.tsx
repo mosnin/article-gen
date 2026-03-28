@@ -57,27 +57,28 @@ function FaqAccordionItem({
   return (
     <div className="border-b border-[#E5E7EB]">
       <button
+        type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between gap-4 py-4 text-left cursor-pointer"
         aria-expanded={isOpen}
+        className="w-full flex items-center justify-between gap-4 py-4 text-left cursor-pointer bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6] focus-visible:ring-offset-1 rounded-sm"
       >
-        <span className="text-[16px] font-medium text-[#111827]">
+        <span className="text-[16px] font-medium text-[#111827] leading-[1.5]">
           {item.question}
         </span>
         <span
           aria-hidden="true"
-          className="flex-shrink-0 text-[#9CA3AF] text-[20px] leading-none select-none"
+          className="flex-shrink-0 text-[#9CA3AF] text-[20px] leading-none select-none w-5 text-center"
         >
-          {isOpen ? "−" : "+"}
+          {isOpen ? "\u2212" : "+"}
         </span>
       </button>
 
       <div
         className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <p className="text-[16px] text-[#6B7280] leading-[1.6] pb-4">
+        <p className="text-[16px] text-[#6B7280] leading-[1.6] pb-4 pr-9">
           {item.answer}
         </p>
       </div>
@@ -93,7 +94,10 @@ export function FaqSection() {
   };
 
   return (
-    <section className="bg-[#FFFFFF] py-16 lg:py-20">
+    <section
+      style={{ fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" }}
+      className="bg-[#FFFFFF] py-16 lg:py-20"
+    >
       <div className="max-w-[720px] mx-auto px-6">
         <h2 className="text-center text-[28px] lg:text-[36px] font-bold text-[#111827] leading-[1.2] mb-12">
           Frequently asked questions
