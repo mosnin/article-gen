@@ -62,6 +62,13 @@ const config: Config = {
           "sans-serif",
         ],
         mono: ["SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", "monospace"],
+        serif: [
+          "Instrument Serif",
+          "Georgia",
+          "Cambria",
+          "Times New Roman",
+          "serif",
+        ],
       },
       spacing: {
         sidebar: "240px",

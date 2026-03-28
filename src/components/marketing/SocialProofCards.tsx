@@ -1,101 +1,164 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
-const cards = [
-  {
-    stat: "3x",
-    statColor: "text-blue-600 dark:text-blue-400",
-    result: "more organic traffic in 90 days",
-    story:
-      "A SaaS startup published 2 cluster articles/week and tripled organic traffic in 90 days using ArticleGen's topic clustering.",
-    initials: "SC",
-    avatarBg: "bg-blue-500",
-    name: "Sarah Chen",
-    role: "Head of Content, Lateral Inc.",
-  },
-  {
-    stat: "47%",
-    statColor: "text-emerald-600 dark:text-emerald-400",
-    result: "lower content acquisition cost",
-    story:
-      "By replacing freelance writers with ArticleGen, they cut content costs dramatically while publishing 5x more articles per month.",
-    initials: "MW",
-    avatarBg: "bg-emerald-500",
-    name: "Marcus Webb",
-    role: "Marketing Dir., Stackify",
-  },
-  {
-    stat: "20min",
-    statColor: "text-violet-600 dark:text-violet-400",
-    result: "from topic to published article",
-    story:
-      "What used to take a full day of research and writing now takes a coffee break — with better SEO scores than their old process.",
-    initials: "PN",
-    avatarBg: "bg-violet-500",
-    name: "Priya Nair",
-    role: "SEO Lead, Vesper",
-  },
-];
+const tabs = ["Bloggers", "eCommerce", "Agencies", "SaaS"] as const;
+type Tab = (typeof tabs)[number];
 
-function Card({
-  card,
-  delay,
-}: {
-  card: (typeof cards)[number];
-  delay: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+type CardEntry = {
+  logo: string;
+  quote: string;
+  metric: string;
+  metricLabel: string;
+  name: string;
+  role: string;
+};
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setTimeout(() => setVisible(true), delay);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.15 }
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [delay]);
+const testimonials: Record<Tab, CardEntry[]> = {
+  Bloggers: [
+    {
+      logo: "The Content Lab",
+      quote:
+        "ArticleGen turned our once-a-week blog into a daily content machine. We now rank for keywords we never even targeted before.",
+      metric: "3x traffic",
+      metricLabel: "in 90 days",
+      name: "Sarah Chen",
+      role: "Founder, The Content Lab",
+    },
+    {
+      logo: "NicheSite Pro",
+      quote:
+        "I went from spending 6 hours per article to 20 minutes. The quality is indistinguishable from what I was writing myself.",
+      metric: "18x",
+      metricLabel: "output increase",
+      name: "James Holloway",
+      role: "Solo Blogger, NicheSite Pro",
+    },
+    {
+      logo: "Ranker Weekly",
+      quote:
+        "Our domain authority jumped 14 points in three months just from the volume and consistency ArticleGen gave us.",
+      metric: "+14 DA",
+      metricLabel: "in 3 months",
+      name: "Mia Torres",
+      role: "Editor, Ranker Weekly",
+    },
+  ],
+  eCommerce: [
+    {
+      logo: "Shopify Store",
+      quote:
+        "Product blog traffic now drives 22% of our store visits. ArticleGen writes product guides that actually convert.",
+      metric: "22%",
+      metricLabel: "traffic from blog",
+      name: "Marcus Webb",
+      role: "Marketing Dir., Stackify",
+    },
+    {
+      logo: "BoldCart",
+      quote:
+        "We cut our content acquisition cost by 47% while publishing five times as many articles every month.",
+      metric: "47%",
+      metricLabel: "lower cost",
+      name: "Leila Park",
+      role: "Head of Growth, BoldCart",
+    },
+    {
+      logo: "TrueGoods",
+      quote:
+        "ArticleGen's SEO scores consistently beat our old agency's work. And it delivers in minutes, not weeks.",
+      metric: "94 avg",
+      metricLabel: "SEO score",
+      name: "David Kim",
+      role: "CEO, TrueGoods",
+    },
+  ],
+  Agencies: [
+    {
+      logo: "Velocity Agency",
+      quote:
+        "We onboarded 12 new clients in Q1 because ArticleGen let us scale delivery without hiring more writers.",
+      metric: "12",
+      metricLabel: "new clients in Q1",
+      name: "Priya Nair",
+      role: "Ops Lead, Velocity Agency",
+    },
+    {
+      logo: "ContentScale",
+      quote:
+        "Our retainer margins improved 35% after switching to ArticleGen for first drafts. Editors spend time on strategy now.",
+      metric: "+35%",
+      metricLabel: "margin improvement",
+      name: "Tom Bradley",
+      role: "Founder, ContentScale",
+    },
+    {
+      logo: "Ink & Rank",
+      quote:
+        "Client reporting got a lot easier when every article has built-in SEO metadata and keyword density scores.",
+      metric: "100%",
+      metricLabel: "client retention",
+      name: "Nina Shaw",
+      role: "Account Dir., Ink & Rank",
+    },
+  ],
+  SaaS: [
+    {
+      logo: "Lateral Inc.",
+      quote:
+        "We tripled organic traffic in 90 days by publishing two cluster articles per week with ArticleGen's topic clustering.",
+      metric: "3x traffic",
+      metricLabel: "in 90 days",
+      name: "Ryan Foster",
+      role: "Head of Marketing, Lateral Inc.",
+    },
+    {
+      logo: "Vesper",
+      quote:
+        "What used to take a full day of research now takes a coffee break — with better SEO scores than our old process.",
+      metric: "20 min",
+      metricLabel: "per article",
+      name: "Priya Nair",
+      role: "SEO Lead, Vesper",
+    },
+    {
+      logo: "Stackify",
+      quote:
+        "ArticleGen's Autopilot keeps our blog active during product sprints when the team has no bandwidth for content.",
+      metric: "5x",
+      metricLabel: "more articles/month",
+      name: "Marcus Webb",
+      role: "Marketing Dir., Stackify",
+    },
+  ],
+};
 
+function TestimonialCard({ card }: { card: CardEntry }) {
   return (
-    <div
-      ref={ref}
-      className={`bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col gap-4 ${
-        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
-      } transition-all duration-600 ease-out`}
-    >
-      {/* Stat */}
-      <div>
-        <p className={`text-5xl font-extrabold tracking-tight ${card.statColor}`}>
-          {card.stat}
-        </p>
-        <p className="mt-1 text-sm font-medium text-gray-600 dark:text-gray-300">
-          {card.result}
-        </p>
+    <div className="flex flex-col gap-6 rounded-2xl p-7 bg-gradient-to-br from-[#0f2044] to-[#0a1628] border border-white/10">
+      {/* Logo / company name */}
+      <div className="inline-flex">
+        <span className="text-xs font-bold tracking-widest text-white/40 uppercase">
+          {card.logo}
+        </span>
       </div>
 
-      {/* Story */}
-      <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed flex-1">
-        {card.story}
+      {/* Quote */}
+      <p className="text-base leading-relaxed text-white/80 flex-1">
+        &ldquo;{card.quote}&rdquo;
       </p>
 
-      {/* Persona footer */}
-      <div className="flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
-        <div
-          className={`w-9 h-9 rounded-full ${card.avatarBg} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}
-        >
-          {card.initials}
-        </div>
+      {/* Metric */}
+      <div className="border-t border-white/10 pt-5 flex items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-            {card.name}
+          <p className="text-3xl font-extrabold tracking-tight text-white">
+            {card.metric}
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500">{card.role}</p>
+          <p className="text-xs text-white/40 mt-0.5">{card.metricLabel}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-semibold text-white">{card.name}</p>
+          <p className="text-xs text-white/40">{card.role}</p>
         </div>
       </div>
     </div>
@@ -103,45 +166,47 @@ function Card({
 }
 
 export function SocialProofCards() {
-  const headingRef = useRef<HTMLDivElement>(null);
-  const [headingVisible, setHeadingVisible] = useState(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setHeadingVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-    if (headingRef.current) observer.observe(headingRef.current);
-    return () => observer.disconnect();
-  }, []);
+  const [activeTab, setActiveTab] = useState<Tab>("Bloggers");
 
   return (
-    <section className="bg-gray-50 dark:bg-gray-900 py-20 lg:py-28">
+    <section className="bg-white py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Section heading */}
-        <div
-          ref={headingRef}
-          className={`text-center mb-14 transition-all duration-700 ease-out ${
-            headingVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
-          }`}
-        >
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white tracking-tight mb-3">
+        {/* Heading */}
+        <div className="text-center mb-12">
+          <h2 className="text-4xl sm:text-5xl font-bold tracking-tight text-gray-900 mb-4">
             Real results from content teams
           </h2>
-          <p className="text-base text-gray-500 dark:text-gray-400">
+          <p className="text-base text-gray-400">
             See what teams are publishing with ArticleGen
           </p>
         </div>
 
-        {/* Cards grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cards.map((card, i) => (
-            <Card key={card.name} card={card} delay={i * 150} />
+        {/* Tab bar */}
+        <div className="flex justify-center mb-10">
+          <div className="inline-flex border-b border-gray-200">
+            {tabs.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`relative px-6 py-3 text-sm font-semibold transition-colors ${
+                  activeTab === tab
+                    ? "text-gray-900"
+                    : "text-gray-400 hover:text-gray-600"
+                }`}
+              >
+                {tab}
+                {activeTab === tab && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 rounded-full" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Cards */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {testimonials[activeTab].map((card) => (
+            <TestimonialCard key={card.name + card.logo} card={card} />
           ))}
         </div>
       </div>
