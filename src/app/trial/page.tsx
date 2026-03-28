@@ -90,10 +90,11 @@ function TrialPageContent() {
     setLoading(true);
     setError("");
 
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/app/trial-checkout`,
+        emailRedirectTo: `${siteUrl}/auth/callback?next=/app/trial-checkout`,
       },
     });
 
@@ -107,10 +108,11 @@ function TrialPageContent() {
 
   const handleGoogle = async () => {
     setOauthLoading(true);
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/app/trial-checkout`,
+        redirectTo: `${siteUrl}/auth/callback?next=/app/trial-checkout`,
       },
     });
   };
