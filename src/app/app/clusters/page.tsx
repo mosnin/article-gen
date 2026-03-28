@@ -69,7 +69,7 @@ export default function ClustersPage() {
 
       // Fetch article counts per cluster in one query
       const clusterIds = clusterRows.map((c) => c.id);
-      const countMap: Record<string, number> = {} as Record<string, number>;
+      const countMap: Record<string, number> = {};
 
       if (clusterIds.length > 0) {
         const { data: articleRows } = await supabase
