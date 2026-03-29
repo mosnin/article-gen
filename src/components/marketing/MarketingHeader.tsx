@@ -210,7 +210,7 @@ function MobileDrawer({
 
         <div className="px-4 pb-6 pt-4 border-t border-[#E5E7EB] space-y-3">
           <Link
-            href="/login"
+            href="/trial"
             onClick={onClose}
             className="block text-center h-11 px-6 flex items-center justify-center rounded-lg text-[15px] font-medium text-[#111827] border border-[#E5E7EB] hover:bg-[#F8F9FA] transition-colors"
           >
@@ -318,7 +318,7 @@ export function MarketingHeader() {
           {/* Right: CTAs */}
           <div className="hidden lg:flex items-center gap-2 shrink-0">
             <Link
-              href="/login"
+              href="/trial"
               className="px-3 py-2 text-[15px] font-medium text-[#6B7280] hover:text-[#111827] transition-colors duration-150"
             >
               Log in

@@ -289,7 +289,7 @@ function TrialPageContent() {
           {/* Login link */}
           <p className="mt-3 text-center text-sm text-gray-500">
             Already have an account?{" "}
-            <a href="/?auth=login" className="font-medium text-purple-600 hover:underline">
+            <a href="/trial" className="font-medium text-purple-600 hover:underline">
               Sign in
             </a>
           </p>
