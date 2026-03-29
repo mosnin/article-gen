@@ -223,8 +223,21 @@ export default function AutopilotPage() {
       const res = await fetch("/api/autopilot/queue");
       const data = await res.json();
       setSlots(data.slots ?? []);
-      setNiche(data.niche ?? "");
       setAutopilotEnabled(data.enabled ?? false);
+
+      // Pre-fill niche: use saved autopilot niche first, then fall back to site settings
+      if (data.niche) {
+        setNiche(data.niche);
+      } else {
+        // Pull from general settings (site_name / niche / site_about)
+        try {
+          const sRes = await fetch("/api/settings");
+          const sData = await sRes.json();
+          const s = sData.settings;
+          const fallback = s?.niche || s?.site_name || s?.autopilot_niche || "";
+          if (fallback) setNiche(fallback);
+        } catch { /* ignore */ }
+      }
     } catch {
       toast.error("Failed to load plan");
     } finally {

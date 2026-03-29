@@ -28,15 +28,28 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { niche, targetAudience, competitors, startDate, count = 30 } = await req.json() as {
-    niche: string;
+  const body = await req.json() as {
+    niche?: string;
     targetAudience?: string;
     competitors?: string[];
     startDate?: string;
     count?: number;
   };
 
-  if (!niche) return NextResponse.json({ error: "Niche is required" }, { status: 400 });
+  let { niche } = body;
+  const { targetAudience, competitors, startDate, count = 30 } = body;
+
+  // Auto-resolve niche from user settings if not provided
+  if (!niche?.trim()) {
+    const { data: settings } = await supabase
+      .from("user_settings")
+      .select("niche, site_name, site_about, autopilot_niche")
+      .eq("user_id", user.id)
+      .single();
+    niche = settings?.niche || settings?.autopilot_niche || settings?.site_name || "";
+  }
+
+  if (!niche?.trim()) return NextResponse.json({ error: "Niche is required. Set it in General Settings or enter it above." }, { status: 400 });
 
   // ── Step 1: Exa research (non-blocking, fail gracefully) ──────────────────
   let coveredTopics: string[] = [];
@@ -67,11 +80,14 @@ export async function POST(req: NextRequest) {
     ? `\n\nContent GAP opportunities (underserved topics — prioritize these angles):\n${gapInsights.map((t, i) => `${i + 1}. ${t}`).join("\n")}`
     : "";
 
+  // Request extra items to compensate for deduplication trimming GPT's output below count
+  const requestCount = count + 10;
+
   const prompt = `You are an expert SEO content strategist. Generate a ${count}-day content plan for the following business.
 
 Niche: ${niche}${audienceContext}${competitorContext}${coveredContext}${gapContext}
 
-Create ${count} unique, high-value blog article ideas that:
+Create EXACTLY ${requestCount} unique, high-value blog article ideas that:
 1. Target different long-tail keywords (2-5 words each)
 2. Cover a mix of content types (How-to Guides, Listicles, Comparisons, Case Studies, Reviews, Tutorials)
 3. Progress logically — start with foundational topics, build to advanced, then include comparisons and listicles
@@ -80,7 +96,9 @@ Create ${count} unique, high-value blog article ideas that:
 6. AVOID any topic already heavily covered above
 7. PRIORITIZE the content gap opportunities listed above
 
-Respond ONLY with a valid JSON object with key "articles" containing an array of ${count} objects:
+IMPORTANT: You MUST return EXACTLY ${requestCount} articles. Do not return fewer.
+
+Respond ONLY with a valid JSON object with key "articles" containing an array of EXACTLY ${requestCount} objects:
 {
   "articles": [
     {
@@ -108,7 +126,8 @@ Respond ONLY with a valid JSON object with key "articles" containing an array of
   }
 
   // ── Step 3: Intra-plan dedup (keyword overlap) ────────────────────────────
-  const dedupedItems = deduplicateWithinPlan(rawItems.slice(0, count * 2), 0.35).slice(0, count);
+  // Dedup all returned items, then take exactly `count` — the buffer ensures we still hit count after dedup
+  const dedupedItems = deduplicateWithinPlan(rawItems, 0.35).slice(0, count);
 
   // ── Step 4: Vector uniqueness check vs existing user articles ─────────────
   let uniquenessResults = dedupedItems.map((item) => ({
