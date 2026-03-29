@@ -225,18 +225,16 @@ export default function AutopilotPage() {
       setSlots(data.slots ?? []);
       setAutopilotEnabled(data.enabled ?? false);
 
-      // Pre-fill niche: use saved autopilot niche first, then fall back to site settings
-      if (data.niche) {
-        setNiche(data.niche);
-      } else {
-        // Pull from general settings (site_name / niche / site_about)
-        try {
-          const sRes = await fetch("/api/settings");
-          const sData = await sRes.json();
-          const s = sData.settings;
-          const fallback = s?.niche || s?.site_name || s?.autopilot_niche || "";
-          if (fallback) setNiche(fallback);
-        } catch { /* ignore */ }
+      // Pre-fill niche: general settings (site_name/niche) always wins over stale autopilot_niche
+      try {
+        const sRes = await fetch("/api/settings");
+        const sData = await sRes.json();
+        const s = sData.settings;
+        // Prefer explicitly set niche/site_name from general settings; only fall back to last plan's niche
+        const preferred = s?.niche || s?.site_name || "";
+        setNiche(preferred || data.niche || "");
+      } catch {
+        setNiche(data.niche || "");
       }
     } catch {
       toast.error("Failed to load plan");
