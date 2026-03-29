@@ -4,6 +4,7 @@ import { LogoMarquee } from "@/components/marketing/LogoMarquee";
 import { SocialProofCards } from "@/components/marketing/SocialProofCards";
 import { ProblemSolutionSection } from "@/components/marketing/ProblemSolutionSection";
 import { FeatureSections } from "@/components/marketing/FeatureSections";
+import { GlobalDistributionSection } from "@/components/marketing/GlobalDistributionSection";
 import { CtaBanner } from "@/components/marketing/CtaBanner";
 import { TestimonialMarquee } from "@/components/marketing/TestimonialMarquee";
 import { FaqSection } from "@/components/marketing/FaqSection";
@@ -39,6 +40,9 @@ export default function HomePage() {
 
         {/* Alternating feature sections with custom diagrams */}
         <FeatureSections />
+
+        {/* Global distribution — interactive globe */}
+        <GlobalDistributionSection />
 
         {/* Mid-page CTA banner */}
         <CtaBanner />
