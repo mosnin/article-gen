@@ -70,11 +70,11 @@ function AnimatedNavLink({
     <Link
       href={href}
       onClick={onClick}
-      className="group relative inline-flex overflow-hidden h-5 items-center text-sm"
+      className="group relative inline-flex overflow-hidden h-5 items-start text-sm"
     >
       <div className="flex flex-col transition-transform duration-300 ease-out group-hover:-translate-y-1/2">
-        <span className="text-gray-400">{children}</span>
-        <span className="text-white">{children}</span>
+        <span className="h-5 flex items-center text-gray-400">{children}</span>
+        <span className="h-5 flex items-center text-white">{children}</span>
       </div>
     </Link>
   );
@@ -232,16 +232,16 @@ export function MarketingHeader() {
               onClick={() => setFeaturesOpen((v) => !v)}
               aria-expanded={featuresOpen}
               aria-haspopup="true"
-              className="group relative inline-flex overflow-hidden h-5 items-center gap-1 text-sm focus:outline-none"
+              className="group relative inline-flex overflow-hidden h-5 items-start gap-1 text-sm focus:outline-none"
             >
               <div className="flex flex-col transition-transform duration-300 ease-out group-hover:-translate-y-1/2">
-                <span className="text-gray-400 flex items-center gap-1">
+                <span className="h-5 flex items-center gap-1 text-gray-400">
                   Features
                   <ChevronDown
                     className={`w-3 h-3 transition-transform duration-200 ${featuresOpen ? "rotate-180" : ""}`}
                   />
                 </span>
-                <span className="text-white flex items-center gap-1">
+                <span className="h-5 flex items-center gap-1 text-white">
                   Features
                   <ChevronDown className="w-3 h-3" />
                 </span>
