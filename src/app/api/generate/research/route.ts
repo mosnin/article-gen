@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server";
 import { checkCredits, deductCredit } from "@/lib/credits";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
+import { analyzeSERP } from "@/lib/serp-analyzer";
 
 export const maxDuration = 60;
 
@@ -85,8 +86,15 @@ export async function POST(req: NextRequest) {
 
     const openai = new OpenAI({ apiKey });
 
-    // Run context organization and research in parallel - they're independent
-    const [step1, step2] = await Promise.all([
+    // Run context organization, research, and SERP analysis in parallel - they're all independent
+    const serpPromise = focusKeyword
+      ? analyzeSERP(focusKeyword, 5).catch((err) => {
+          logger.error("SERP analysis failed (non-fatal)", err);
+          return null;
+        })
+      : Promise.resolve(null);
+
+    const [step1, step2, serpData] = await Promise.all([
       openai.chat.completions.create({
         model: MODEL,
         messages: [
@@ -144,12 +152,17 @@ Format each fact with its source URL. Make sure all information is accurate and 
         ],
         temperature: 0.5,
       }),
+      serpPromise,
     ]);
 
     const articleContext = step1.choices[0].message.content || "";
     const researchContext = step2.choices[0].message.content || "";
 
-    return NextResponse.json({ articleContext, researchContext });
+    const serpSection = serpData
+      ? `\n\n## SERP Intelligence (Top 5 Ranking Pages)\n- Recommended word count to outrank: ${serpData.recommendedWordCount} words\n- Topics competitors cover: ${serpData.commonTopics.join(", ")}\n- Questions to answer: ${serpData.questionsAnswered.join(" | ")}\n- Top competing domains: ${serpData.topDomains.join(", ")}`
+      : "";
+
+    return NextResponse.json({ articleContext, researchContext: researchContext + serpSection });
   } catch (error: unknown) {
     logger.error("Failed to generate research", error);
     return NextResponse.json({ error: "Failed to generate research" }, { status: 500 });
