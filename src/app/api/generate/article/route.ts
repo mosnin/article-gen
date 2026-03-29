@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server";
 import { deductCredit } from "@/lib/credits";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
+import { storeArticleEmbedding } from "@/lib/embeddings";
 
 export const maxDuration = 60;
 
@@ -24,6 +25,8 @@ export async function POST(req: NextRequest) {
       { status: 429 }
     );
   }
+
+  const sessionId = crypto.randomUUID();
 
   try {
     const {
@@ -290,6 +293,16 @@ Return format:
 
     // Deduct 1 credit on successful generation
     const deductResult = await deductCredit(supabase, user.id, undefined, `Article: ${topic}`);
+
+    // Fire-and-forget: store embedding for dedup checks
+    storeArticleEmbedding({
+      userId: user.id,
+      autopilotSlotId: sessionId,
+      title: title,
+      keyword: focusKeyword,
+      keywords: allKeywords as string[],
+      topic: topic,
+    }).catch((err) => console.warn("[article] Embedding storage failed:", err));
 
     return NextResponse.json({ article, imagePrompts, schema, credits: deductResult.credits });
   } catch (error: unknown) {
