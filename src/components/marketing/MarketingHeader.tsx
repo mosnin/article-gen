@@ -11,7 +11,6 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { StarButtonInner } from "@/components/ui/star-button";
 
 // ─── Feature cards for mega menu ─────────────────────────────────────────────
 
@@ -24,25 +23,25 @@ interface FeatureCard {
 
 const featureCards: FeatureCard[] = [
   {
-    icon: <PenLine className="w-4 h-4 text-blue-400" />,
+    icon: <PenLine className="w-4 h-4 text-blue-600" />,
     title: "AI Article Generation",
     description: "Produce publish-ready articles in seconds.",
     href: "/features/ai-generation",
   },
   {
-    icon: <Share2 className="w-4 h-4 text-indigo-400" />,
+    icon: <Share2 className="w-4 h-4 text-indigo-600" />,
     title: "Multi-Platform Publishing",
     description: "Push to WordPress, Ghost, Webflow & more.",
     href: "/features/publishing",
   },
   {
-    icon: <BarChart3 className="w-4 h-4 text-emerald-400" />,
+    icon: <BarChart3 className="w-4 h-4 text-emerald-600" />,
     title: "SEO & Analytics",
     description: "Built-in keyword scoring and SERP tracking.",
     href: "/features/seo-analytics",
   },
   {
-    icon: <Bot className="w-4 h-4 text-violet-400" />,
+    icon: <Bot className="w-4 h-4 text-violet-600" />,
     title: "Content Automation",
     description: "Schedule, batch, and automate your pipeline.",
     href: "/features/automation",
@@ -55,7 +54,7 @@ const navLinks = [
   { label: "Blog", href: "/blog" },
 ];
 
-// ─── Animated nav link (slide-up hover) ──────────────────────────────────────
+// ─── Animated nav link ────────────────────────────────────────────────────────
 
 function AnimatedNavLink({
   href,
@@ -73,38 +72,32 @@ function AnimatedNavLink({
       className="group relative inline-flex overflow-hidden h-5 items-start text-sm"
     >
       <div className="flex flex-col transition-transform duration-300 ease-out group-hover:-translate-y-1/2">
-        <span className="h-5 flex items-center text-gray-400">{children}</span>
-        <span className="h-5 flex items-center text-white">{children}</span>
+        <span className="h-5 flex items-center text-[#6B7280]">{children}</span>
+        <span className="h-5 flex items-center text-[#111827]">{children}</span>
       </div>
     </Link>
   );
 }
 
-// ─── Features mega menu (dark) ────────────────────────────────────────────────
+// ─── Features mega menu (light) ───────────────────────────────────────────────
 
 function FeaturesMenu({ onClose }: { onClose: () => void }) {
   return (
     <div
-      className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[480px] rounded-2xl p-4 z-50"
+      className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[480px] rounded-2xl p-4 z-50 bg-white"
       style={{
-        background: "rgba(17,24,39,0.98)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "0 20px 48px rgba(0,0,0,0.6)",
-        backdropFilter: "blur(16px)",
+        border: "1px solid #E5E7EB",
+        boxShadow: "0 16px 48px rgba(0,0,0,0.12)",
       }}
       onMouseLeave={onClose}
     >
       {/* Caret */}
       <div
-        className="absolute -top-[5px] left-1/2 -translate-x-1/2 w-2.5 h-2.5 rotate-45"
-        style={{
-          background: "rgba(17,24,39,0.98)",
-          borderLeft: "1px solid rgba(255,255,255,0.08)",
-          borderTop: "1px solid rgba(255,255,255,0.08)",
-        }}
+        className="absolute -top-[5px] left-1/2 -translate-x-1/2 w-2.5 h-2.5 rotate-45 bg-white"
+        style={{ border: "1px solid #E5E7EB", borderBottom: "none", borderRight: "none" }}
       />
 
-      <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-500 mb-3 px-1">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#9CA3AF] mb-3 px-1">
         Platform Features
       </p>
 
@@ -114,16 +107,16 @@ function FeaturesMenu({ onClose }: { onClose: () => void }) {
             key={card.href}
             href={card.href}
             onClick={onClose}
-            className="group/card flex items-start gap-3 p-3 rounded-xl hover:bg-white/[0.05] transition-colors duration-150"
+            className="group/card flex items-start gap-3 p-3 rounded-xl hover:bg-[#F8F9FA] transition-colors duration-150"
           >
-            <span className="mt-0.5 flex items-center justify-center w-8 h-8 rounded-lg bg-white/[0.06] border border-white/[0.08] shrink-0">
+            <span className="mt-0.5 flex items-center justify-center w-8 h-8 rounded-lg bg-[#F1F3F5] border border-[#E5E7EB] shrink-0">
               {card.icon}
             </span>
             <div>
-              <p className="text-sm font-medium text-gray-200 leading-snug">
+              <p className="text-sm font-medium text-[#111827] leading-snug">
                 {card.title}
               </p>
-              <p className="text-xs text-gray-500 mt-0.5 leading-snug">
+              <p className="text-xs text-[#6B7280] mt-0.5 leading-snug">
                 {card.description}
               </p>
             </div>
@@ -131,12 +124,12 @@ function FeaturesMenu({ onClose }: { onClose: () => void }) {
         ))}
       </div>
 
-      <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between px-1">
-        <p className="text-xs text-gray-600">Explore the full platform</p>
+      <div className="mt-3 pt-3 border-t border-[#F1F3F5] flex items-center justify-between px-1">
+        <p className="text-xs text-[#9CA3AF]">Explore the full platform</p>
         <Link
           href="/features"
           onClick={onClose}
-          className="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
+          className="text-xs font-medium text-[#2563EB] hover:text-[#1D4ED8] transition-colors"
         >
           View all features &rarr;
         </Link>
@@ -150,10 +143,10 @@ function FeaturesMenu({ onClose }: { onClose: () => void }) {
 function Logo() {
   return (
     <Link href="/" className="flex items-center gap-2 shrink-0 select-none">
-      <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-white/10 border border-white/10">
+      <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-[#111827]">
         <Sparkles className="w-4 h-4 text-white" />
       </span>
-      <span className="font-bold text-[15px] tracking-tight text-white">
+      <span className="font-bold text-[15px] tracking-tight text-[#111827]">
         ArticleGen
       </span>
     </Link>
@@ -171,7 +164,6 @@ export function MarketingHeader() {
   const featuresRef = useRef<HTMLDivElement>(null);
   const featuresButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Pill shape transitions when mobile menu opens/closes
   useEffect(() => {
     if (shapeTimerRef.current) clearTimeout(shapeTimerRef.current);
     if (mobileOpen) {
@@ -184,7 +176,6 @@ export function MarketingHeader() {
     };
   }, [mobileOpen]);
 
-  // Close features menu on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (
@@ -205,15 +196,15 @@ export function MarketingHeader() {
       className={`fixed top-5 left-1/2 -translate-x-1/2 z-50
         flex flex-col items-center
         px-5 py-3
-        border border-white/[0.10]
+        border border-[#E5E7EB]
         w-[calc(100%-2rem)] sm:w-auto
         ${pillShape}
         transition-[border-radius] duration-300 ease-in-out`}
       style={{
-        background: "rgba(10,10,20,0.75)",
+        background: "rgba(255,255,255,0.95)",
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)",
+        boxShadow: "0 4px 24px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.8) inset",
       }}
     >
       {/* ── Top row ── */}
@@ -235,13 +226,13 @@ export function MarketingHeader() {
               className="group relative inline-flex overflow-hidden h-5 items-start gap-1 text-sm focus:outline-none"
             >
               <div className="flex flex-col transition-transform duration-300 ease-out group-hover:-translate-y-1/2">
-                <span className="h-5 flex items-center gap-1 text-gray-400">
+                <span className="h-5 flex items-center gap-1 text-[#6B7280]">
                   Features
                   <ChevronDown
                     className={`w-3 h-3 transition-transform duration-200 ${featuresOpen ? "rotate-180" : ""}`}
                   />
                 </span>
-                <span className="h-5 flex items-center gap-1 text-white">
+                <span className="h-5 flex items-center gap-1 text-[#111827]">
                   Features
                   <ChevronDown className="w-3 h-3" />
                 </span>
@@ -262,25 +253,26 @@ export function MarketingHeader() {
 
         {/* Desktop CTAs */}
         <div className="hidden lg:flex items-center gap-2">
-          {/* Log in — ghost dark */}
+          {/* Log in */}
           <Link
             href="/trial"
-            className="px-4 py-1.5 text-sm border border-white/10 bg-white/[0.05] text-gray-300 rounded-full hover:border-white/25 hover:text-white transition-colors duration-200"
+            className="px-4 py-1.5 text-sm font-medium text-[#6B7280] hover:text-[#111827] transition-colors duration-200"
           >
             Log in
           </Link>
 
-          {/* Start Free Trial — StarButton */}
-          <Link href="/trial" className="inline-flex">
-            <StarButtonInner lightColor="#ffffff" backgroundColor="#000000" borderWidth={1}>
-              Start Free Trial
-            </StarButtonInner>
+          {/* Start Free Trial — solid dark */}
+          <Link
+            href="/trial"
+            className="px-4 py-1.5 text-sm font-semibold text-white bg-[#111827] hover:bg-[#1f2937] rounded-full transition-colors duration-200"
+          >
+            Start Free Trial
           </Link>
         </div>
 
         {/* Mobile hamburger / close */}
         <button
-          className="lg:hidden flex items-center justify-center w-8 h-8 text-gray-300 focus:outline-none"
+          className="lg:hidden flex items-center justify-center w-8 h-8 text-[#6B7280] focus:outline-none"
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           onClick={() => setMobileOpen((v) => !v)}
         >
@@ -300,27 +292,26 @@ export function MarketingHeader() {
           ${mobileOpen ? "max-h-[600px] opacity-100 pt-4" : "max-h-0 opacity-0 pt-0 pointer-events-none"}`}
       >
         <nav className="flex flex-col items-start w-full space-y-1">
-          {/* Features accordion */}
           <button
             onClick={() => setMobileFeaturesOpen((v) => !v)}
-            className="flex items-center justify-between w-full px-2 py-2 text-sm text-gray-300 hover:text-white transition-colors"
+            className="flex items-center justify-between w-full px-2 py-2 text-sm text-[#6B7280] hover:text-[#111827] transition-colors"
           >
             Features
             <ChevronDown
-              className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${mobileFeaturesOpen ? "rotate-180" : ""}`}
+              className={`w-4 h-4 text-[#9CA3AF] transition-transform duration-200 ${mobileFeaturesOpen ? "rotate-180" : ""}`}
             />
           </button>
 
           {mobileFeaturesOpen && (
-            <div className="w-full pl-4 pb-1 space-y-1 border-l border-white/[0.08]">
+            <div className="w-full pl-4 pb-1 space-y-1 border-l border-[#E5E7EB]">
               {featureCards.map((card) => (
                 <Link
                   key={card.href}
                   href={card.href}
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white transition-colors"
+                  className="flex items-center gap-2 px-2 py-1.5 text-sm text-[#6B7280] hover:text-[#111827] transition-colors"
                 >
-                  <span className="flex items-center justify-center w-6 h-6 rounded-md bg-white/[0.06] shrink-0">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-md bg-[#F1F3F5] shrink-0">
                     {card.icon}
                   </span>
                   {card.title}
@@ -329,7 +320,7 @@ export function MarketingHeader() {
               <Link
                 href="/features"
                 onClick={() => setMobileOpen(false)}
-                className="block px-2 py-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                className="block px-2 py-1 text-xs text-[#2563EB] hover:text-[#1D4ED8] transition-colors"
               >
                 View all features &rarr;
               </Link>
@@ -341,25 +332,27 @@ export function MarketingHeader() {
               key={link.href}
               href={link.href}
               onClick={() => setMobileOpen(false)}
-              className="block w-full px-2 py-2 text-sm text-gray-300 hover:text-white transition-colors"
+              className="block w-full px-2 py-2 text-sm text-[#6B7280] hover:text-[#111827] transition-colors"
             >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        <div className="flex flex-col w-full gap-2 mt-4 pt-4 border-t border-white/[0.06]">
+        <div className="flex flex-col w-full gap-2 mt-4 pt-4 border-t border-[#F1F3F5]">
           <Link
             href="/trial"
             onClick={() => setMobileOpen(false)}
-            className="w-full text-center px-4 py-2.5 text-sm border border-white/10 bg-white/[0.05] text-gray-300 rounded-full hover:border-white/25 hover:text-white transition-colors duration-200"
+            className="w-full text-center px-4 py-2.5 text-sm font-medium text-[#6B7280] border border-[#E5E7EB] rounded-full hover:bg-[#F8F9FA] transition-colors duration-200"
           >
             Log in
           </Link>
-          <Link href="/trial" onClick={() => setMobileOpen(false)} className="w-full inline-flex">
-            <StarButtonInner lightColor="#ffffff" backgroundColor="#000000" borderWidth={1} className="w-full">
-              Start Free Trial
-            </StarButtonInner>
+          <Link
+            href="/trial"
+            onClick={() => setMobileOpen(false)}
+            className="w-full text-center px-4 py-2.5 text-sm font-semibold text-white bg-[#111827] hover:bg-[#1f2937] rounded-full transition-colors duration-200"
+          >
+            Start Free Trial
           </Link>
         </div>
       </div>
