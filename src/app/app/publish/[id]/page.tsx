@@ -398,6 +398,7 @@ export default function PublishPage() {
         const anySuccess = data.results.some((r: { success: boolean }) => r.success);
         if (anySuccess) {
           setArticle((prev) => prev ? { ...prev, posted: true } : prev);
+          // Refresh publish history
           const logsRes = await fetch(`/api/publish-logs?articleId=${articleId}`);
           if (logsRes.ok) { const { logs } = await logsRes.json(); setPublishLogs(logs ?? []); }
         }
