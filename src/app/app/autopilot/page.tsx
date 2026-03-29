@@ -19,6 +19,9 @@ interface AutopilotSlot {
   contentType: string;
   status: "pending" | "approved" | "rejected" | "generating" | "done" | "failed";
   articleId: string | null;
+  uniquenessScore?: number;
+  cannibalizesTitle?: string | null;
+  cannibalizesKeyword?: string | null;
 }
 
 const STATUS_CONFIG: Record<AutopilotSlot["status"], { label: string; variant: "default" | "success" | "warning" | "error" | "neutral" }> = {
@@ -83,6 +86,19 @@ function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId 
           {slot.keyword}
         </span>
         <span className="text-[11px] text-[var(--text-tertiary)]">{slot.contentType}</span>
+        {/* Uniqueness indicator */}
+        {slot.uniquenessScore !== undefined && slot.uniquenessScore < 0.9 && (
+          <span
+            className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+              slot.uniquenessScore < 0.7
+                ? "bg-red-50 text-red-600 border border-red-200"
+                : "bg-yellow-50 text-yellow-700 border border-yellow-200"
+            }`}
+            title={slot.cannibalizesTitle ? `Similar to: "${slot.cannibalizesTitle}"` : undefined}
+          >
+            {slot.uniquenessScore < 0.7 ? "⛔ May cannibalize" : "⚠ Similar content"}
+          </span>
+        )}
       </div>
 
       {/* Actions */}
