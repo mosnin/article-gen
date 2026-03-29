@@ -43,10 +43,11 @@ export async function POST(req: NextRequest) {
   if (!niche?.trim()) {
     const { data: settings } = await supabase
       .from("user_settings")
-      .select("niche, site_name, site_about, autopilot_niche")
+      .select("niche, site_about, autopilot_niche")
       .eq("user_id", user.id)
       .single();
-    niche = settings?.niche || settings?.autopilot_niche || settings?.site_name || "";
+    // Use explicit niche or site_about — not site_name (brand name, not a content niche)
+    niche = settings?.niche || settings?.site_about || settings?.autopilot_niche || "";
   }
 
   if (!niche?.trim()) return NextResponse.json({ error: "Niche is required. Set it in General Settings or enter it above." }, { status: 400 });

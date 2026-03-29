@@ -230,8 +230,8 @@ export default function AutopilotPage() {
         const sRes = await fetch("/api/settings");
         const sData = await sRes.json();
         const s = sData.settings;
-        // Prefer explicitly set niche/site_name from general settings; only fall back to last plan's niche
-        const preferred = s?.niche || s?.site_name || "";
+        // Pre-fill niche from explicit niche field or site_about — NOT site_name (that's the brand name)
+        const preferred = s?.niche || s?.site_about || "";
         setNiche(preferred || data.niche || "");
       } catch {
         setNiche(data.niche || "");
