@@ -50,14 +50,16 @@ export async function POST(req: NextRequest) {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
   // Fetch SERP data
-  let serpData = { neural: [] as any[], keyword: [] as any[] };
+  type SerpResult = { title?: string | null; url?: string; highlights?: string[] };
+  let serpNeural: SerpResult[] = [];
   try {
-    serpData = await fetchSERPData(keyword);
+    const serpData = await fetchSERPData(keyword);
+    serpNeural = serpData.neural;
   } catch (e) {
     console.warn("[brief] SERP fetch failed:", e);
   }
 
-  const competitorSummary = serpData.neural.slice(0, 5).map(r => ({
+  const competitorSummary = serpNeural.slice(0, 5).map(r => ({
     title: r.title ?? "",
     url: r.url ?? "",
     highlights: (r.highlights ?? []).join(" ").slice(0, 300),

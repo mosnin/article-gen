@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { createClient as createAdminClient } from "@/lib/supabase-admin";
+import { getAdminClient as createAdminClient } from "@/lib/supabase-admin";
 
 const EMBEDDING_MODEL = "text-embedding-3-small";
 const EMBEDDING_DIMENSIONS = 1536;

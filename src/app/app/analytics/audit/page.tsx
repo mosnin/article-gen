@@ -22,7 +22,7 @@ function HealthDot({ ok }: { ok: boolean }) {
 
 export default function ContentAuditPage() {
   const [items, setItems] = useState<ArticleAuditItem[]>([]);
-  const [summary, setSummary] = useState<any>(null);
+  const [summary, setSummary] = useState<{ total: number; published: number; needsRefresh: number; thin: number; noImages: number; avgScore: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "refresh" | "thin" | "no-images">("all");
 

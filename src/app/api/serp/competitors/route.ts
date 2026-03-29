@@ -117,13 +117,17 @@ Return JSON:
   }
 
   // Merge raw page data back in
-  const pages: CompetitorPage[] = (analysis.pages ?? []).map((p: any, i: number) => ({
-    ...p,
+  const pages: CompetitorPage[] = (analysis.pages ?? []).map((p: Partial<CompetitorPage>, i: number) => ({
     rank: i + 1,
-    title: pagesData[i]?.title ?? p.domain,
+    title: pagesData[i]?.title ?? p.domain ?? "",
     url: pagesData[i]?.url ?? "",
-    domain: pagesData[i]?.domain ?? p.domain,
+    domain: pagesData[i]?.domain ?? p.domain ?? "",
     highlights: pagesData[i]?.highlights ?? [],
+    wordCountEstimate: p.wordCountEstimate ?? 0,
+    keyTopics: p.keyTopics ?? [],
+    strengths: p.strengths ?? [],
+    weaknesses: p.weaknesses ?? [],
+    uniqueAngles: p.uniqueAngles ?? [],
   }));
 
   return NextResponse.json({
