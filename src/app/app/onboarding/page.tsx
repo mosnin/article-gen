@@ -224,7 +224,7 @@ export default function OnboardingPage() {
       try {
         const res = await fetch("/api/onboarding/status");
         const data = await res.json();
-        if (data.complete) {
+        if (data.onboarding_complete) {
           router.replace("/app");
           return;
         }
