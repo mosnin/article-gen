@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { StarButtonInner } from "@/components/ui/star-button";
+
 export function FinalCtaSection() {
   return (
     <section
@@ -15,15 +18,21 @@ export function FinalCtaSection() {
           Start your free trial today. No credit card required.
         </p>
 
-        <a
-          href="#"
-          className="mt-8 inline-flex items-center justify-center h-[52px] px-8 text-base font-semibold rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors"
-        >
-          Start Free Trial
-        </a>
+        <div className="mt-8 inline-flex">
+          <Link href="/trial" className="inline-flex">
+            <StarButtonInner
+              lightColor="#ffffff"
+              backgroundColor="#000000"
+              borderWidth={1}
+              className="h-[52px] px-8 text-base font-semibold"
+            >
+              Start Free Trial
+            </StarButtonInner>
+          </Link>
+        </div>
 
         <a
-          href="#"
+          href="mailto:hello@articlesauce.com"
           className="mt-3 text-[15px] font-medium text-[#6B7280] hover:text-[#111827] transition-colors"
         >
           Talk to sales &rarr;

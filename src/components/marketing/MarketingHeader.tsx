@@ -11,6 +11,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { StarButtonInner } from "@/components/ui/star-button";
 
 // ─── Feature cards for mega menu ─────────────────────────────────────────────
 
@@ -269,16 +270,12 @@ export function MarketingHeader() {
             Log in
           </Link>
 
-          {/* Start Free Trial — white glow */}
-          <div className="relative group">
-            <div className="absolute inset-0 -m-1.5 rounded-full bg-white opacity-20 blur-lg pointer-events-none transition-all duration-300 group-hover:opacity-35 group-hover:blur-xl" />
-            <Link
-              href="/trial"
-              className="relative z-10 px-4 py-1.5 text-sm font-semibold text-black bg-gradient-to-br from-gray-100 to-gray-300 rounded-full hover:from-white hover:to-gray-200 transition-all duration-200"
-            >
+          {/* Start Free Trial — StarButton */}
+          <Link href="/trial" className="inline-flex">
+            <StarButtonInner lightColor="#ffffff" backgroundColor="#000000" borderWidth={1}>
               Start Free Trial
-            </Link>
-          </div>
+            </StarButtonInner>
+          </Link>
         </div>
 
         {/* Mobile hamburger / close */}
@@ -359,12 +356,10 @@ export function MarketingHeader() {
           >
             Log in
           </Link>
-          <Link
-            href="/trial"
-            onClick={() => setMobileOpen(false)}
-            className="w-full text-center px-4 py-2.5 text-sm font-semibold text-black bg-gradient-to-br from-gray-100 to-gray-300 rounded-full hover:from-white hover:to-gray-200 transition-all duration-200"
-          >
-            Start Free Trial
+          <Link href="/trial" onClick={() => setMobileOpen(false)} className="w-full inline-flex">
+            <StarButtonInner lightColor="#ffffff" backgroundColor="#000000" borderWidth={1} className="w-full">
+              Start Free Trial
+            </StarButtonInner>
           </Link>
         </div>
       </div>

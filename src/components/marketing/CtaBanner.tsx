@@ -1,8 +1,9 @@
 "use client";
 
-import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
 import { BlurFade } from "@/components/ui/blur-fade";
+import { StarButtonInner } from "@/components/ui/star-button";
+import Link from "next/link";
 
 export function CtaBanner() {
   return (
@@ -30,16 +31,17 @@ export function CtaBanner() {
           </p>
 
           {/* CTA */}
-          <div className="flex justify-center">
-            <ShimmerButton
-              background="#1D4ED8"
-              shimmerColor="#93c5fd"
-              borderRadius="12px"
-              className="mt-8 h-[52px] px-8 text-base font-semibold text-white"
-              onClick={() => (window.location.href = "/trial")}
-            >
-              Start Free Trial
-            </ShimmerButton>
+          <div className="flex justify-center mt-8">
+            <Link href="/trial" className="inline-flex">
+              <StarButtonInner
+                lightColor="#ffffff"
+                backgroundColor="#000000"
+                borderWidth={1}
+                className="h-[52px] px-8 text-base font-semibold"
+              >
+                Start Free Trial
+              </StarButtonInner>
+            </Link>
           </div>
 
           {/* Trust line */}

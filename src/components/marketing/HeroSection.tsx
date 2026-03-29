@@ -3,9 +3,10 @@
 import { AnimatedGradientText } from "@/components/ui/animated-gradient-text";
 import { WordRotate } from "@/components/ui/word-rotate";
 import { BlurFade } from "@/components/ui/blur-fade";
-import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { BorderBeam } from "@/components/ui/border-beam";
+import { StarButtonInner } from "@/components/ui/star-button";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export function HeroSection() {
@@ -58,15 +59,16 @@ export function HeroSection() {
             {/* CTAs */}
             <BlurFade delay={0.35} inView>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <ShimmerButton
-                  background="#111827"
-                  shimmerColor="#ffffff"
-                  borderRadius="12px"
-                  className="h-[52px] px-8 text-base font-semibold text-white"
-                  onClick={() => (window.location.href = "/trial")}
-                >
-                  Start Free Trial
-                </ShimmerButton>
+                <Link href="/trial" className="inline-flex">
+                  <StarButtonInner
+                    lightColor="#ffffff"
+                    backgroundColor="#000000"
+                    borderWidth={1}
+                    className="h-[52px] px-8 text-base font-semibold"
+                  >
+                    Start Free Trial
+                  </StarButtonInner>
+                </Link>
                 <a
                   href="#features"
                   className="h-[52px] px-8 text-base font-semibold rounded-xl border border-[#E5E7EB] text-[#111827] hover:bg-[#F8F9FA] transition-colors inline-flex items-center"
