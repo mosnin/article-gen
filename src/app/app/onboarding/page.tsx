@@ -568,7 +568,7 @@ export default function OnboardingPage() {
                     <p className="text-xs text-gray-500 mt-0.5">Avoid suggesting keywords you already rank for</p>
                   </div>
                   <a
-                    href="/api/gsc/auth"
+                    href="/api/gsc/auth?returnTo=/app/onboarding"
                     className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
                     style={{ background: "#1a1a1a" }}
                   >

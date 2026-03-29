@@ -79,7 +79,7 @@ Structure the outline to match the specified tone and audience level. Choose sec
 Generate a well-structured SEO outline.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },

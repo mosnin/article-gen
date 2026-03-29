@@ -67,6 +67,20 @@ export default function GeneralSettingsPage() {
   const [keywordInput, setKeywordInput] = useState("");
 
   useEffect(() => {
+    // Handle GSC OAuth redirect back to this page
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("gsc_connected") === "1") {
+      setGsc((prev) => ({ ...prev, connected: true }));
+      toast.success("Google Search Console connected!");
+      window.history.replaceState({}, "", "/app/general-settings");
+    } else if (params.get("gsc_error")) {
+      toast.error(`GSC connection failed: ${params.get("gsc_error")}`);
+      window.history.replaceState({}, "", "/app/general-settings");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.replace("/"); return; }
@@ -452,7 +466,7 @@ export default function GeneralSettingsPage() {
                 </div>
                 <Button
                   onClick={() => {
-                    window.location.href = "/api/gsc/auth";
+                    window.location.href = "/api/gsc/auth?returnTo=/app/general-settings";
                   }}
                 >
                   Connect with Google
