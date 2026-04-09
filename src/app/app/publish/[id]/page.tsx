@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase-browser";
 import { marked } from "marked";
 import DOMPurify from "isomorphic-dompurify";
 import SnippetOptimizerPanel from "./SnippetOptimizerPanel";
+import NewsletterExportPanel from "./NewsletterExportPanel";
 import { toast } from "sonner";
 import type { NLPScoreResult } from "@/lib/nlp-scorer";
 
@@ -444,13 +445,38 @@ export default function PublishPage() {
 
   const handleExportMarkdown = () => {
     if (!article) return;
+    const slugFromTitle = article.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const filename = (article.slug || slugFromTitle || "article") + ".md";
     const blob = new Blob([article.article_markdown || ""], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${article.slug || "article"}.md`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleCheckSeoScore = async () => {
+    if (!article) return;
+    setNlpScoring(true);
+    setNlpScore(null);
+    setNlpScoreOpen(true);
+    try {
+      const res = await fetch("/api/content/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: article.article_markdown || "", keyword: article.topic || article.title }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNlpScore(data as NLPScoreResult);
+      } else {
+        toast.error(data.error || "Failed to score content");
+      }
+    } catch {
+      toast.error("Failed to check SEO score");
+    }
+    setNlpScoring(false);
   };
 
   const handleAiRefresh = async () => {
