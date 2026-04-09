@@ -1,72 +1,54 @@
-import { NextRequest, NextResponse } from "next/server";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { z } from "zod";
-import { getAdminClient } from "@/lib/supabase-admin";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase-server";
+import { registerGenerationTools } from "./generation-tools";
+import { registerSeoTools } from "./seo-tools";
+import { registerAnalyticsTools } from "./analytics-tools";
 
-// API key auth — set MCP_API_KEY env var
-function authenticate(req: NextRequest): string | null {
-  const apiKey = req.headers.get("x-api-key") ?? req.headers.get("authorization")?.replace("Bearer ", "");
-  return apiKey === process.env.MCP_API_KEY ? "authenticated" : null;
+export const maxDuration = 60;
+
+function createServer(): McpServer {
+  const server = new McpServer({
+    name: "article-gen",
+    version: "1.0.0",
+  });
+
+  registerSeoTools(server);
+  registerAnalyticsTools(server);
+  registerGenerationTools(server);
+
+  return server;
 }
 
-const server = new McpServer({ name: "article-gen", version: "1.0.0" });
-
-// Tool: list_articles
-server.tool("list_articles", "List recent articles for a user",
-  { user_id: z.string(), limit: z.number().default(20), status: z.string().optional() },
-  async ({ user_id, limit, status }) => {
-    const supabase = getAdminClient();
-    let q = supabase.from("articles").select("id, title, focus_keyword, status, word_count, created_at").eq("user_id", user_id).order("created_at", { ascending: false }).limit(limit);
-    if (status) q = q.eq("status", status);
-    const { data } = await q;
-    return { content: [{ type: "text", text: JSON.stringify(data ?? []) }] };
+async function handleMcp(req: NextRequest): Promise<Response> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
   }
-);
 
-// Tool: get_article
-server.tool("get_article", "Get full article content by ID",
-  { article_id: z.string() },
-  async ({ article_id }) => {
-    const supabase = getAdminClient();
-    const { data } = await supabase.from("articles").select("*").eq("id", article_id).single();
-    return { content: [{ type: "text", text: JSON.stringify(data ?? {}) }] };
-  }
-);
+  const transport = new WebStandardStreamableHTTPServerTransport({
+    sessionIdGenerator: undefined, // stateless mode
+  });
 
-// Tool: search_articles
-server.tool("search_articles", "Search articles by keyword or title",
-  { user_id: z.string(), query: z.string() },
-  async ({ user_id, query }) => {
-    const supabase = getAdminClient();
-    const { data } = await supabase.from("articles").select("id, title, focus_keyword, status, word_count").eq("user_id", user_id).or(`title.ilike.%${query}%,focus_keyword.ilike.%${query}%`).limit(10);
-    return { content: [{ type: "text", text: JSON.stringify(data ?? []) }] };
-  }
-);
+  const server = createServer();
+  await server.connect(transport);
 
-// Tool: update_article_status
-server.tool("update_article_status", "Update article status (draft/published)",
-  { article_id: z.string(), status: z.enum(["draft", "published"]) },
-  async ({ article_id, status }) => {
-    const supabase = getAdminClient();
-    await supabase.from("articles").update({ status }).eq("id", article_id);
-    return { content: [{ type: "text", text: `Article ${article_id} status updated to ${status}` }] };
-  }
-);
+  return transport.handleRequest(req);
+}
 
 export async function POST(req: NextRequest) {
-  if (!authenticate(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => crypto.randomUUID() });
-  await server.connect(transport);
-  const body = await req.json();
-  const response = await transport.handleRequest(body, Object.fromEntries(req.headers));
-  return NextResponse.json(response);
+  return handleMcp(req);
 }
 
-export async function GET() {
-  return NextResponse.json({
-    name: "article-gen MCP server",
-    version: "1.0.0",
-    tools: ["list_articles", "get_article", "search_articles", "update_article_status"],
-  });
+export async function GET(req: NextRequest) {
+  return handleMcp(req);
+}
+
+export async function DELETE(req: NextRequest) {
+  return handleMcp(req);
 }
