@@ -288,6 +288,60 @@ export default function AutopilotPage() {
 
   useEffect(() => { loadPlan(); }, [loadPlan]);
 
+  // Lazily fetch keyword difficulty for the first 10 slots (batches of 5)
+  useEffect(() => {
+    if (slots.length === 0) return;
+    const slotsToFetch = slots.slice(0, 10);
+    const unfetched = slotsToFetch.filter((s) => !difficultyMap[s.id] && !difficultyLoadingIds.has(s.id));
+    if (unfetched.length === 0) return;
+
+    const ids = unfetched.map((s) => s.id);
+    setDifficultyLoadingIds((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.add(id));
+      return next;
+    });
+
+    const fetchBatch = async (batch: AutopilotSlot[]) => {
+      const results = await Promise.allSettled(
+        batch.map((s) =>
+          fetch("/api/serp/difficulty", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ keyword: s.keyword }),
+          }).then((r) => r.json() as Promise<KeywordDifficulty>).then((d) => ({ id: s.id, data: d }))
+        )
+      );
+      setDifficultyMap((prev) => {
+        const next = { ...prev };
+        results.forEach((r) => {
+          if (r.status === "fulfilled") next[r.value.id] = r.value.data;
+        });
+        return next;
+      });
+      setDifficultyLoadingIds((prev) => {
+        const next = new Set(prev);
+        batch.forEach((s) => next.delete(s.id));
+        return next;
+      });
+    };
+
+    const BATCH_SIZE = 5;
+    const BATCH_DELAY_MS = 300;
+
+    const run = async () => {
+      for (let i = 0; i < unfetched.length; i += BATCH_SIZE) {
+        const batch = unfetched.slice(i, i + BATCH_SIZE);
+        await fetchBatch(batch);
+        if (i + BATCH_SIZE < unfetched.length) {
+          await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
+        }
+      }
+    };
+    run();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slots]);
+
   // For new users arriving from onboarding, poll until the background plan generation completes
   useEffect(() => {
     if (!isNewUser) return;
@@ -460,9 +514,44 @@ export default function AutopilotPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-8 w-56" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
+        {/* Page header skeleton */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-6 w-48 rounded skeleton" />
+            <div className="h-3.5 w-80 rounded skeleton" />
+          </div>
+          <div className="h-8 w-28 rounded-lg skeleton shrink-0" />
+        </div>
+
+        {/* Slot grid skeleton — 3-column, 6 cards */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex flex-col gap-3 p-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)]"
+            >
+              {/* Header row: date bar + status badge */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="h-3 w-24 rounded skeleton" />
+                <div className="h-5 w-16 rounded-full skeleton" />
+              </div>
+              {/* Title bar — wide */}
+              <div className="h-4 rounded skeleton" style={{ width: `${60 + (i % 3) * 12}%` }} />
+              {/* Second title line (shorter) */}
+              <div className="h-4 w-3/5 rounded skeleton" />
+              {/* Keyword chip row */}
+              <div className="flex gap-2">
+                <div className="h-5 w-28 rounded skeleton" />
+                <div className="h-5 w-16 rounded skeleton" />
+              </div>
+              {/* Action buttons row */}
+              <div className="flex gap-1.5 mt-1">
+                <div className="h-7 flex-1 rounded-md skeleton" />
+                <div className="h-7 w-12 rounded-md skeleton" />
+                <div className="h-7 w-8 rounded-md skeleton" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -604,6 +693,8 @@ export default function AutopilotPage() {
                     onDragOver={(e) => { e.preventDefault(); setDragOverIndex(globalIndex); }}
                     onDrop={() => { if (dragIndex !== null) handleDrop(dragIndex, globalIndex); }}
                     onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
+                    difficulty={difficultyMap[slot.id]}
+                    difficultyLoading={difficultyLoadingIds.has(slot.id)}
                   />
                 );
               })}
