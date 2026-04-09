@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-browser";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, differenceInDays, differenceInWeeks, differenceInMonths } from "date-fns";
 import { EmptyState } from "@/components/ui/empty-state";
 
 interface Article {
@@ -16,6 +16,9 @@ interface Article {
   published_platform: string | null;
   created_at: string;
   updated_at: string;
+  word_count: number | null;
+  publish_at: string | null;
+  focus_keyword: string | null;
 }
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -29,6 +32,38 @@ const PLATFORM_LABELS: Record<string, string> = {
   webhook: "Webhook",
 };
 
+type SortKey = "created_at" | "word_count" | "published_platform";
+type FilterKey = "all" | "published" | "draft";
+
+function ageLabel(isoDate: string): string {
+  const now = new Date();
+  const date = parseISO(isoDate);
+  const months = differenceInMonths(now, date);
+  if (months >= 1) return `${months}mo ago`;
+  const weeks = differenceInWeeks(now, date);
+  if (weeks >= 1) return `${weeks}w ago`;
+  const days = differenceInDays(now, date);
+  if (days >= 1) return `${days}d ago`;
+  return "Today";
+}
+
+function WordCountBar({ count }: { count: number | null }) {
+  if (count === null) return null;
+  const TARGET = 2000;
+  const pct = Math.min(100, Math.round((count / TARGET) * 100));
+  const colorClass =
+    count >= 1200
+      ? "bg-green-500"
+      : count >= 600
+      ? "bg-yellow-400"
+      : "bg-red-400";
+  return (
+    <div className="mt-2 h-1 w-full rounded-full bg-[var(--border-default)] overflow-hidden">
+      <div className={`h-full rounded-full ${colorClass}`} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
 export default function ArticlesPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -36,16 +71,24 @@ export default function ArticlesPage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "published" | "draft">("all");
+  const [filter, setFilter] = useState<FilterKey>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("created_at");
 
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace("/"); return; }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace("/");
+        return;
+      }
 
       const { data } = await supabase
         .from("articles")
-        .select("id, title, topic, slug, posted, published_platform, created_at, updated_at")
+        .select(
+          "id, title, topic, slug, posted, published_platform, created_at, updated_at, word_count, publish_at, focus_keyword"
+        )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -53,27 +96,48 @@ export default function ArticlesPage() {
       setLoading(false);
     };
     load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filtered = articles.filter((a) => {
-    const matchesSearch =
-      !search ||
-      (a.title || a.topic).toLowerCase().includes(search.toLowerCase());
-    const matchesFilter =
-      filter === "all" ||
-      (filter === "published" && a.posted) ||
-      (filter === "draft" && !a.posted);
-    return matchesSearch && matchesFilter;
-  });
+  const filtered = useMemo(() => {
+    let list = articles.filter((a) => {
+      const matchesSearch =
+        !search ||
+        (a.title || a.topic).toLowerCase().includes(search.toLowerCase());
+      const matchesFilter =
+        filter === "all" ||
+        (filter === "published" && a.posted) ||
+        (filter === "draft" && !a.posted);
+      return matchesSearch && matchesFilter;
+    });
+
+    list = [...list].sort((a, b) => {
+      if (sortKey === "word_count") {
+        return (b.word_count ?? -1) - (a.word_count ?? -1);
+      }
+      if (sortKey === "published_platform") {
+        const pa = a.published_platform ?? "";
+        const pb = b.published_platform ?? "";
+        return pa.localeCompare(pb);
+      }
+      return (
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    });
+
+    return list;
+  }, [articles, search, filter, sortKey]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Content History</h1>
+          <h1 className="text-xl font-bold text-[var(--text-primary)]">
+            Content History
+          </h1>
           <p className="text-sm text-[var(--text-secondary)] mt-0.5">
-            {articles.length} article{articles.length !== 1 ? "s" : ""} generated
+            {articles.length} article{articles.length !== 1 ? "s" : ""}{" "}
+            generated
           </p>
         </div>
         <Link
@@ -84,11 +148,20 @@ export default function ArticlesPage() {
         </Link>
       </div>
 
-      {/* Filters */}
+      {/* Filters row */}
       <div className="flex items-center gap-3 flex-wrap">
+        {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
-          <svg viewBox="0 0 20 20" fill="currentColor" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-tertiary)]">
-            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+          <svg
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-tertiary)]"
+          >
+            <path
+              fillRule="evenodd"
+              d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+              clipRule="evenodd"
+            />
           </svg>
           <input
             type="text"
@@ -98,6 +171,8 @@ export default function ArticlesPage() {
             className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] pl-9 pr-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
           />
         </div>
+
+        {/* Status tabs */}
         <div className="flex rounded-lg border border-[var(--border-default)] overflow-hidden text-sm">
           {(["all", "published", "draft"] as const).map((f) => (
             <button
@@ -113,37 +188,46 @@ export default function ArticlesPage() {
             </button>
           ))}
         </div>
+
+        {/* Sort by */}
+        <div className="flex items-center gap-1.5 text-sm">
+          <span className="whitespace-nowrap text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+            Sort:
+          </span>
+          <select
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-2 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] cursor-pointer"
+          >
+            <option value="created_at">Created</option>
+            <option value="word_count">Word Count</option>
+            <option value="published_platform">Published</option>
+          </select>
+        </div>
       </div>
 
       {/* Table */}
       {loading ? (
-        <div className="rounded-xl border border-[var(--border-default)] overflow-hidden">
-          {/* Fake thead */}
-          <div className="border-b border-[var(--border-default)] bg-[var(--surface-sunken)] px-4 py-3 flex gap-4">
-            <div className="h-3 w-24 rounded skeleton" />
-            <div className="h-3 w-16 rounded skeleton hidden sm:block" />
-            <div className="h-3 w-20 rounded skeleton hidden md:block" />
-            <div className="h-3 w-16 rounded skeleton hidden lg:block" />
-          </div>
-          {/* 6 skeleton rows */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="flex items-center gap-4 px-4 py-3 border-b border-[var(--border-default)] last:border-0 bg-[var(--surface-base)]"
+              className="flex flex-col gap-3 p-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)]"
             >
-              {/* Title + slug */}
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <div className="h-4 rounded skeleton" style={{ width: `${55 + (i % 3) * 15}%` }} />
-                <div className="h-3 w-32 rounded skeleton" />
+              <div
+                className="h-4 rounded skeleton"
+                style={{ width: `${50 + (i % 4) * 12}%` }}
+              />
+              <div className="flex gap-2">
+                <div className="h-3 w-16 rounded-full skeleton" />
+                <div className="h-3 w-20 rounded-full skeleton" />
               </div>
-              {/* Status badge */}
-              <div className="h-5 w-16 rounded-full skeleton hidden sm:block shrink-0" />
-              {/* Platform */}
-              <div className="h-4 w-20 rounded skeleton hidden md:block shrink-0" />
-              {/* Date */}
-              <div className="h-4 w-24 rounded skeleton hidden lg:block shrink-0" />
-              {/* Action button */}
-              <div className="h-7 w-12 rounded-md skeleton shrink-0" />
+              <div className="flex gap-2">
+                <div className="h-3 w-24 rounded-full skeleton" />
+                <div className="h-3 w-14 rounded-full skeleton" />
+              </div>
+              <div className="h-1 w-full rounded-full skeleton" />
+              <div className="h-7 w-full rounded-md skeleton mt-1" />
             </div>
           ))}
         </div>
@@ -159,47 +243,114 @@ export default function ArticlesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--border-default)] bg-[var(--surface-sunken)]">
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">Title</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)] hidden sm:table-cell">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)] hidden md:table-cell">Platform</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)] hidden lg:table-cell">Created</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+                  Title
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)] hidden sm:table-cell">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)] hidden md:table-cell">
+                  Platform
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)] hidden lg:table-cell">
+                  Created
+                </th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-default)] bg-[var(--surface-base)]">
               {filtered.map((article) => (
-                <tr key={article.id} className="hover:bg-[var(--surface-sunken)] transition-colors">
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-[var(--text-primary)] line-clamp-1">
+                <tr
+                  key={article.id}
+                  className="hover:bg-[var(--surface-sunken)] transition-colors"
+                >
+                  {/* Title cell — enriched */}
+                  <td className="px-4 py-3 max-w-0 w-full">
+                    <Link
+                      href={`/app/publish/${article.id}`}
+                      className="font-medium text-[var(--text-primary)] hover:text-[var(--accent)] hover:underline line-clamp-1 transition-colors"
+                    >
                       {article.title || article.topic}
-                    </p>
+                    </Link>
+
+                    {/* Focus keyword chip */}
+                    {article.focus_keyword && (
+                      <span className="mt-1 inline-block rounded-full bg-[var(--surface-sunken)] border border-[var(--border-default)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-secondary)] leading-none">
+                        {article.focus_keyword}
+                      </span>
+                    )}
+
+                    {/* Slug */}
                     {article.slug && (
-                      <p className="text-xs text-[var(--text-tertiary)] mt-0.5 truncate">/{article.slug}</p>
+                      <p className="text-xs text-[var(--text-tertiary)] mt-0.5 truncate">
+                        /{article.slug}
+                      </p>
+                    )}
+
+                    {/* Word count progress bar */}
+                    <WordCountBar count={article.word_count} />
+
+                    {/* Word count badge */}
+                    {article.word_count != null && (
+                      <p className="mt-1 text-[10px] text-[var(--text-tertiary)]">
+                        {article.word_count.toLocaleString()} words
+                      </p>
                     )}
                   </td>
-                  <td className="px-4 py-3 hidden sm:table-cell">
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                      article.posted
-                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                        : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                    }`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${article.posted ? "bg-green-500" : "bg-gray-400"}`} />
+
+                  {/* Status */}
+                  <td className="px-4 py-3 hidden sm:table-cell whitespace-nowrap">
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                        article.posted
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                          : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                      }`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${article.posted ? "bg-green-500" : "bg-gray-400"}`}
+                      />
                       {article.posted ? "Published" : "Draft"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 hidden md:table-cell">
-                    <span className="text-xs text-[var(--text-secondary)]">
-                      {article.published_platform
-                        ? PLATFORM_LABELS[article.published_platform] ?? article.published_platform
-                        : "—"}
+
+                  {/* Platform */}
+                  <td className="px-4 py-3 hidden md:table-cell whitespace-nowrap">
+                    {article.published_platform ? (
+                      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                        <svg
+                          viewBox="0 0 16 16"
+                          fill="currentColor"
+                          className="h-3 w-3 shrink-0"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        {PLATFORM_LABELS[article.published_platform] ??
+                          article.published_platform}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[var(--text-tertiary)]">
+                        —
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Created (age indicator) */}
+                  <td className="px-4 py-3 hidden lg:table-cell whitespace-nowrap">
+                    <span
+                      className="text-xs text-[var(--text-tertiary)]"
+                      title={format(parseISO(article.created_at), "MMM d, yyyy")}
+                    >
+                      {ageLabel(article.created_at)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className="text-xs text-[var(--text-tertiary)]">
-                      {format(parseISO(article.created_at), "MMM d, yyyy")}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
+
+                  {/* Action */}
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
                     <Link
                       href={`/app/publish/${article.id}`}
                       className="rounded-md border border-[var(--border-default)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] transition-colors"
