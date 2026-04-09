@@ -61,6 +61,7 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
   return (
     <button
       onClick={handleCopy}
+      title={copied ? "Copied!" : "Copy to clipboard"}
       className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] hover:text-[var(--text-primary)] transition-colors"
     >
       {copied ? (
@@ -167,6 +168,9 @@ function SocialTab({ articleId, articleContent }: { articleId: string; articleCo
     }
   };
 
+  // suppress unused warning — articleContent kept for future use
+  void articleContent;
+
   return (
     <div className="space-y-6">
       {/* Platform buttons */}
@@ -221,10 +225,23 @@ function SocialTab({ articleId, articleContent }: { articleId: string; articleCo
 
           {activePlatform === "twitter" && (
             <div className="space-y-4">
-              <OutputBlock
-                label="Single Tweet"
-                text={result.twitter.singleTweet}
-              />
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">Single Tweet</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-mono ${result.twitter.singleTweet.length > 280 ? "text-red-500" : "text-[var(--text-tertiary)]"}`}>
+                      {result.twitter.singleTweet.length}/280
+                    </span>
+                    <CopyButton text={result.twitter.singleTweet} />
+                  </div>
+                </div>
+                <textarea
+                  readOnly
+                  value={result.twitter.singleTweet}
+                  rows={4}
+                  className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-3 py-2.5 text-sm text-[var(--text-primary)] font-mono resize-y focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                />
+              </div>
               {result.twitter.thread.length > 0 && (
                 <OutputBlock
                   label={`Thread (${result.twitter.thread.length} tweets)`}
