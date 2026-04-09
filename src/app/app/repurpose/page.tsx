@@ -524,16 +524,17 @@ export default function RepurposePage() {
             ))}
           </div>
 
-          {/* Tab content */}
+          {/* Tab content — keyed by articleId so state resets on article change */}
           <div className="p-5">
             {tab === "social" && (
               <SocialTab
+                key={selectedArticle.id}
                 articleId={selectedArticle.id}
                 articleContent={selectedArticle.content}
               />
             )}
             {tab === "newsletter" && (
-              <NewsletterTab articleId={selectedArticle.id} />
+              <NewsletterTab key={selectedArticle.id} articleId={selectedArticle.id} />
             )}
           </div>
         </div>
