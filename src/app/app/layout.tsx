@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { createClient } from "@/lib/supabase-browser";
 import { Toaster } from "sonner";
 import { LowCreditBanner } from "./components/LowCreditBanner";
@@ -118,10 +119,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           title={pageTitle}
           onMenuClick={() => setMobileNavOpen(true)}
         />
-        <main id="main-content" className="flex-1 px-4 py-6 lg:px-6 lg:py-8">
+        <main id="main-content" className="flex-1 px-4 py-6 lg:px-6 lg:py-8 pb-16 lg:pb-0">
           {children}
         </main>
       </div>
+      <MobileBottomNav />
     </>
   );
 }

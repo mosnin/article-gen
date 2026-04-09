@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -106,6 +106,20 @@ export function Sidebar({
   onMobileClose,
 }: SidebarProps) {
   const router = useRouter();
+  const touchStartX = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    if (deltaX > 50) {
+      onMobileClose?.();
+    }
+    touchStartX.current = null;
+  };
 
   const topNav: NavItem[] = [
     {
@@ -449,6 +463,8 @@ export function Sidebar({
             exit={{ x: "-100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
             className="fixed inset-y-0 left-0 z-50 w-[var(--sidebar-width)] bg-[var(--surface-raised)] border-r border-[var(--border-default)] lg:hidden"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
           >
             {sidebarContent}
           </motion.div>
