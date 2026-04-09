@@ -22,11 +22,12 @@ export function registerAutopilotTools(server: McpServer) {
     "Approve a content slot in the autopilot plan",
     { user_id: z.string(), slot_id: z.string() },
     async ({ user_id, slot_id }) => {
+      type Slot = { id: string; status: string; articleId?: string | null; [key: string]: unknown };
       const supabase = getAdminClient();
       const { data: settings } = await supabase
         .from("user_settings").select("autopilot_plan").eq("user_id", user_id).single();
-      const plan = (settings?.autopilot_plan as any[]) ?? [];
-      const updated = plan.map((s: any) => s.id === slot_id ? { ...s, status: "approved" } : s);
+      const plan = (settings?.autopilot_plan as Slot[]) ?? [];
+      const updated = plan.map((s) => s.id === slot_id ? { ...s, status: "approved" } : s);
       await supabase.from("user_settings").update({ autopilot_plan: updated }).eq("user_id", user_id);
       return { content: [{ type: "text", text: `Slot ${slot_id} approved` }] };
     }
@@ -36,12 +37,13 @@ export function registerAutopilotTools(server: McpServer) {
     "Approve all pending slots in the autopilot plan",
     { user_id: z.string() },
     async ({ user_id }) => {
+      type Slot = { id: string; status: string; articleId?: string | null; [key: string]: unknown };
       const supabase = getAdminClient();
       const { data: settings } = await supabase
         .from("user_settings").select("autopilot_plan").eq("user_id", user_id).single();
-      const plan = (settings?.autopilot_plan as any[]) ?? [];
-      const updated = plan.map((s: any) => s.status === "pending" ? { ...s, status: "approved" } : s);
-      const approvedCount = updated.filter((s: any) => s.status === "approved").length;
+      const plan = (settings?.autopilot_plan as Slot[]) ?? [];
+      const updated = plan.map((s) => s.status === "pending" ? { ...s, status: "approved" } : s);
+      const approvedCount = updated.filter((s) => s.status === "approved").length;
       await supabase.from("user_settings").update({ autopilot_plan: updated }).eq("user_id", user_id);
       return { content: [{ type: "text", text: `Approved ${approvedCount} slots` }] };
     }
@@ -51,11 +53,12 @@ export function registerAutopilotTools(server: McpServer) {
     "Get all approved autopilot slots that are ready to generate",
     { user_id: z.string() },
     async ({ user_id }) => {
+      type Slot = { id: string; status: string; articleId?: string | null; [key: string]: unknown };
       const supabase = getAdminClient();
       const { data: settings } = await supabase
         .from("user_settings").select("autopilot_plan").eq("user_id", user_id).single();
-      const plan = (settings?.autopilot_plan as any[]) ?? [];
-      const pending = plan.filter((s: any) => s.status === "approved" && !s.articleId);
+      const plan = (settings?.autopilot_plan as Slot[]) ?? [];
+      const pending = plan.filter((s) => s.status === "approved" && !s.articleId);
       return { content: [{ type: "text", text: JSON.stringify(pending) }] };
     }
   );

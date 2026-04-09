@@ -10,8 +10,8 @@ export const generateAutopilotArticle = inngest.createFunction(
     name: "Generate Autopilot Article",
     retries: 1,
     concurrency: { limit: 3 },
+    triggers: [{ event: "autopilot/article.generate" }],
   },
-  { event: "autopilot/article.generate" },
   async ({ event, step }) => {
     const { userId, slotId, keyword, topic, contentType } = event.data;
     const supabase = getAdminClient();

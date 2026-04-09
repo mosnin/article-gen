@@ -2,8 +2,7 @@ import { inngest } from "@/lib/inngest";
 import { getAdminClient } from "@/lib/supabase-admin";
 
 export const autopilotCron = inngest.createFunction(
-  { id: "autopilot-cron", name: "Autopilot Publishing Cron" },
-  { cron: "0 * * * *" }, // every hour
+  { id: "autopilot-cron", name: "Autopilot Publishing Cron", triggers: [{ cron: "0 * * * *" }] },
   async ({ step }) => {
     const supabase = getAdminClient();
 
@@ -25,16 +24,17 @@ export const autopilotCron = inngest.createFunction(
 
       if (!users?.length) return { processed: 0 };
 
+      type Slot = { id: string; status: string; articleId: string | null; date: string; [key: string]: unknown };
       let processed = 0;
       for (const user of users) {
-        const plan = (user.autopilot_plan as any[]) ?? [];
+        const plan = (user.autopilot_plan as Slot[]) ?? [];
         const dueSlots = plan.filter(
-          (s: any) => s.status === "approved" && s.articleId && s.date <= today
+          (s) => s.status === "approved" && s.articleId && s.date <= today
         );
 
         for (const slot of dueSlots) {
           // Update slot to generating/done
-          const updatedPlan = plan.map((s: any) =>
+          const updatedPlan = plan.map((s) =>
             s.id === slot.id ? { ...s, status: "done" } : s
           );
           await supabase

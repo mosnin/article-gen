@@ -2,8 +2,7 @@ import { inngest } from "@/lib/inngest";
 import { getAdminClient } from "@/lib/supabase-admin";
 
 export const onArticlePublished = inngest.createFunction(
-  { id: "on-article-published" },
-  { event: "article/published" },
+  { id: "on-article-published", triggers: [{ event: "article/published" }] },
   async ({ event }) => {
     const { articleId, userId, platform } = event.data as {
       articleId: string;
@@ -54,8 +53,7 @@ export const onArticlePublished = inngest.createFunction(
 );
 
 export const weeklyContentReport = inngest.createFunction(
-  { id: "weekly-content-report" },
-  { cron: "0 9 * * 1" },
+  { id: "weekly-content-report", triggers: [{ cron: "0 9 * * 1" }] },
   async ({ step }) => {
     const supabase = getAdminClient();
 
@@ -116,7 +114,7 @@ export const weeklyContentReport = inngest.createFunction(
 
     // Upsert one content_reports row per user
     const upsertResults = await step.run("upsert-reports", async () => {
-      const rows = Object.entries(statsMap).map(([userId, stats]) => ({
+      const rows = Object.entries(statsMap as Record<string, { generated: number; published: number; totalWords: number }>).map(([userId, stats]) => ({
         user_id: userId,
         week_start: weekStart,
         articles_generated: stats.generated,

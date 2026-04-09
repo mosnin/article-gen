@@ -28,10 +28,9 @@ export function registerSeoTools(server: McpServer) {
     { keywords: z.array(z.string()).max(10) },
     async ({ keywords }) => {
       const results = await Promise.allSettled(keywords.map(k => estimateKeywordDifficulty(k)));
-      const scores = results.map((r, i) => ({
-        keyword: keywords[i],
-        ...(r.status === "fulfilled" ? r.value : { difficulty: null, label: "Error" }),
-      }));
+      const scores = results.map((r, i) => (
+        r.status === "fulfilled" ? r.value : { keyword: keywords[i], difficulty: null, label: "Error" }
+      ));
       return { content: [{ type: "text", text: JSON.stringify(scores) }] };
     }
   );
