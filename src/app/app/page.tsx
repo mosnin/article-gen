@@ -30,8 +30,35 @@ interface Cluster {
 interface Stats {
   total: number;
   thisMonth: number;
+  lastMonth: number;
+  thisWeek: number;
   published: number;
   credits: number;
+}
+
+function Sparkline({ data }: { data: number[] }) {
+  if (data.length < 2) return null;
+  const max = Math.max(...data, 1);
+  const w = 80, h = 32, pad = 2;
+  const pts = data
+    .map((v, i) => {
+      const x = pad + (i / (data.length - 1)) * (w - pad * 2);
+      const y = h - pad - (v / max) * (h - pad * 2);
+      return `${x},${y}`;
+    })
+    .join(" ");
+  return (
+    <svg width={w} height={h} className="opacity-60">
+      <polyline
+        points={pts}
+        fill="none"
+        stroke="var(--brand)"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 function StatCard({
@@ -39,11 +66,13 @@ function StatCard({
   value,
   description,
   loading,
+  trend,
 }: {
   label: string;
   value: number | string;
   description?: string;
   loading: boolean;
+  trend?: number[];
 }) {
   return (
     <Card>
@@ -58,7 +87,10 @@ function StatCard({
           </>
         ) : (
           <>
-            <p className="text-3xl font-bold text-[var(--text-primary)]">{value}</p>
+            <div className="flex items-end justify-between gap-2">
+              <p className="text-3xl font-bold text-[var(--text-primary)]">{value}</p>
+              {trend && trend.length >= 2 && <Sparkline data={trend} />}
+            </div>
             {description && (
               <p className="text-xs text-[var(--text-secondary)] mt-1">{description}</p>
             )}
@@ -80,9 +112,12 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats>({
     total: 0,
     thisMonth: 0,
+    lastMonth: 0,
+    thisWeek: 0,
     published: 0,
     credits: 0,
   });
+  const [weeklyTrend, setWeeklyTrend] = useState<number[]>([]);
   const [recentArticles, setRecentArticles] = useState<Article[]>([]);
   const [activeClusters, setActiveClusters] = useState<Cluster[]>([]);
 
@@ -99,27 +134,56 @@ export default function DashboardPage() {
 
       const userId = user.id;
 
-      // Fetch stats in parallel
+      // Compute date boundaries
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      const [totalRes, thisMonthRes, publishedRes, creditsRes] = await Promise.allSettled([
-        supabase
-          .from("articles")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", userId),
-        supabase
-          .from("articles")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", userId)
-          .gte("created_at", startOfMonth),
-        supabase
-          .from("articles")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", userId)
-          .eq("posted", true),
-        fetch("/api/credits"),
-      ]);
+      // 8-week trend: start of the oldest week
+      const eightWeeksAgo = new Date(now.getTime() - 8 * 7 * 24 * 60 * 60 * 1000);
+      // Align to Monday of that week
+      const dayOfWeek = eightWeeksAgo.getDay(); // 0=Sun
+      const daysToMonday = (dayOfWeek + 6) % 7;
+      eightWeeksAgo.setDate(eightWeeksAgo.getDate() - daysToMonday);
+      eightWeeksAgo.setHours(0, 0, 0, 0);
+
+      const [totalRes, thisMonthRes, lastMonthRes, thisWeekRes, publishedRes, creditsRes, trendRes] =
+        await Promise.allSettled([
+          supabase
+            .from("articles")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", userId),
+          supabase
+            .from("articles")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .gte("created_at", startOfMonth),
+          supabase
+            .from("articles")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .gte("created_at", startOfLastMonth)
+            .lt("created_at", endOfLastMonth),
+          supabase
+            .from("articles")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .gte("created_at", sevenDaysAgo),
+          supabase
+            .from("articles")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .eq("posted", true),
+          fetch("/api/credits"),
+          // Fetch created_at for all articles in the last 8 weeks to bucket by week client-side
+          supabase
+            .from("articles")
+            .select("created_at")
+            .eq("user_id", userId)
+            .gte("created_at", eightWeeksAgo.toISOString()),
+        ]);
 
       let credits = 0;
       if (creditsRes.status === "fulfilled") {
@@ -131,17 +195,31 @@ export default function DashboardPage() {
         }
       }
 
+      // Build weekly trend buckets
+      const weekCounts = Array(8).fill(0);
+      if (trendRes.status === "fulfilled" && trendRes.value.data) {
+        for (const row of trendRes.value.data) {
+          const ts = new Date(row.created_at).getTime();
+          const weekIndex = Math.floor(
+            (ts - eightWeeksAgo.getTime()) / (7 * 24 * 60 * 60 * 1000)
+          );
+          if (weekIndex >= 0 && weekIndex < 8) {
+            weekCounts[weekIndex]++;
+          }
+        }
+      }
+      setWeeklyTrend(weekCounts);
+
       setStats({
-        total:
-          totalRes.status === "fulfilled" ? (totalRes.value.count ?? 0) : 0,
+        total: totalRes.status === "fulfilled" ? (totalRes.value.count ?? 0) : 0,
         thisMonth:
-          thisMonthRes.status === "fulfilled"
-            ? (thisMonthRes.value.count ?? 0)
-            : 0,
+          thisMonthRes.status === "fulfilled" ? (thisMonthRes.value.count ?? 0) : 0,
+        lastMonth:
+          lastMonthRes.status === "fulfilled" ? (lastMonthRes.value.count ?? 0) : 0,
+        thisWeek:
+          thisWeekRes.status === "fulfilled" ? (thisWeekRes.value.count ?? 0) : 0,
         published:
-          publishedRes.status === "fulfilled"
-            ? (publishedRes.value.count ?? 0)
-            : 0,
+          publishedRes.status === "fulfilled" ? (publishedRes.value.count ?? 0) : 0,
         credits,
       });
 
@@ -174,6 +252,12 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Compute content velocity
+  const velocityPct =
+    stats.lastMonth > 0
+      ? Math.round(((stats.thisMonth - stats.lastMonth) / stats.lastMonth) * 100)
+      : null;
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -182,18 +266,35 @@ export default function DashboardPage() {
       />
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard
           label="Total Articles"
           value={stats.total}
           description="All time"
           loading={loading}
+          trend={weeklyTrend}
         />
         <StatCard
           label="This Month"
           value={stats.thisMonth}
-          description="Articles created"
+          description={
+            loading
+              ? undefined
+              : velocityPct !== null
+              ? velocityPct >= 0
+                ? `↑ ${velocityPct}% vs last month`
+                : `↓ ${Math.abs(velocityPct)}% vs last month`
+              : "Articles created"
+          }
           loading={loading}
+          trend={weeklyTrend}
+        />
+        <StatCard
+          label="This Week"
+          value={stats.thisWeek}
+          description="Last 7 days"
+          loading={loading}
+          trend={weeklyTrend.slice(-4)}
         />
         <StatCard
           label="Published"
@@ -203,6 +304,26 @@ export default function DashboardPage() {
         />
         <CreditForecast />
       </div>
+
+      {/* Content Velocity */}
+      {!loading && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-[var(--text-secondary)]">Content Velocity:</span>
+          {velocityPct === null ? (
+            <span className="text-sm text-[var(--text-secondary)]">
+              No data from last month
+            </span>
+          ) : velocityPct >= 0 ? (
+            <span className="text-sm font-semibold text-green-600">
+              ↑ {velocityPct}% vs last month
+            </span>
+          ) : (
+            <span className="text-sm font-semibold text-red-500">
+              ↓ {Math.abs(velocityPct)}% vs last month
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div>
