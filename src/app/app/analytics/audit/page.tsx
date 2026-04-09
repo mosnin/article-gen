@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ArticleAuditItem } from "@/app/api/audit/route";
+import { EmptyState } from "@/components/ui/empty-state";
 
 function ScoreBadge({ score }: { score: number }) {
   const color = score >= 70 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -85,6 +86,13 @@ export default function ContentAuditPage() {
 
       {loading ? (
         <div className="text-center py-16 text-[#6B7280]">Auditing your content…</div>
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon="📊"
+          title="No articles to audit"
+          description="Generate articles first and they'll appear here for SEO health analysis."
+          action={{ label: "Write First Article", href: "/app/generate" }}
+        />
       ) : (
         <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
           <table className="w-full text-sm">

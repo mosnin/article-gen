@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-browser";
 import { format, parseISO } from "date-fns";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Article {
   id: string;
@@ -116,31 +117,43 @@ export default function ArticlesPage() {
 
       {/* Table */}
       {loading ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 rounded-lg bg-[var(--surface-sunken)] animate-pulse" />
+        <div className="rounded-xl border border-[var(--border-default)] overflow-hidden">
+          {/* Fake thead */}
+          <div className="border-b border-[var(--border-default)] bg-[var(--surface-sunken)] px-4 py-3 flex gap-4">
+            <div className="h-3 w-24 rounded skeleton" />
+            <div className="h-3 w-16 rounded skeleton hidden sm:block" />
+            <div className="h-3 w-20 rounded skeleton hidden md:block" />
+            <div className="h-3 w-16 rounded skeleton hidden lg:block" />
+          </div>
+          {/* 6 skeleton rows */}
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-4 px-4 py-3 border-b border-[var(--border-default)] last:border-0 bg-[var(--surface-base)]"
+            >
+              {/* Title + slug */}
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <div className="h-4 rounded skeleton" style={{ width: `${55 + (i % 3) * 15}%` }} />
+                <div className="h-3 w-32 rounded skeleton" />
+              </div>
+              {/* Status badge */}
+              <div className="h-5 w-16 rounded-full skeleton hidden sm:block shrink-0" />
+              {/* Platform */}
+              <div className="h-4 w-20 rounded skeleton hidden md:block shrink-0" />
+              {/* Date */}
+              <div className="h-4 w-24 rounded skeleton hidden lg:block shrink-0" />
+              {/* Action button */}
+              <div className="h-7 w-12 rounded-md skeleton shrink-0" />
+            </div>
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] py-16 text-center">
-          <svg viewBox="0 0 20 20" fill="currentColor" className="mx-auto h-8 w-8 text-[var(--text-tertiary)] mb-3">
-            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-          </svg>
-          <p className="text-sm font-medium text-[var(--text-primary)]">
-            {search ? "No articles match your search" : "No articles yet"}
-          </p>
-          <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-            {!search && "Generate your first article to get started"}
-          </p>
-          {!search && (
-            <Link
-              href="/app/generate"
-              className="mt-4 inline-block rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--accent-hover)] transition-colors"
-            >
-              Generate Article
-            </Link>
-          )}
-        </div>
+        <EmptyState
+          icon="✍️"
+          title="No articles yet"
+          description="Generate your first SEO article in minutes."
+          action={{ label: "Write First Article", href: "/app/generate" }}
+        />
       ) : (
         <div className="rounded-xl border border-[var(--border-default)] overflow-hidden">
           <table className="w-full text-sm">

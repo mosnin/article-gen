@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-browser";
 import { format, parseISO } from "date-fns";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Cluster {
   id: string;
@@ -159,30 +160,12 @@ export default function ClustersPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] py-16 text-center">
-          <svg
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            className="mx-auto h-8 w-8 text-[var(--text-tertiary)] mb-3"
-          >
-            <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
-          </svg>
-          <p className="text-sm font-medium text-[var(--text-primary)]">
-            {search ? "No clusters match your search" : "No clusters yet"}
-          </p>
-          <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-            {!search &&
-              "Create a topic cluster to organise related articles around a pillar topic"}
-          </p>
-          {!search && (
-            <Link
-              href="/app/generate"
-              className="mt-4 inline-block rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--accent-hover)] transition-colors"
-            >
-              Create Cluster
-            </Link>
-          )}
-        </div>
+        <EmptyState
+          icon="🗂️"
+          title="No topic clusters"
+          description="Build content clusters to dominate your niche."
+          action={{ label: "Create Cluster", href: "/app/generate" }}
+        />
       ) : (
         <div className="rounded-xl border border-[var(--border-default)] overflow-hidden">
           <table className="w-full text-sm">
