@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-server";
 import { deductCredit } from "@/lib/credits";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
+import { triggerEmbedArticle } from "@/lib/inngest-events";
 
 export const maxDuration = 60;
 
@@ -284,6 +285,19 @@ Return format:
 
     // Deduct 1 credit on successful generation
     const deductResult = await deductCredit(supabase, user.id, undefined, `Article: ${topic}`);
+
+    // Trigger embedding (non-blocking, non-critical)
+    try {
+      await triggerEmbedArticle({
+        userId: user.id,
+        articleId: "",
+        title,
+        keyword: focusKeyword || (allKeywords as string[])[0] || "",
+        content: article,
+      });
+    } catch {
+      // fail silently — embedding is non-critical
+    }
 
     return NextResponse.json({ article, imagePrompts, schema, credits: deductResult.credits });
   } catch (error: unknown) {
