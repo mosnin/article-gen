@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase-server";
 import { registerGenerationTools } from "./generation-tools";
 import { registerSeoTools } from "./seo-tools";
 import { registerAnalyticsTools } from "./analytics-tools";
+import { registerAutopilotTools } from "./autopilot-tools";
 
 export const maxDuration = 60;
 
@@ -17,6 +18,7 @@ function createServer(): McpServer {
   registerSeoTools(server);
   registerAnalyticsTools(server);
   registerGenerationTools(server);
+  registerAutopilotTools(server);
 
   return server;
 }
