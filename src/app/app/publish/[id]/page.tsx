@@ -442,6 +442,17 @@ export default function PublishPage() {
     setBatchPublishing(false);
   };
 
+  const handleExportMarkdown = () => {
+    if (!article) return;
+    const blob = new Blob([article.article_markdown || ""], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${article.slug || "article"}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleAiRefresh = async () => {
     if (!article) return;
     const confirmed = window.confirm(

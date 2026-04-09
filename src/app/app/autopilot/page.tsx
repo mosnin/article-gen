@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import type { KeywordDifficulty } from "@/lib/keyword-difficulty";
 
 interface AutopilotSlot {
   id: string;
@@ -43,7 +44,14 @@ const CONTENT_TYPE_EMOJI: Record<string, string> = {
   "Ultimate Guide": "🏆",
 };
 
-function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId, isDragging, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd }: {
+const DIFFICULTY_STYLES: Record<KeywordDifficulty["label"], string> = {
+  "Easy": "bg-emerald-50 text-emerald-700",
+  "Medium": "bg-yellow-50 text-yellow-700",
+  "Hard": "bg-orange-50 text-orange-700",
+  "Very Hard": "bg-red-50 text-red-700",
+};
+
+function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId, isDragging, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd, difficulty, difficultyLoading }: {
   slot: AutopilotSlot;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
@@ -56,6 +64,8 @@ function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId,
   onDragOver: (e: React.DragEvent) => void;
   onDrop: () => void;
   onDragEnd: () => void;
+  difficulty?: KeywordDifficulty;
+  difficultyLoading?: boolean;
 }) {
   const config = STATUS_CONFIG[slot.status];
   const emoji = CONTENT_TYPE_EMOJI[slot.contentType] ?? "📝";
@@ -100,6 +110,21 @@ function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId,
           {slot.keyword}
         </span>
         <span className="text-[11px] text-[var(--text-tertiary)]">{slot.contentType}</span>
+        {/* Difficulty badge */}
+        {difficultyLoading && (
+          <span className="inline-block h-4 w-14 rounded-full bg-gray-200 animate-pulse" />
+        )}
+        {!difficultyLoading && difficulty && (
+          <span
+            className={cn(
+              "inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full",
+              DIFFICULTY_STYLES[difficulty.label]
+            )}
+            title={`Difficulty score: ${difficulty.difficulty}/100`}
+          >
+            {difficulty.label}
+          </span>
+        )}
         {/* Uniqueness indicator */}
         {slot.uniquenessScore !== undefined && slot.uniquenessScore < 0.9 && (
           <span
@@ -233,6 +258,8 @@ export default function AutopilotPage() {
   const [autopilotEnabled, setAutopilotEnabled] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [difficultyMap, setDifficultyMap] = useState<Record<string, KeywordDifficulty>>({});
+  const [difficultyLoadingIds, setDifficultyLoadingIds] = useState<Set<string>>(new Set());
 
   const loadPlan = useCallback(async () => {
     try {

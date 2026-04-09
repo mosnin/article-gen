@@ -207,6 +207,36 @@ export function Sidebar({
     },
   ];
 
+  const researchSubNav: NavItem[] = [
+    {
+      label: "Brief",
+      href: "/app/research/brief",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+    {
+      label: "SERP",
+      href: "/app/research/serp",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+    {
+      label: "Competitors",
+      href: "/app/research/competitors",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+  ];
+
   const toolsNav: NavItem[] = [
     {
       label: "Autopilot",
@@ -218,7 +248,7 @@ export function Sidebar({
       ),
     },
     {
-      label: "SERP Analyzer",
+      label: "Research",
       href: "/app/research",
       icon: (
         <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -364,7 +394,13 @@ export function Sidebar({
         {/* Tools section */}
         <SectionHeader label="Tools">
           {toolsNav.map((item) => (
-            <NavLink key={item.href} item={item} collapsed={false} />
+            <div key={item.href}>
+              <NavLink item={item} collapsed={false} />
+              {item.href === "/app/research" &&
+                researchSubNav.map((sub) => (
+                  <NavLink key={sub.href} item={sub} collapsed={false} indent />
+                ))}
+            </div>
           ))}
         </SectionHeader>
 
