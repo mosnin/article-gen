@@ -42,6 +42,9 @@ export function buildArticleEmbeddingText(params: {
 
 /**
  * Store an article's embedding in the article_embeddings table.
+ * NOTE: This function is exported and will be called via the Inngest
+ * "embed-article" background function (src/inngest/embed-article.ts)
+ * after article generation completes — no logic changes needed here yet.
  */
 export async function storeArticleEmbedding(params: {
   userId: string;
