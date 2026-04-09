@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import { marked } from "marked";
 import DOMPurify from "isomorphic-dompurify";
+import SnippetOptimizerPanel from "./SnippetOptimizerPanel";
+import toast from "react-hot-toast";
 
 type Platform = "wordpress" | "shopify" | "medium" | "ghost" | "devto";
 
@@ -121,7 +123,30 @@ export default function PublishPage() {
   const [batchPublishing, setBatchPublishing] = useState(false);
   const [batchResults, setBatchResults] = useState<Array<{ platform: string; success: boolean; postUrl?: string; editUrl?: string; error?: string }> | null>(null);
 
+  // AI refresh state
+  const [aiRefreshing, setAiRefreshing] = useState(false);
+  const [aiRefreshStats, setAiRefreshStats] = useState<{ wordsAdded: number; serpTopics: string[] } | null>(null);
+
+  // Focus mode
+  const [focusMode, setFocusMode] = useState(false);
+
+  // Editor ref + floating toolbar
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const [toolbarVisible, setToolbarVisible] = useState(false);
+  const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0 });
+  const [editMode, setEditMode] = useState(false);
+
   const availableImages = article?.generated_images?.filter((i) => i.success && i.publicUrl) ?? [];
+
+  const handleApplySnippetSection = async (section: string) => {
+    if (!article) return;
+    const updated = article.article_markdown
+      ? `${article.article_markdown}\n\n---\n\n${section}`
+      : section;
+    setArticle((prev) => prev ? { ...prev, article_markdown: updated } : prev);
+    const html = DOMPurify.sanitize(await marked(updated));
+    setPreviewHtml(html);
+  };
 
   const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -411,6 +436,60 @@ export default function PublishPage() {
     setBatchPublishing(false);
   };
 
+  const handleAiRefresh = async () => {
+    if (!article) return;
+    const confirmed = window.confirm(
+      "This will expand and update the article with latest SERP insights. Continue?"
+    );
+    if (!confirmed) return;
+
+    setAiRefreshing(true);
+    setAiRefreshStats(null);
+    const toastId = toast.loading("Refreshing article with latest SERP data...");
+
+    try {
+      const res = await fetch("/api/articles/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          focusKeyword: article.topic,
+          currentContent: article.article_markdown,
+          articleId: article.id,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Failed to refresh article", { id: toastId });
+      } else {
+        const { content, wordsAdded, serpTopics } = data as {
+          content: string;
+          wordCount: number;
+          previousWordCount: number;
+          wordsAdded: number;
+          serpTopics: string[];
+          questionsAdded: string[];
+        };
+
+        setArticle((prev) =>
+          prev ? { ...prev, article_markdown: content } : prev
+        );
+        const html = DOMPurify.sanitize(await marked(content || ""));
+        setPreviewHtml(html);
+
+        const topicsLabel = serpTopics.slice(0, 3).join(", ");
+        const statsMsg = `Words added: +${wordsAdded}${topicsLabel ? ` | SERP topics: ${topicsLabel}` : ""}`;
+        toast.success(statsMsg, { id: toastId, duration: 8000 });
+        setAiRefreshStats({ wordsAdded, serpTopics });
+      }
+    } catch {
+      toast.error("Failed to refresh article", { id: toastId });
+    }
+
+    setAiRefreshing(false);
+  };
+
   const platformLabel: Record<Platform, string> = {
     wordpress: "WordPress",
     shopify: "Shopify",
@@ -546,7 +625,13 @@ export default function PublishPage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 32, alignItems: "start" }}>
             {/* Article Preview */}
             <div>
-              <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>{article.title || article.topic}</h1>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
+                <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{article.title || article.topic}</h1>
+                <button onClick={handleExportMarkdown}
+                  style={{ flexShrink: 0, padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--card)", border: "1px solid var(--card-border)", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+                  ⬇ Export Markdown
+                </button>
+              </div>
               <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
                 Slug: /{article.slug} &middot; {article.article_markdown?.split(/\s+/).length || 0} words
               </p>
@@ -554,6 +639,38 @@ export default function PublishPage() {
                 style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: "24px 28px", maxHeight: "70vh", overflow: "auto", fontSize: 14, lineHeight: 1.7 }}
                 dangerouslySetInnerHTML={{ __html: previewHtml }}
               />
+
+              {/* AI Refresh */}
+              <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <button
+                  onClick={handleAiRefresh}
+                  disabled={aiRefreshing}
+                  style={{
+                    padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600,
+                    background: "var(--card)", border: "1px solid var(--card-border)",
+                    cursor: aiRefreshing ? "not-allowed" : "pointer",
+                    opacity: aiRefreshing ? 0.6 : 1,
+                    display: "flex", alignItems: "center", gap: 6,
+                  }}
+                >
+                  {aiRefreshing ? (
+                    <>
+                      <svg className="progress-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                      Refreshing...
+                    </>
+                  ) : (
+                    <>🔄 Refresh with AI</>
+                  )}
+                </button>
+                {aiRefreshStats && (
+                  <span style={{ fontSize: 12, color: "var(--success)", fontWeight: 500 }}>
+                    Words added: +{aiRefreshStats.wordsAdded}
+                    {aiRefreshStats.serpTopics.length > 0 && (
+                      <> | SERP topics: {aiRefreshStats.serpTopics.slice(0, 3).join(", ")}</>
+                    )}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Publish Panel */}
@@ -903,6 +1020,13 @@ export default function PublishPage() {
                   </div>
                 </div>
               )}
+
+              {/* Featured Snippet Optimizer */}
+              <SnippetOptimizerPanel
+                focusKeyword={article.topic || article.title || ""}
+                articleContent={article.article_markdown || ""}
+                onApplySection={handleApplySnippetSection}
+              />
             </div>
           </div>
         )}
