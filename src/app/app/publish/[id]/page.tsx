@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase-browser";
 import { marked } from "marked";
 import DOMPurify from "isomorphic-dompurify";
 import SnippetOptimizerPanel from "./SnippetOptimizerPanel";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
+import type { NLPScoreResult } from "@/lib/nlp-scorer";
 
 type Platform = "wordpress" | "shopify" | "medium" | "ghost" | "devto";
 
@@ -126,6 +127,11 @@ export default function PublishPage() {
   // AI refresh state
   const [aiRefreshing, setAiRefreshing] = useState(false);
   const [aiRefreshStats, setAiRefreshStats] = useState<{ wordsAdded: number; serpTopics: string[] } | null>(null);
+
+  // NLP SEO score state
+  const [nlpScoring, setNlpScoring] = useState(false);
+  const [nlpScore, setNlpScore] = useState<NLPScoreResult | null>(null);
+  const [nlpScoreOpen, setNlpScoreOpen] = useState(false);
 
   // Focus mode
   const [focusMode, setFocusMode] = useState(false);
