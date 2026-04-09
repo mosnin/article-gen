@@ -43,13 +43,19 @@ const CONTENT_TYPE_EMOJI: Record<string, string> = {
   "Ultimate Guide": "🏆",
 };
 
-function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId }: {
+function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId, isDragging, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd }: {
   slot: AutopilotSlot;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onEdit: (slot: AutopilotSlot) => void;
   onGenerate: (slot: AutopilotSlot) => void;
   generatingId: string | null;
+  isDragging: boolean;
+  isDragOver: boolean;
+  onDragStart: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDrop: () => void;
+  onDragEnd: () => void;
 }) {
   const config = STATUS_CONFIG[slot.status];
   const emoji = CONTENT_TYPE_EMOJI[slot.contentType] ?? "📝";
@@ -57,19 +63,27 @@ function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId 
 
   return (
     <div
+      draggable={true}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
       className={cn(
-        "flex flex-col gap-2 p-4 rounded-xl border transition-all duration-200",
+        "flex flex-col gap-2 p-4 rounded-xl border transition-all duration-200 cursor-grab active:cursor-grabbing",
         slot.status === "approved" && "border-blue-200 bg-blue-50/50",
         slot.status === "done" && "border-green-200 bg-green-50/50",
         slot.status === "rejected" && "border-red-100 bg-red-50/30 opacity-60",
         slot.status === "generating" && "border-amber-200 bg-amber-50/50",
         slot.status === "pending" && "border-[var(--border-default)] bg-[var(--surface-base)]",
         slot.status === "failed" && "border-red-200 bg-red-50/40",
+        isDragging && "opacity-50 scale-95",
+        isDragOver && "ring-2 ring-[var(--accent)]",
       )}
     >
       {/* Header row */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm text-[var(--text-tertiary)] select-none" title="Drag to reorder">⠿</span>
           <span className="text-sm">{emoji}</span>
           <div className="min-w-0">
             <p className="text-xs text-[var(--text-secondary)]">Day {slot.day} · {slot.date}</p>
@@ -217,6 +231,8 @@ export default function AutopilotPage() {
   const [planCount, setPlanCount] = useState(30);
   const [filter, setFilter] = useState<"all" | AutopilotSlot["status"]>("all");
   const [autopilotEnabled, setAutopilotEnabled] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const loadPlan = useCallback(async () => {
     try {
@@ -369,6 +385,41 @@ export default function AutopilotPage() {
     toast.success(next ? "Autopilot enabled — articles will auto-generate as scheduled" : "Autopilot paused");
   };
 
+  const handleDrop = async (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    const reordered = [...slots];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+
+    // Recalculate day numbers and dates sequentially
+    const baseDate = reordered[0]?.date
+      ? new Date(reordered[0].date)
+      : new Date();
+    const renumbered = reordered.map((s, i) => {
+      const d = new Date(baseDate);
+      d.setDate(baseDate.getDate() + i);
+      return {
+        ...s,
+        day: i + 1,
+        date: d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      };
+    });
+
+    setSlots(renumbered);
+    setDragIndex(null);
+    setDragOverIndex(null);
+
+    try {
+      await fetch("/api/autopilot/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update_plan", slots: renumbered }),
+      });
+    } catch {
+      toast.error("Failed to save reordered plan");
+    }
+  };
+
   const filtered = filter === "all" ? slots : slots.filter((s) => s.status === filter);
 
   const stats = {
@@ -509,17 +560,26 @@ export default function AutopilotPage() {
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((slot) => (
-                <SlotCard
-                  key={slot.id}
-                  slot={slot}
-                  onApprove={(id) => updateSlotStatus(id, "approve")}
-                  onReject={(id) => updateSlotStatus(id, "reject")}
-                  onEdit={setEditSlot}
-                  onGenerate={handleGenerateSlot}
-                  generatingId={generatingSlotId}
-                />
-              ))}
+              {filtered.map((slot) => {
+                const globalIndex = slots.indexOf(slot);
+                return (
+                  <SlotCard
+                    key={slot.id}
+                    slot={slot}
+                    onApprove={(id) => updateSlotStatus(id, "approve")}
+                    onReject={(id) => updateSlotStatus(id, "reject")}
+                    onEdit={setEditSlot}
+                    onGenerate={handleGenerateSlot}
+                    generatingId={generatingSlotId}
+                    isDragging={dragIndex === globalIndex}
+                    isDragOver={dragOverIndex === globalIndex}
+                    onDragStart={() => setDragIndex(globalIndex)}
+                    onDragOver={(e) => { e.preventDefault(); setDragOverIndex(globalIndex); }}
+                    onDrop={() => { if (dragIndex !== null) handleDrop(dragIndex, globalIndex); }}
+                    onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
+                  />
+                );
+              })}
             </div>
           )}
         </>
