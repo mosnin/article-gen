@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "article-gen": {
+      "url": "https://your-domain.com/api/mcp",
+      "headers": {
+        "x-api-key": "YOUR_MCP_API_KEY"
+      }
+    }
+  }
+}
