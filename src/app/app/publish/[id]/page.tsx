@@ -755,23 +755,154 @@ export default function PublishPage() {
             </button>
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 32, alignItems: "start" }}>
-            {/* Article Preview */}
-            <div>
+          <>
+          {/* Floating formatting toolbar (appears on text selection) */}
+          {toolbarVisible && editMode && (
+            <div
+              style={{
+                position: "absolute",
+                top: toolbarPos.top,
+                left: toolbarPos.left,
+                zIndex: 200,
+                background: "var(--card)",
+                border: "1px solid var(--card-border)",
+                borderRadius: 8,
+                boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+                padding: "4px 6px",
+              }}
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              {(["bold","italic","h2","h3","bullet"] as const).map((fmt) => {
+                const labels: Record<string, string> = { bold: "B", italic: "I", h2: "H2", h3: "H3", bullet: "•" };
+                const tips: Record<string, string> = { bold: "Bold (Ctrl+B)", italic: "Italic (Ctrl+I)", h2: "Heading 2", h3: "Heading 3", bullet: "Bullet list" };
+                return (
+                  <button
+                    key={fmt}
+                    title={tips[fmt]}
+                    onMouseDown={(e) => { e.preventDefault(); applyFormat(fmt); }}
+                    style={{
+                      padding: "4px 9px", borderRadius: 6, fontSize: 13,
+                      fontWeight: fmt === "bold" ? 800 : 600,
+                      fontStyle: fmt === "italic" ? "italic" : "normal",
+                      border: "none", background: "transparent", cursor: "pointer",
+                      color: "var(--foreground)", lineHeight: 1.4,
+                    }}
+                  >
+                    {labels[fmt]}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: focusMode ? "1fr" : "1fr 360px", gap: 32, alignItems: "start" }}>
+            {/* Article Editor / Preview */}
+            <div style={{ background: focusMode ? "rgba(0,0,0,0.03)" : "transparent", borderRadius: focusMode ? 16 : 0, padding: focusMode ? "28px 32px" : 0 }}>
+              {/* Header row */}
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
                 <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{article.title || article.topic}</h1>
-                <button onClick={handleExportMarkdown}
-                  style={{ flexShrink: 0, padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--card)", border: "1px solid var(--card-border)", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
-                  ⬇ Export Markdown
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  {/* Focus Mode button */}
+                  <button
+                    onClick={() => setFocusMode((f) => !f)}
+                    title={focusMode ? "Exit focus mode" : "Focus mode — hide sidebar"}
+                    style={{
+                      padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                      background: focusMode ? "var(--accent)" : "var(--card)",
+                      border: "1px solid var(--card-border)", cursor: "pointer",
+                      color: focusMode ? "#fff" : "var(--foreground)",
+                      display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap",
+                    }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                    {focusMode ? "Exit Focus" : "Focus Mode"}
+                  </button>
+                  {/* Edit / Preview toggle */}
+                  <button
+                    onClick={() => setEditMode((m) => !m)}
+                    style={{
+                      padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                      background: editMode ? "var(--accent)" : "var(--card)",
+                      border: "1px solid var(--card-border)", cursor: "pointer",
+                      color: editMode ? "#fff" : "var(--foreground)", whiteSpace: "nowrap",
+                    }}>
+                    {editMode ? "Preview" : "Edit"}
+                  </button>
+                  <button onClick={handleExportMarkdown}
+                    style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--card)", border: "1px solid var(--card-border)", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
+                    ⬇ Export
+                  </button>
+                </div>
               </div>
-              <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
-                Slug: /{article.slug} &middot; {article.article_markdown?.split(/\s+/).length || 0} words
-              </p>
-              <div className="article-preview"
-                style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: "24px 28px", maxHeight: "70vh", overflow: "auto", fontSize: 14, lineHeight: 1.7 }}
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
-              />
+
+              {/* Slug + live word count / reading time */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 6 }}>
+                <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+                  Slug: /{article.slug}
+                </p>
+                <span style={{ fontSize: 13, fontWeight: 600, color: wordCountColor, transition: "color 0.3s" }}>
+                  {wordCount.toLocaleString()} word{wordCount !== 1 ? "s" : ""} &middot; {readingTime} min read
+                </span>
+              </div>
+
+              {/* Editor or Preview */}
+              {editMode ? (
+                <div style={{ border: "1px solid var(--card-border)", borderRadius: 12, overflow: "hidden" }}>
+                  {/* Inline formatting toolbar */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 10px", background: "var(--background)", borderBottom: "1px solid var(--card-border)", flexWrap: "wrap" }}>
+                    {(["bold","italic","h2","h3","bullet"] as const).map((fmt) => {
+                      const labels: Record<string, string> = { bold: "B", italic: "I", h2: "H2", h3: "H3", bullet: "• List" };
+                      const tips: Record<string, string> = { bold: "Bold (Ctrl+B)", italic: "Italic (Ctrl+I)", h2: "Heading 2", h3: "Heading 3", bullet: "Bullet list" };
+                      return (
+                        <button
+                          key={fmt}
+                          title={tips[fmt]}
+                          onMouseDown={(e) => { e.preventDefault(); applyFormat(fmt); }}
+                          style={{
+                            padding: "4px 10px", borderRadius: 6, fontSize: 12,
+                            fontWeight: fmt === "bold" ? 800 : 600,
+                            fontStyle: fmt === "italic" ? "italic" : "normal",
+                            border: "1px solid var(--card-border)", background: "var(--card)",
+                            cursor: "pointer", color: "var(--foreground)",
+                          }}>
+                          {labels[fmt]}
+                        </button>
+                      );
+                    })}
+                    <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--muted)", paddingRight: 4 }}>
+                      Ctrl+B / Ctrl+I / Ctrl+S
+                    </span>
+                    <button
+                      onClick={handleSave}
+                      style={{ padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer" }}>
+                      Save
+                    </button>
+                  </div>
+                  <textarea
+                    ref={editorRef}
+                    value={article.article_markdown || ""}
+                    onChange={(e) => setArticle((prev) => prev ? { ...prev, article_markdown: e.target.value } : prev)}
+                    onKeyDown={handleEditorKeyDown}
+                    onSelect={handleEditorSelect}
+                    onBlur={handleEditorBlur}
+                    style={{
+                      width: "100%", minHeight: 520, padding: "20px 24px",
+                      fontSize: 14, lineHeight: 1.8,
+                      fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                      background: "var(--background)", color: "var(--foreground)",
+                      border: "none", outline: "none", resize: "vertical", boxSizing: "border-box",
+                    }}
+                    spellCheck
+                  />
+                </div>
+              ) : (
+                <div className="article-preview"
+                  style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: "24px 28px", maxHeight: "70vh", overflow: "auto", fontSize: 14, lineHeight: 1.7 }}
+                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                />
+              )}
 
               {/* AI Refresh */}
               <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -806,8 +937,8 @@ export default function PublishPage() {
               </div>
             </div>
 
-            {/* Publish Panel */}
-            <div style={{ position: "sticky", top: 80 }}>
+            {/* Publish Panel — hidden in focus mode */}
+            {!focusMode && <div style={{ position: "sticky", top: 80 }}>
               {!hasAnyPlatform ? (
                 <div style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: 24 }}>
                   <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No Platform Connected</h3>
@@ -1260,8 +1391,9 @@ export default function PublishPage() {
                 focusKeyword={article.topic || undefined}
                 publishedUrl={publishLogs[0]?.post_url ?? undefined}
               />
-            </div>
+            </div>}
           </div>
+          </>
         )}
       </main>
     </div>
