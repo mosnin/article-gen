@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
@@ -532,6 +532,96 @@ export default function PublishPage() {
 
     setAiRefreshing(false);
   };
+
+  // ── Word count / reading time ────────────────────────────────────────────
+  const wordCount = useMemo(() => {
+    const text = article?.article_markdown ?? "";
+    return text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+  }, [article?.article_markdown]);
+
+  const readingTime = useMemo(() => Math.max(1, Math.round(wordCount / 238)), [wordCount]);
+
+  const wordCountColor = wordCount >= 1000 ? "var(--success, #22c55e)" : wordCount >= 500 ? "#eab308" : "var(--error, #ef4444)";
+
+  // ── Save / update article markdown ──────────────────────────────────────
+  const handleSave = useCallback(async () => {
+    if (!article) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error: updateError } = await supabase
+        .from("articles")
+        .update({ article_markdown: article.article_markdown })
+        .eq("id", article.id)
+        .eq("user_id", user.id);
+      if (updateError) {
+        toast.error("Failed to save article");
+      } else {
+        toast.success("Article saved");
+        const html = DOMPurify.sanitize(await marked(article.article_markdown || ""));
+        setPreviewHtml(html);
+      }
+    } catch {
+      toast.error("Failed to save article");
+    }
+  }, [article, supabase]);
+
+  // ── Formatting helpers ───────────────────────────────────────────────────
+  const applyFormat = useCallback((format: "bold" | "italic" | "h2" | "h3" | "bullet") => {
+    const ta = editorRef.current;
+    if (!ta || !article) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = article.article_markdown.slice(start, end);
+    let prefix = "";
+    let suffix = "";
+    let placeholder = "";
+
+    if (format === "bold")   { prefix = "**"; suffix = "**"; placeholder = "bold text"; }
+    if (format === "italic") { prefix = "*";  suffix = "*";  placeholder = "italic text"; }
+    if (format === "h2")     { prefix = "## "; suffix = ""; placeholder = "Heading"; }
+    if (format === "h3")     { prefix = "### "; suffix = ""; placeholder = "Heading"; }
+    if (format === "bullet") { prefix = "- "; suffix = ""; placeholder = "List item"; }
+
+    const insertion = prefix + (selected || placeholder) + suffix;
+    const newMarkdown =
+      article.article_markdown.slice(0, start) +
+      insertion +
+      article.article_markdown.slice(end);
+
+    setArticle((prev) => prev ? { ...prev, article_markdown: newMarkdown } : prev);
+    setTimeout(() => {
+      if (!ta) return;
+      const selStart = start + prefix.length;
+      const selEnd = selStart + (selected || placeholder).length;
+      ta.focus();
+      ta.setSelectionRange(selStart, selEnd);
+    }, 0);
+  }, [article]);
+
+  // ── Keyboard shortcuts ───────────────────────────────────────────────────
+  const handleEditorKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const mod = e.ctrlKey || e.metaKey;
+    if (!mod) return;
+    if (e.key === "b") { e.preventDefault(); applyFormat("bold"); }
+    if (e.key === "i") { e.preventDefault(); applyFormat("italic"); }
+    if (e.key === "s") { e.preventDefault(); handleSave(); }
+  }, [applyFormat, handleSave]);
+
+  // ── Floating toolbar: show when text is selected ─────────────────────────
+  const handleEditorSelect = useCallback(() => {
+    const ta = editorRef.current;
+    if (!ta) return;
+    const hasSelection = ta.selectionStart !== ta.selectionEnd;
+    if (!hasSelection) { setToolbarVisible(false); return; }
+    const rect = ta.getBoundingClientRect();
+    setToolbarPos({ top: rect.top + window.scrollY - 48, left: rect.left + window.scrollX });
+    setToolbarVisible(true);
+  }, []);
+
+  const handleEditorBlur = useCallback(() => {
+    setTimeout(() => setToolbarVisible(false), 150);
+  }, []);
 
   const platformLabel: Record<Platform, string> = {
     wordpress: "WordPress",
@@ -1069,6 +1159,106 @@ export default function PublishPage() {
                 focusKeyword={article.topic || article.title || ""}
                 articleContent={article.article_markdown || ""}
                 onApplySection={handleApplySnippetSection}
+              />
+
+              {/* SEO Score Panel */}
+              <div style={{ marginTop: 16, background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, overflow: "hidden" }}>
+                <div
+                  style={{ padding: "12px 16px", borderBottom: nlpScoreOpen ? "1px solid var(--card-border)" : "none", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}
+                  onClick={() => setNlpScoreOpen((v) => !v)}
+                >
+                  <h3 style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>SEO Score</h3>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: nlpScoreOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}><polyline points="6 9 12 15 18 9" /></svg>
+                </div>
+                {nlpScoreOpen && (
+                  <div style={{ padding: "16px" }}>
+                    <button
+                      onClick={handleCheckSeoScore}
+                      disabled={nlpScoring}
+                      style={{ width: "100%", padding: "9px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--accent)", color: "#fff", border: "none", cursor: nlpScoring ? "not-allowed" : "pointer", opacity: nlpScoring ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                    >
+                      {nlpScoring ? (
+                        <>
+                          <svg className="progress-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                          Analyzing...
+                        </>
+                      ) : "Check SEO Score"}
+                    </button>
+
+                    {nlpScore && (
+                      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                          <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
+                            <svg width="64" height="64" viewBox="0 0 64 64">
+                              <circle cx="32" cy="32" r="26" fill="none" stroke="var(--card-border)" strokeWidth="7" />
+                              <circle
+                                cx="32" cy="32" r="26"
+                                fill="none"
+                                stroke={nlpScore.overallScore >= 70 ? "var(--success)" : nlpScore.overallScore >= 45 ? "#f59e0b" : "var(--error)"}
+                                strokeWidth="7"
+                                strokeLinecap="round"
+                                strokeDasharray={`${(nlpScore.overallScore / 100) * 163.4} 163.4`}
+                                strokeDashoffset="0"
+                                transform="rotate(-90 32 32)"
+                              />
+                            </svg>
+                            <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700 }}>{nlpScore.overallScore}</span>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 700 }}>Overall SEO Score</div>
+                            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+                              {nlpScore.wordCount} words &middot; {nlpScore.sentenceCount} sentences
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {([ ["Word Count", nlpScore.wordCountScore], ["Term Coverage", nlpScore.nlpTermsCoverage], ["Readability", nlpScore.readabilityScore], ["Questions", nlpScore.questionsCoverage] ] as [string, number][]).map(([label, val]) => (
+                            <div key={label}>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 600, marginBottom: 3 }}>
+                                <span>{label}</span>
+                                <span style={{ color: val >= 70 ? "var(--success)" : val >= 45 ? "#f59e0b" : "var(--error)" }}>{val}</span>
+                              </div>
+                              <div style={{ height: 5, borderRadius: 4, background: "var(--card-border)" }}>
+                                <div style={{ height: "100%", borderRadius: 4, width: `${val}%`, background: val >= 70 ? "var(--success)" : val >= 45 ? "#f59e0b" : "var(--error)", transition: "width 0.4s" }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {nlpScore.missingNlpTerms.length > 0 && (
+                          <div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Missing Terms</div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                              {nlpScore.missingNlpTerms.map((term) => (
+                                <span key={term} style={{ padding: "2px 8px", borderRadius: 20, background: "rgba(239,68,68,0.08)", color: "var(--error)", fontSize: 11, fontWeight: 500, border: "1px solid rgba(239,68,68,0.2)" }}>{term}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {nlpScore.recommendations.length > 0 && (
+                          <div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Recommendations</div>
+                            <ul style={{ margin: 0, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 4 }}>
+                              {nlpScore.recommendations.map((rec, i) => (
+                                <li key={i} style={{ fontSize: 12, color: "var(--foreground)", lineHeight: 1.5 }}>{rec}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Newsletter Export */}
+              <NewsletterExportPanel
+                articleContent={article.article_markdown || ""}
+                articleTitle={article.title || article.topic || ""}
+                focusKeyword={article.topic || undefined}
+                publishedUrl={publishLogs[0]?.post_url ?? undefined}
               />
             </div>
           </div>
