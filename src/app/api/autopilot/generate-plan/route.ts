@@ -111,7 +111,7 @@ Respond ONLY with a valid JSON object with key "articles" containing an array of
 }`;
 
   const completion = await getOpenAI().chat.completions.create({
-    model: "gpt-4.1-mini",
+    model: "gpt-5",
     messages: [{ role: "user", content: prompt }],
     temperature: 0.7,
     response_format: { type: "json_object" },
