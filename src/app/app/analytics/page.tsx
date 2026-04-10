@@ -242,45 +242,45 @@ export default function AnalyticsPage() {
                   </th>
                 </tr>
               </thead>
-                <tbody className="divide-y divide-[var(--border-default)]">
-                  {sorted.map((article) => (
-                    <tr
-                      key={`${article.articleId}-${article.url}`}
-                      className="hover:bg-[var(--surface-sunken)] transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <span className="font-medium text-[var(--text-primary)] line-clamp-1">{article.title}</span>
-                      </td>
-                      <td className="px-4 py-3 hidden sm:table-cell">
-                        <span className="inline-flex items-center rounded-full bg-[var(--surface-sunken)] px-2 py-0.5 text-xs font-medium text-[var(--text-secondary)] capitalize">
-                          {article.platform}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell max-w-[200px]">
-                        <a
-                          href={article.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-[var(--accent)] hover:underline truncate block"
-                        >
-                          {article.url.replace(/^https?:\/\//, "")}
-                        </a>
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-[var(--text-primary)]">
-                        {article.clicks.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-[var(--text-primary)]">
-                        {article.impressions.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-[var(--text-secondary)] hidden sm:table-cell">
-                        {article.ctr}%
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-[var(--text-secondary)] hidden sm:table-cell">
-                        {article.position}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+              <tbody className="divide-y divide-[var(--border-default)]">
+                {sorted.map((article) => (
+                  <tr
+                    key={`${article.articleId}-${article.url}`}
+                    className="hover:bg-[var(--surface-sunken)] transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-[var(--text-primary)] line-clamp-1">{article.title}</span>
+                    </td>
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <span className="inline-flex items-center rounded-full bg-[var(--surface-sunken)] px-2 py-0.5 text-xs font-medium text-[var(--text-secondary)] capitalize">
+                        {article.platform}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell max-w-[200px]">
+                      <a
+                        href={article.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-[var(--accent)] hover:underline truncate block"
+                      >
+                        {article.url.replace(/^https?:\/\//, "")}
+                      </a>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-[var(--text-primary)]">
+                      {article.clicks.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-[var(--text-primary)]">
+                      {article.impressions.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-[var(--text-secondary)] hidden sm:table-cell">
+                      {article.ctr}%
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-[var(--text-secondary)] hidden sm:table-cell">
+                      {article.position}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         </div>
