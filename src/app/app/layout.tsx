@@ -160,7 +160,7 @@ function CmdKHint() {
         );
       }}
       aria-label="Open command palette (Cmd+K)"
-      className="hidden sm:flex items-center gap-1.5 rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-2.5 py-1 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:border-[var(--border-strong,#cbd5e1)] transition-colors"
+      className="hidden sm:flex items-center gap-1.5 rounded-md border border-[var(--border-default)] px-2.5 py-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors bg-transparent"
     >
       <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3" aria-hidden="true">
         <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
