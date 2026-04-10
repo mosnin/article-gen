@@ -132,7 +132,7 @@ export default function ArticlesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">
+          <h1 className="text-xl font-semibold text-[var(--text-primary)]">
             Content History
           </h1>
           <p className="text-sm text-[var(--text-secondary)] mt-0.5">
@@ -243,16 +243,16 @@ export default function ArticlesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--border-default)] bg-[var(--surface-sunken)]">
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
                   Title
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)] hidden sm:table-cell">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)] hidden sm:table-cell">
                   Status
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)] hidden md:table-cell">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)] hidden md:table-cell">
                   Platform
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)] hidden lg:table-cell">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)] hidden lg:table-cell">
                   Created
                 </th>
                 <th className="px-4 py-3" />
@@ -304,11 +304,11 @@ export default function ArticlesPage() {
                       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
                         article.posted
                           ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                          : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                          : "bg-[var(--surface-sunken)] text-[var(--text-secondary)] border border-[var(--border-default)]"
                       }`}
                     >
                       <span
-                        className={`h-1.5 w-1.5 rounded-full ${article.posted ? "bg-green-500" : "bg-gray-400"}`}
+                        className={`h-1.5 w-1.5 rounded-full ${article.posted ? "bg-green-500" : "bg-[var(--text-tertiary)]"}`}
                       />
                       {article.posted ? "Published" : "Draft"}
                     </span>
