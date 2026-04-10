@@ -27,6 +27,34 @@ interface SidebarProps {
   onMobileClose?: () => void;
 }
 
+function SectionHeader({ label, children, defaultOpen = true }: { label: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const sectionId = `nav-section-${label.toLowerCase().replace(/\s+/g, "-")}`;
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls={sectionId}
+        className="flex w-full items-center justify-between rounded px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
+      >
+        {label}
+        <svg
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden="true"
+          className={cn("h-3 w-3 transition-transform", open ? "rotate-180" : "")}
+        >
+          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+        </svg>
+      </button>
+      <div id={sectionId} className={cn("space-y-0.5", !open && "hidden")}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function NavLink({ item, collapsed, indent = false }: { item: NavItem; collapsed: boolean; indent?: boolean }) {
   const pathname = usePathname();
   const isActive = item.exact
@@ -340,44 +368,46 @@ export function Sidebar({
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
-        {/* Group 1: Dashboard, Generate */}
+        {/* Top: Dashboard, Generate — always visible */}
         {topNav.map((item) => (
           <NavLink key={item.href} item={item} collapsed={false} />
         ))}
 
-        <hr className="border-[var(--border-default)] my-1.5 mx-2" />
+        <div className="pt-1" />
 
-        {/* Group 2: Content Planner, Content History, Scheduled */}
-        {articlesNav.map((item) => (
-          <NavLink key={item.href} item={item} collapsed={false} />
-        ))}
+        {/* Articles section (collapsible) */}
+        <SectionHeader label="Articles">
+          {articlesNav.map((item) => (
+            <NavLink key={item.href} item={item} collapsed={false} />
+          ))}
+          {configNav.map((item) => (
+            <NavLink key={item.href} item={item} collapsed={false} />
+          ))}
+        </SectionHeader>
 
-        <hr className="border-[var(--border-default)] my-1.5 mx-2" />
+        <div className="pt-1" />
 
-        {/* Group 3: Tools with Research sub-items inline */}
-        {toolsNav.map((item) => (
-          <div key={item.href}>
-            <NavLink item={item} collapsed={false} />
-            {item.href === "/app/research" &&
-              researchSubNav.map((sub) => (
-                <NavLink key={sub.href} item={sub} collapsed={false} indent />
-              ))}
-          </div>
-        ))}
+        {/* Tools section (collapsible) */}
+        <SectionHeader label="Tools">
+          {toolsNav.map((item) => (
+            <div key={item.href}>
+              <NavLink item={item} collapsed={false} />
+              {item.href === "/app/research" &&
+                researchSubNav.map((sub) => (
+                  <NavLink key={sub.href} item={sub} collapsed={false} indent />
+                ))}
+            </div>
+          ))}
+        </SectionHeader>
 
-        <hr className="border-[var(--border-default)] my-1.5 mx-2" />
+        <div className="pt-1" />
 
-        {/* Group 4: Backlink Exchange, Linking Config, Integrations, Articles Settings */}
-        {configNav.map((item) => (
-          <NavLink key={item.href} item={item} collapsed={false} />
-        ))}
-
-        <hr className="border-[var(--border-default)] my-1.5 mx-2" />
-
-        {/* Group 5: Settings, Billing, Team, Admin (if isAdmin) */}
-        {accountNav.map((item) => (
-          <NavLink key={item.href} item={item} collapsed={false} />
-        ))}
+        {/* Account section (collapsible, closed by default) */}
+        <SectionHeader label="Account" defaultOpen={false}>
+          {accountNav.map((item) => (
+            <NavLink key={item.href} item={item} collapsed={false} />
+          ))}
+        </SectionHeader>
       </nav>
 
       {/* Bottom widget */}
