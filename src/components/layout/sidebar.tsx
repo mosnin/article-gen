@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getTheme, setTheme } from "@/lib/theme";
+import { BlogSelector } from "./blog-selector";
 
 interface NavItem {
   label: string;
@@ -66,34 +67,6 @@ function NavLink({ item, collapsed, indent = false }: { item: NavItem; collapsed
         </span>
       )}
     </Link>
-  );
-}
-
-function SectionHeader({ label, children, defaultOpen = true }: { label: string; children: React.ReactNode; defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen);
-  const sectionId = `nav-section-${label.toLowerCase().replace(/\s+/g, "-")}`;
-  return (
-    <div>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-controls={sectionId}
-        className="flex w-full items-center justify-between rounded px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
-      >
-        {label}
-        <svg
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden="true"
-          className={cn("h-3 w-3 transition-transform", open ? "rotate-180" : "")}
-        >
-          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
-      </button>
-      <div id={sectionId} className={cn("space-y-0.5", !open && "hidden")}>
-        {children}
-      </div>
-    </div>
   );
 }
 
@@ -166,42 +139,6 @@ export function Sidebar({
       icon: (
         <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
           <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-        </svg>
-      ),
-    },
-    {
-      label: "Articles Settings",
-      href: "/app/articles-settings",
-      icon: (
-        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-          <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-        </svg>
-      ),
-    },
-    {
-      label: "Integrations",
-      href: "/app/integrations",
-      icon: (
-        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-          <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.298.057-.591.114-.88a7 7 0 10-4.228 0c.057.289.099.582.114.88h4z" />
-        </svg>
-      ),
-    },
-    {
-      label: "Linking Config",
-      href: "/app/linking",
-      icon: (
-        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-          <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
-        </svg>
-      ),
-    },
-    {
-      label: "Backlink Exchange",
-      href: "/app/backlinks",
-      icon: (
-        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-          <path d="M8 5a1 1 0 100 2h5.586l-1.293 1.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L13.586 5H8zM12 15a1 1 0 100-2H6.414l1.293-1.293a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L6.414 15H12z" />
         </svg>
       ),
     },
@@ -313,7 +250,46 @@ export function Sidebar({
     },
   ];
 
-  const secondaryNav: NavItem[] = [
+  const configNav: NavItem[] = [
+    {
+      label: "Backlink Exchange",
+      href: "/app/backlinks",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path d="M8 5a1 1 0 100 2h5.586l-1.293 1.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L13.586 5H8zM12 15a1 1 0 100-2H6.414l1.293-1.293a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L6.414 15H12z" />
+        </svg>
+      ),
+    },
+    {
+      label: "Linking Config",
+      href: "/app/linking",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+    {
+      label: "Integrations",
+      href: "/app/integrations",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.298.057-.591.114-.88a7 7 0 10-4.228 0c.057.289.099.582.114.88h4z" />
+        </svg>
+      ),
+    },
+    {
+      label: "Articles Settings",
+      href: "/app/articles-settings",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+  ];
+
+  const accountNav: NavItem[] = [
     {
       label: "Settings",
       href: "/app/settings",
@@ -333,10 +309,19 @@ export function Sidebar({
         </svg>
       ),
     },
+    {
+      label: "Team",
+      href: "/app/team",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+        </svg>
+      ),
+    },
   ];
 
   if (isAdmin) {
-    secondaryNav.push({
+    accountNav.push({
       label: "Admin",
       href: "/app/admin",
       icon: (
@@ -347,81 +332,52 @@ export function Sidebar({
     });
   }
 
-  const creditPercent = Math.min(100, (credits / getPlanMax(plan)) * 100);
-
   const sidebarContent = (
     <div className="flex h-full flex-col">
-      {/* Logo */}
-      <div className="flex h-[var(--topbar-height)] shrink-0 items-center px-4 border-b border-[var(--border-default)]">
-        <Link href="/app" className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--accent)]">
-            <svg viewBox="0 0 20 20" fill="white" className="h-4 w-4">
-              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <span className="text-sm font-semibold text-[var(--text-primary)]">ArticleGen</span>
-        </Link>
-      </div>
+      {/* Blog Selector */}
+      <BlogSelector />
+      <hr className="border-[var(--border-default)] my-1" />
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
-        {/* Top nav */}
-        <div className="space-y-0.5">
-          {topNav.map((item) => (
-            <NavLink key={item.href} item={item} collapsed={false} />
-          ))}
-          <NavLink
-            item={{
-              label: "General Settings",
-              href: "/app/general-settings",
-              icon: (
-                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                  <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                </svg>
-              ),
-            }}
-            collapsed={false}
-          />
-        </div>
+      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
+        {/* Group 1: Dashboard, Generate */}
+        {topNav.map((item) => (
+          <NavLink key={item.href} item={item} collapsed={false} />
+        ))}
 
-        {/* Articles section */}
-        <SectionHeader label="Articles">
-          {articlesNav.map((item) => (
-            <NavLink key={item.href} item={item} collapsed={false} />
-          ))}
-        </SectionHeader>
+        <hr className="border-[var(--border-default)] my-1.5 mx-2" />
 
-        {/* Tools section */}
-        <SectionHeader label="Tools">
-          {toolsNav.map((item) => (
-            <div key={item.href}>
-              <NavLink item={item} collapsed={false} />
-              {item.href === "/app/research" &&
-                researchSubNav.map((sub) => (
-                  <NavLink key={sub.href} item={sub} collapsed={false} indent />
-                ))}
-            </div>
-          ))}
-        </SectionHeader>
+        {/* Group 2: Content Planner, Content History, Scheduled */}
+        {articlesNav.map((item) => (
+          <NavLink key={item.href} item={item} collapsed={false} />
+        ))}
 
-        {/* Account section */}
-        <SectionHeader label="Account" defaultOpen={false}>
-          <NavLink
-            item={{
-              label: "Team",
-              href: "/app/team",
-              icon: (
-                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                </svg>
-              ),
-            }}
-            collapsed={false}
-          />
-          {secondaryNav.map((item) => (
-            <NavLink key={item.href} item={item} collapsed={false} />
-          ))}
-        </SectionHeader>
+        <hr className="border-[var(--border-default)] my-1.5 mx-2" />
+
+        {/* Group 3: Tools with Research sub-items inline */}
+        {toolsNav.map((item) => (
+          <div key={item.href}>
+            <NavLink item={item} collapsed={false} />
+            {item.href === "/app/research" &&
+              researchSubNav.map((sub) => (
+                <NavLink key={sub.href} item={sub} collapsed={false} indent />
+              ))}
+          </div>
+        ))}
+
+        <hr className="border-[var(--border-default)] my-1.5 mx-2" />
+
+        {/* Group 4: Backlink Exchange, Linking Config, Integrations, Articles Settings */}
+        {configNav.map((item) => (
+          <NavLink key={item.href} item={item} collapsed={false} />
+        ))}
+
+        <hr className="border-[var(--border-default)] my-1.5 mx-2" />
+
+        {/* Group 5: Settings, Billing, Team, Admin (if isAdmin) */}
+        {accountNav.map((item) => (
+          <NavLink key={item.href} item={item} collapsed={false} />
+        ))}
       </nav>
 
       {/* Bottom widget */}
