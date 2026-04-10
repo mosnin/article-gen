@@ -2315,10 +2315,7 @@ export default function Home() {
                     {/* Article list */}
                     <div>
                       <div className="mb-2 flex items-center justify-between">
-                        <label
-                          className="text-sm font-medium"
-                          style={{ color: "var(--muted)" }}
-                        >
+                        <label className="text-sm font-medium text-[var(--text-secondary)]">
                           Articles ({batchItems.length}/25)
                         </label>
                         <div className="flex items-center gap-1">
@@ -2333,127 +2330,35 @@ export default function Home() {
                             onClick={() =>
                               document.getElementById("json-import")?.click()
                             }
-                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
-                            style={{
-                              color: "var(--accent)",
-                              background: "transparent",
-                            }}
-                            onMouseEnter={(e) => {
-                              (
-                                e.currentTarget as HTMLButtonElement
-                              ).style.background = "var(--card)";
-                            }}
-                            onMouseLeave={(e) => {
-                              (
-                                e.currentTarget as HTMLButtonElement
-                              ).style.background = "transparent";
-                            }}
+                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-[var(--accent)] hover:bg-[var(--surface-sunken)] transition-colors"
                           >
-                            <svg
-                              width="12"
-                              height="12"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                               <polyline points="17 8 12 3 7 8" />
                               <line x1="12" y1="3" x2="12" y2="15" />
                             </svg>
                             Upload
                           </button>
-                          <span
-                            className="text-xs"
-                            style={{ color: "var(--card-border)" }}
-                          >
-                            |
-                          </span>
+                          <span className="text-xs text-[var(--border-default)]">|</span>
                           <button
                             onClick={() => {
                               setShowJsonPaste(!showJsonPaste);
                               setFormError("");
                             }}
-                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
-                            style={{
-                              color: showJsonPaste
-                                ? "var(--foreground)"
-                                : "var(--accent)",
-                              background: showJsonPaste
-                                ? "var(--card)"
-                                : "transparent",
-                            }}
-                            onMouseEnter={(e) => {
-                              (
-                                e.currentTarget as HTMLButtonElement
-                              ).style.background = "var(--card)";
-                            }}
-                            onMouseLeave={(e) => {
-                              (
-                                e.currentTarget as HTMLButtonElement
-                              ).style.background = showJsonPaste
-                                ? "var(--card)"
-                                : "transparent";
-                            }}
+                            className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors hover:bg-[var(--surface-sunken)] ${showJsonPaste ? "text-[var(--text-primary)] bg-[var(--surface-sunken)]" : "text-[var(--accent)]"}`}
                           >
-                            <svg
-                              width="12"
-                              height="12"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <rect
-                                x="9"
-                                y="9"
-                                width="13"
-                                height="13"
-                                rx="2"
-                                ry="2"
-                              />
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                             </svg>
                             Paste
                           </button>
-                          <span
-                            className="text-xs"
-                            style={{ color: "var(--card-border)" }}
-                          >
-                            |
-                          </span>
+                          <span className="text-xs text-[var(--border-default)]">|</span>
                           <button
                             onClick={() => setShowIdeas(true)}
-                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
-                            style={{
-                              color: "var(--accent)",
-                              background: "transparent",
-                            }}
-                            onMouseEnter={(e) => {
-                              (
-                                e.currentTarget as HTMLButtonElement
-                              ).style.background = "var(--card)";
-                            }}
-                            onMouseLeave={(e) => {
-                              (
-                                e.currentTarget as HTMLButtonElement
-                              ).style.background = "transparent";
-                            }}
+                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-[var(--accent)] hover:bg-[var(--surface-sunken)] transition-colors"
                           >
-                            <svg
-                              width="12"
-                              height="12"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M9 18h6" />
                               <path d="M10 22h4" />
                               <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
@@ -2463,13 +2368,7 @@ export default function Home() {
                         </div>
                       </div>
                       {showJsonPaste && (
-                        <div
-                          className="mb-3 rounded-xl border p-3"
-                          style={{
-                            borderColor: "var(--card-border)",
-                            background: "var(--card)",
-                          }}
-                        >
+                        <div className="mb-3 bg-[var(--surface-base)] border border-[var(--border-default)] rounded-lg p-3">
                           <textarea
                             value={jsonPasteValue}
                             onChange={(e) => setJsonPasteValue(e.target.value)}
@@ -2478,35 +2377,16 @@ export default function Home() {
   { "concept": "Another article topic", "keyword": "another keyword" }
 ]`}
                             rows={6}
-                            className="mb-2 w-full resize-none rounded-lg border px-3 py-2 font-mono text-xs transition-colors focus:outline-none"
-                            style={{
-                              background: "var(--background)",
-                              borderColor: "var(--card-border)",
-                              color: "var(--foreground)",
-                            }}
-                            onFocus={(e) => {
-                              (
-                                e.target as HTMLTextAreaElement
-                              ).style.borderColor = "var(--accent)";
-                            }}
-                            onBlur={(e) => {
-                              (
-                                e.target as HTMLTextAreaElement
-                              ).style.borderColor = "var(--card-border)";
-                            }}
+                            className="mb-2 border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-sunken)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent resize-none font-mono text-xs"
                           />
                           <div className="flex items-center justify-between">
-                            <span
-                              className="text-xs"
-                              style={{ color: "var(--muted)" }}
-                            >
+                            <span className="text-xs text-[var(--text-secondary)]">
                               Paste a JSON array of articles
                             </span>
                             <button
                               onClick={handlePasteJsonSubmit}
                               disabled={!jsonPasteValue.trim()}
-                              className="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-40"
-                              style={{ background: "var(--accent)" }}
+                              className="bg-[var(--accent)] text-white rounded-lg px-3 py-1.5 text-xs font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-40"
                             >
                               Load Articles
                             </button>
@@ -2515,98 +2395,34 @@ export default function Home() {
                       )}
                       <div className="space-y-2">
                         {batchItems.map((item, index) => (
-                          <div
-                            key={item.id}
-                            className="flex items-center gap-2"
-                          >
-                            <span
-                              className="w-6 text-right text-xs tabular-nums"
-                              style={{ color: "var(--muted)" }}
-                            >
+                          <div key={item.id} className="flex items-center gap-2">
+                            <span className="w-6 text-right text-xs tabular-nums text-[var(--text-tertiary)]">
                               {index + 1}
                             </span>
                             <input
                               type="text"
                               value={item.topic}
                               onChange={(e) =>
-                                updateBatchItem(
-                                  item.id,
-                                  "topic",
-                                  e.target.value
-                                )
+                                updateBatchItem(item.id, "topic", e.target.value)
                               }
                               placeholder="Article topic"
-                              className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
-                              style={{
-                                background: "var(--card)",
-                                borderColor: "var(--card-border)",
-                                color: "var(--foreground)",
-                              }}
-                              onFocus={(e) => {
-                                (
-                                  e.target as HTMLInputElement
-                                ).style.borderColor = "var(--accent)";
-                              }}
-                              onBlur={(e) => {
-                                (
-                                  e.target as HTMLInputElement
-                                ).style.borderColor = "var(--card-border)";
-                              }}
+                              className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] min-w-0 flex-1 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                             />
                             <input
                               type="text"
                               value={item.keyword}
                               onChange={(e) =>
-                                updateBatchItem(
-                                  item.id,
-                                  "keyword",
-                                  e.target.value
-                                )
+                                updateBatchItem(item.id, "keyword", e.target.value)
                               }
                               placeholder="Keyword"
-                              className="w-36 rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
-                              style={{
-                                background: "var(--card)",
-                                borderColor: "var(--card-border)",
-                                color: "var(--foreground)",
-                              }}
-                              onFocus={(e) => {
-                                (
-                                  e.target as HTMLInputElement
-                                ).style.borderColor = "var(--accent)";
-                              }}
-                              onBlur={(e) => {
-                                (
-                                  e.target as HTMLInputElement
-                                ).style.borderColor = "var(--card-border)";
-                              }}
+                              className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-36 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                             />
                             {batchItems.length > 1 && (
                               <button
                                 onClick={() => removeBatchItem(item.id)}
-                                className="rounded p-1 transition-colors"
-                                style={{ color: "var(--muted)" }}
-                                onMouseEnter={(e) => {
-                                  (
-                                    e.currentTarget as HTMLButtonElement
-                                  ).style.color = "var(--error)";
-                                }}
-                                onMouseLeave={(e) => {
-                                  (
-                                    e.currentTarget as HTMLButtonElement
-                                  ).style.color = "var(--muted)";
-                                }}
+                                className="rounded p-1 text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
                               >
-                                <svg
-                                  width="16"
-                                  height="16"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <line x1="18" y1="6" x2="6" y2="18" />
                                   <line x1="6" y1="6" x2="18" y2="18" />
                                 </svg>
@@ -2621,38 +2437,9 @@ export default function Home() {
                     {batchItems.length < 25 && (
                       <button
                         onClick={addBatchItem}
-                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed px-4 py-2.5 text-sm font-medium transition-colors"
-                        style={{
-                          borderColor: "var(--card-border)",
-                          color: "var(--muted)",
-                        }}
-                        onMouseEnter={(e) => {
-                          (
-                            e.currentTarget as HTMLButtonElement
-                          ).style.borderColor = "var(--accent)";
-                          (
-                            e.currentTarget as HTMLButtonElement
-                          ).style.color = "var(--foreground)";
-                        }}
-                        onMouseLeave={(e) => {
-                          (
-                            e.currentTarget as HTMLButtonElement
-                          ).style.borderColor = "var(--card-border)";
-                          (
-                            e.currentTarget as HTMLButtonElement
-                          ).style.color = "var(--muted)";
-                        }}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-[var(--border-default)] px-4 py-2.5 text-sm font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] transition-colors"
                       >
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="12" y1="5" x2="12" y2="19" />
                           <line x1="5" y1="12" x2="19" y2="12" />
                         </svg>
@@ -2663,18 +2450,15 @@ export default function Home() {
                     {blogSelectorPanel}
 
                     {/* Generate AI Images Toggle */}
-                    <div
-                      className="flex items-center justify-between rounded-xl border p-4"
-                      style={{ borderColor: "var(--card-border)", background: "var(--card)" }}
-                    >
+                    <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 flex items-center justify-between">
                       <div>
-                        <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Generate AI Images</div>
-                        <div className="text-xs" style={{ color: "var(--muted)" }}>+1 credit per article &middot; 4 images each</div>
+                        <div className="text-sm font-medium text-[var(--text-primary)]">Generate AI Images</div>
+                        <div className="text-xs text-[var(--text-secondary)] mt-0.5">+1 credit per article &middot; 4 images each</div>
                       </div>
                       <button
                         onClick={() => setBatchGenerateImages(!batchGenerateImages)}
-                        className="relative h-6 w-11 rounded-full transition-colors duration-200"
-                        style={{ background: batchGenerateImages ? "var(--success)" : "var(--card-border)" }}
+                        className="relative h-6 w-11 rounded-full transition-colors duration-200 flex-shrink-0"
+                        style={{ background: batchGenerateImages ? "var(--accent)" : "var(--border-default)" }}
                       >
                         <span
                           className="absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200"
@@ -2687,12 +2471,8 @@ export default function Home() {
 
                     {formError && (
                       <div
-                        className="rounded-xl border px-4 py-3 text-sm"
-                        style={{
-                          borderColor: "var(--error)",
-                          background: "rgba(239, 68, 68, 0.1)",
-                          color: "var(--error)",
-                        }}
+                        className="rounded-lg border px-4 py-3 text-sm"
+                        style={{ borderColor: "var(--error)", background: "rgba(239, 68, 68, 0.08)", color: "var(--error)" }}
                       >
                         {formError}
                       </div>
@@ -2701,29 +2481,14 @@ export default function Home() {
                     <button
                       onClick={handleBatchGenerate}
                       disabled={validBatchCount === 0}
-                      className="w-full rounded-xl py-3.5 text-base font-semibold text-white transition-all duration-200 disabled:opacity-40"
-                      style={{ background: "var(--accent)" }}
-                      onMouseEnter={(e) => {
-                        if (validBatchCount > 0)
-                          (
-                            e.currentTarget as HTMLButtonElement
-                          ).style.background = "var(--accent-hover)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (
-                          e.currentTarget as HTMLButtonElement
-                        ).style.background = "var(--accent)";
-                      }}
+                      className="bg-[var(--accent)] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors w-full py-3 disabled:opacity-40"
                     >
                       Generate {validBatchCount}{" "}
                       {validBatchCount === 1 ? "Article" : "Articles"}
                       {batchGenerateImages ? ` (${validBatchCount * 2} credits)` : ` (${validBatchCount} credit${validBatchCount === 1 ? "" : "s"})`}
                     </button>
 
-                    <p
-                      className="text-center text-xs"
-                      style={{ color: "var(--muted)" }}
-                    >
+                    <p className="text-center text-xs text-[var(--text-tertiary)]">
                       Articles generate 2 at a time with 60-second intervals
                       between batches to stay within rate limits.
                     </p>
