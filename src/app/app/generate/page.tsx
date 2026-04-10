@@ -2498,23 +2498,17 @@ export default function Home() {
                 {/* Cluster mode form */}
                 {mode === "cluster" && (
                   <div className="space-y-5">
-                    <div
-                      className="rounded-xl border p-4"
-                      style={{
-                        background: "var(--card)",
-                        borderColor: "var(--card-border)",
-                      }}
-                    >
+                    <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5">
                       <div className="mb-3 flex items-center gap-2">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <circle cx="12" cy="12" r="3" />
                           <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                         </svg>
-                        <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                        <span className="text-sm font-semibold text-[var(--text-primary)]">
                           Topic Cluster Generator
                         </span>
                       </div>
-                      <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+                      <p className="text-xs leading-relaxed text-[var(--text-secondary)]">
                         Generate a comprehensive topic cluster: one pillar page plus interlinked cluster articles.
                         All articles will link back to the pillar page and cross-link to each other following SEO best practices.
                         Advanced settings with your domain are required for internal linking.
@@ -2522,39 +2516,29 @@ export default function Home() {
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-medium" style={{ color: "var(--muted)" }}>
+                      <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                         Article Quality
                       </label>
                       <div className="flex gap-3">
                         <button
                           onClick={() => setClusterQuality("standard")}
-                          className="flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-colors"
-                          style={{
-                            background: clusterQuality === "standard" ? "var(--accent)" : "var(--card)",
-                            color: clusterQuality === "standard" ? "#fff" : "var(--foreground)",
-                            borderColor: clusterQuality === "standard" ? "var(--accent)" : "var(--card-border)",
-                          }}
+                          className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${clusterQuality === "standard" ? "bg-[var(--accent)] text-white border-[var(--accent)]" : "bg-[var(--surface-base)] text-[var(--text-primary)] border-[var(--border-default)]"}`}
                         >
                           Standard
-                          <span className="block text-xs font-normal" style={{ opacity: 0.7 }}>~2,000 words</span>
+                          <span className="block text-xs font-normal opacity-70">~2,000 words</span>
                         </button>
                         <button
                           onClick={() => setClusterQuality("premium")}
-                          className="flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-colors"
-                          style={{
-                            background: clusterQuality === "premium" ? "var(--accent)" : "var(--card)",
-                            color: clusterQuality === "premium" ? "#fff" : "var(--foreground)",
-                            borderColor: clusterQuality === "premium" ? "var(--accent)" : "var(--card-border)",
-                          }}
+                          className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${clusterQuality === "premium" ? "bg-[var(--accent)] text-white border-[var(--accent)]" : "bg-[var(--surface-base)] text-[var(--text-primary)] border-[var(--border-default)]"}`}
                         >
                           Premium
-                          <span className="block text-xs font-normal" style={{ opacity: 0.7 }}>~4,000 words</span>
+                          <span className="block text-xs font-normal opacity-70">~4,000 words</span>
                         </button>
                       </div>
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-medium" style={{ color: "var(--muted)" }}>
+                      <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                         Number of Cluster Articles
                       </label>
                       <div className="flex items-center gap-3">
@@ -2573,20 +2557,13 @@ export default function Home() {
                           max={30}
                           value={clusterCount}
                           onChange={(e) => setClusterCount(Math.min(30, Math.max(1, Number(e.target.value))))}
-                          className="w-16 rounded-lg border px-3 py-2 text-center text-sm font-medium focus:outline-none"
-                          style={{
-                            background: "var(--card)",
-                            borderColor: "var(--card-border)",
-                            color: "var(--foreground)",
-                          }}
-                          onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }}
-                          onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }}
+                          className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-16 text-center font-medium focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-medium" style={{ color: "var(--muted)" }}>
+                      <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                         Pillar Page Topic
                       </label>
                       <textarea
@@ -2594,19 +2571,12 @@ export default function Home() {
                         onChange={(e) => setClusterPillarTopic(e.target.value)}
                         placeholder="e.g., The Complete Guide to Indoor Herb Gardening"
                         rows={3}
-                        className="w-full resize-none rounded-xl border px-4 py-3 text-base transition-colors focus:outline-none"
-                        style={{
-                          background: "var(--card)",
-                          borderColor: "var(--card-border)",
-                          color: "var(--foreground)",
-                        }}
-                        onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--accent)"; }}
-                        onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--card-border)"; }}
+                        className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent resize-none"
                       />
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-medium" style={{ color: "var(--muted)" }}>
+                      <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                         Pillar Focus Keyword
                       </label>
                       <input
@@ -2614,38 +2584,27 @@ export default function Home() {
                         value={clusterPillarKeyword}
                         onChange={(e) => setClusterPillarKeyword(e.target.value)}
                         placeholder="e.g., indoor herb gardening"
-                        className="w-full rounded-xl border px-4 py-3 text-base transition-colors focus:outline-none"
-                        style={{
-                          background: "var(--card)",
-                          borderColor: "var(--card-border)",
-                          color: "var(--foreground)",
-                        }}
-                        onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }}
-                        onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }}
+                        className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                       />
                     </div>
 
                     {/* Existing pillar option */}
-                    <div
-                      className="rounded-xl border"
-                      style={{ borderColor: "var(--card-border)", background: "var(--card)" }}
-                    >
+                    <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl">
                       <button
                         onClick={() => setClusterUseExistingPillar(!clusterUseExistingPillar)}
-                        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium"
-                        style={{ color: "var(--foreground)" }}
+                        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-[var(--text-primary)]"
                       >
                         <span className="flex items-center gap-2">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
                             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
                           </svg>
                           Use Existing Pillar Page
-                          <span className="text-xs font-normal" style={{ color: "var(--muted)" }}>(optional)</span>
+                          <span className="text-xs font-normal text-[var(--text-tertiary)]">(optional)</span>
                         </span>
                         <div
-                          className="flex h-5 w-9 items-center rounded-full px-0.5 transition-colors"
-                          style={{ background: clusterUseExistingPillar ? "var(--accent)" : "var(--card-border)" }}
+                          className="flex h-5 w-9 items-center rounded-full px-0.5 transition-colors flex-shrink-0"
+                          style={{ background: clusterUseExistingPillar ? "var(--accent)" : "var(--border-default)" }}
                         >
                           <div
                             className="h-4 w-4 rounded-full bg-white shadow transition-transform"
@@ -2654,12 +2613,12 @@ export default function Home() {
                         </div>
                       </button>
                       {clusterUseExistingPillar && (
-                        <div className="space-y-3 border-t px-4 py-4" style={{ borderColor: "var(--card-border)" }}>
-                          <p className="text-xs" style={{ color: "var(--muted)" }}>
+                        <div className="space-y-3 border-t border-[var(--border-default)] px-4 py-4">
+                          <p className="text-xs text-[var(--text-secondary)]">
                             Already have a pillar page? Provide the URL and a brief summary. Cluster articles will link to this URL instead of generating a new pillar page.
                           </p>
                           <div>
-                            <label className="mb-1 block text-xs font-medium" style={{ color: "var(--muted)" }}>
+                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                               Pillar Page URL
                             </label>
                             <input
@@ -2667,33 +2626,19 @@ export default function Home() {
                               value={clusterExistingPillarUrl}
                               onChange={(e) => setClusterExistingPillarUrl(e.target.value)}
                               placeholder="https://yourblog.com/pillar-article-slug"
-                              className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
-                              style={{
-                                background: "var(--background)",
-                                borderColor: "var(--card-border)",
-                                color: "var(--foreground)",
-                              }}
-                              onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }}
-                              onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }}
+                              className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                             />
                           </div>
                           <div>
-                            <label className="mb-1 block text-xs font-medium" style={{ color: "var(--muted)" }}>
-                              Summary of Pillar Content <span style={{ opacity: 0.6 }}>(optional, helps AI write better cluster articles)</span>
+                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                              Summary of Pillar Content <span className="text-[var(--text-tertiary)] font-normal">(optional, helps AI write better cluster articles)</span>
                             </label>
                             <textarea
                               value={clusterExistingPillarSummary}
                               onChange={(e) => setClusterExistingPillarSummary(e.target.value)}
                               placeholder="Brief description of what your pillar page covers..."
                               rows={3}
-                              className="w-full resize-none rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
-                              style={{
-                                background: "var(--background)",
-                                borderColor: "var(--card-border)",
-                                color: "var(--foreground)",
-                              }}
-                              onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--accent)"; }}
-                              onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--card-border)"; }}
+                              className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent resize-none"
                             />
                           </div>
                         </div>
@@ -2703,18 +2648,15 @@ export default function Home() {
                     {blogSelectorPanel}
 
                     {/* Generate AI Images Toggle */}
-                    <div
-                      className="flex items-center justify-between rounded-xl border p-4"
-                      style={{ borderColor: "var(--card-border)", background: "var(--card)" }}
-                    >
+                    <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 flex items-center justify-between">
                       <div>
-                        <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Generate AI Images</div>
-                        <div className="text-xs" style={{ color: "var(--muted)" }}>+1 credit per article &middot; 4 images each</div>
+                        <div className="text-sm font-medium text-[var(--text-primary)]">Generate AI Images</div>
+                        <div className="text-xs text-[var(--text-secondary)] mt-0.5">+1 credit per article &middot; 4 images each</div>
                       </div>
                       <button
                         onClick={() => setClusterGenerateImages(!clusterGenerateImages)}
-                        className="relative h-6 w-11 rounded-full transition-colors duration-200"
-                        style={{ background: clusterGenerateImages ? "var(--success)" : "var(--card-border)" }}
+                        className="relative h-6 w-11 rounded-full transition-colors duration-200 flex-shrink-0"
+                        style={{ background: clusterGenerateImages ? "var(--accent)" : "var(--border-default)" }}
                       >
                         <span
                           className="absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200"
@@ -2726,26 +2668,15 @@ export default function Home() {
                     {advancedSettingsPanel}
 
                     {!advancedSettings.domain.trim() && (
-                      <div
-                        className="rounded-xl border px-4 py-3 text-sm"
-                        style={{
-                          borderColor: "var(--accent)",
-                          background: "rgba(0, 122, 255, 0.06)",
-                          color: "var(--accent)",
-                        }}
-                      >
+                      <div className="bg-[var(--accent-light)] border border-[var(--accent)] rounded-lg px-4 py-3 text-sm text-[var(--accent)]">
                         Domain is required for topic clusters. Open Advanced Settings above to set your domain.
                       </div>
                     )}
 
                     {formError && (
                       <div
-                        className="rounded-xl border px-4 py-3 text-sm"
-                        style={{
-                          borderColor: "var(--error)",
-                          background: "rgba(239, 68, 68, 0.1)",
-                          color: "var(--error)",
-                        }}
+                        className="rounded-lg border px-4 py-3 text-sm"
+                        style={{ borderColor: "var(--error)", background: "rgba(239, 68, 68, 0.08)", color: "var(--error)" }}
                       >
                         {formError}
                       </div>
@@ -2754,20 +2685,12 @@ export default function Home() {
                     <button
                       onClick={handleStartCluster}
                       disabled={!clusterPillarTopic.trim() || !advancedSettings.domain.trim() || (clusterUseExistingPillar && !clusterExistingPillarUrl.trim())}
-                      className="w-full rounded-xl py-3.5 text-base font-semibold text-white transition-all duration-200 disabled:opacity-40"
-                      style={{ background: "var(--accent)" }}
-                      onMouseEnter={(e) => {
-                        if (clusterPillarTopic.trim() && advancedSettings.domain.trim())
-                          (e.currentTarget as HTMLButtonElement).style.background = "var(--accent-hover)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.background = "var(--accent)";
-                      }}
+                      className="bg-[var(--accent)] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors w-full py-3 disabled:opacity-40"
                     >
                       Generate Topic Cluster ({clusterUseExistingPillar ? clusterCount : clusterCount + 1} Articles{clusterGenerateImages ? `, ${(clusterUseExistingPillar ? clusterCount : clusterCount + 1) * 2} credits` : ""})
                     </button>
 
-                    <p className="text-center text-xs" style={{ color: "var(--muted)" }}>
+                    <p className="text-center text-xs text-[var(--text-tertiary)]">
                       {clusterUseExistingPillar
                         ? `Generates ${clusterCount} cluster articles linked to your existing pillar page.`
                         : `Generates 1 pillar page + ${clusterCount} cluster articles.`
@@ -2818,12 +2741,7 @@ export default function Home() {
           {progressMinimized ? (
             <button
               onClick={() => setProgressMinimized(false)}
-              className="progress-fab fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95"
-              style={{
-                background: "#1d1d1f",
-                boxShadow:
-                  "0 4px 24px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.08)",
-              }}
+              className="progress-fab fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 bg-[var(--surface-raised)] border border-[var(--border-default)]"
               title="Show progress"
             >
               <svg
@@ -2832,29 +2750,20 @@ export default function Home() {
                 height="20"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="white"
+                stroke="var(--accent)"
                 strokeWidth="2.5"
                 strokeLinecap="round"
               >
                 <path d="M12 2a10 10 0 0 1 10 10" />
               </svg>
-              <span
-                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold"
-                style={{ background: "#fff", color: "#1d1d1f" }}
-              >
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold bg-[var(--accent)] text-white">
                 {activeCount}
               </span>
             </button>
           ) : (
             <div
-              className="progress-pill fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full shadow-2xl transition-all duration-300"
-              style={{
-                background: "#1d1d1f",
-                boxShadow:
-                  "0 4px 30px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.06)",
-                minWidth: "320px",
-                maxWidth: "420px",
-              }}
+              className="progress-pill fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full shadow-2xl transition-all duration-300 bg-[var(--surface-raised)] border border-[var(--border-default)]"
+              style={{ minWidth: "320px", maxWidth: "420px" }}
             >
               <div className="flex items-center gap-3 px-5 py-3">
                 {/* Spinner */}
@@ -2864,7 +2773,7 @@ export default function Home() {
                   height="16"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="white"
+                  stroke="var(--accent)"
                   strokeWidth="2.5"
                   strokeLinecap="round"
                 >
@@ -2874,30 +2783,21 @@ export default function Home() {
                 {/* Text */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-sm font-medium text-white">
+                    <span className="truncate text-sm font-medium text-[var(--text-primary)]">
                       {batchCountdown > 0
                         ? `Next batch in ${batchCountdown}s`
                         : `Generating ${loadingCount === 1 ? "article" : "articles"}`}
                     </span>
-                    <span
-                      className="flex-shrink-0 text-xs tabular-nums"
-                      style={{ color: "rgba(255,255,255,0.5)" }}
-                    >
+                    <span className="flex-shrink-0 text-xs tabular-nums text-[var(--text-tertiary)]">
                       {completedInBatch}/{totalInProgress}
                     </span>
                   </div>
 
                   {/* Progress bar */}
-                  <div
-                    className="mt-2 h-1 w-full overflow-hidden rounded-full"
-                    style={{ background: "rgba(255,255,255,0.15)" }}
-                  >
+                  <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[var(--border-default)]">
                     <div
-                      className="h-full rounded-full transition-all duration-700 ease-out"
-                      style={{
-                        width: `${Math.max(progressPercent, activeCount > 0 ? 3 : 0)}%`,
-                        background: "#fff",
-                      }}
+                      className="h-full rounded-full transition-all duration-700 ease-out bg-[var(--accent)]"
+                      style={{ width: `${Math.max(progressPercent, activeCount > 0 ? 3 : 0)}%` }}
                     />
                   </div>
                 </div>
@@ -2905,16 +2805,7 @@ export default function Home() {
                 {/* Minimize button */}
                 <button
                   onClick={() => setProgressMinimized(true)}
-                  className="flex-shrink-0 rounded-full p-1 transition-colors"
-                  style={{ color: "rgba(255,255,255,0.4)" }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.color =
-                      "rgba(255,255,255,0.8)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.color =
-                      "rgba(255,255,255,0.4)";
-                  }}
+                  className="flex-shrink-0 rounded-full p-1 transition-colors text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                   title="Minimize"
                 >
                   <svg
