@@ -923,30 +923,30 @@ export default function SettingsPage() {
           <div style={cardStyle}>
             {mcpApiKey ? (
               <>
-                {/* Personal MCP URL — the only thing they need to copy */}
+                {/* Token — copy to use in Authorization header */}
                 <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--card-border)" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Your personal MCP URL</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Your MCP Token</span>
                     <button
                       type="button"
                       disabled={mcpLoading}
                       onClick={() => { if (window.confirm("This will disconnect any existing Claude Code sessions. Continue?")) generateMcpKey(); }}
                       style={{ fontSize: 11, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                      {mcpLoading ? "Rotating..." : "Rotate URL"}
+                      {mcpLoading ? "Rotating..." : "Rotate Token"}
                     </button>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <code style={{ flex: 1, fontFamily: "monospace", fontSize: 12, padding: "10px 14px", borderRadius: 8, background: "var(--background)", border: "1px solid var(--card-border)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {typeof window !== "undefined" ? `${window.location.origin}/api/mcp/${mcpApiKey}` : `/api/mcp/${mcpApiKey}`}
+                    <code style={{ flex: 1, fontFamily: "monospace", fontSize: 13, padding: "10px 14px", borderRadius: 8, background: "var(--background)", border: "1px solid var(--card-border)", letterSpacing: "0.1em", color: "var(--muted)" }}>
+                      {"•".repeat(36)}
                     </code>
                     <button
                       type="button"
-                      onClick={() => { if (typeof window !== "undefined") navigator.clipboard.writeText(`${window.location.origin}/api/mcp/${mcpApiKey}`); }}
+                      onClick={() => navigator.clipboard.writeText(mcpApiKey)}
                       style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>
-                      Copy URL
+                      Copy Token
                     </button>
                   </div>
-                  <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>This URL is unique to your account. Keep it private.</p>
+                  <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>This token is unique to your account. Never share it or put it in a URL.</p>
                 </div>
 
                 {/* .mcp.json snippet */}
@@ -964,23 +964,27 @@ export default function SettingsPage() {
                   {mcpSetupOpen && (
                     <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
                       <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
-                        Add this to your project&apos;s <code style={{ fontFamily: "monospace", fontSize: 11 }}>.mcp.json</code> — no extra credentials needed:
+                        Add this to your project&apos;s <code style={{ fontFamily: "monospace", fontSize: 11 }}>.mcp.json</code>, replacing <code style={{ fontFamily: "monospace", fontSize: 11 }}>YOUR_TOKEN</code> with the token you copied above:
                       </p>
                       <div style={{ position: "relative" }}>
                         <pre style={{ fontFamily: "monospace", fontSize: 12, padding: "14px 16px", borderRadius: 8, background: "var(--background)", border: "1px solid var(--card-border)", overflow: "auto", margin: 0 }}>{`{
   "mcpServers": {
     "article-gen": {
-      "url": "${typeof window !== "undefined" ? window.location.origin : "https://YOUR_DOMAIN"}/api/mcp/${mcpApiKey}"
+      "url": "${typeof window !== "undefined" ? window.location.origin : "https://YOUR_DOMAIN"}/api/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_TOKEN"
+      }
     }
   }
 }`}</pre>
                         <button
                           type="button"
-                          onClick={() => navigator.clipboard.writeText(`{\n  "mcpServers": {\n    "article-gen": {\n      "url": "${typeof window !== "undefined" ? window.location.origin : "https://YOUR_DOMAIN"}/api/mcp/${mcpApiKey}"\n    }\n  }\n}`)}
+                          onClick={() => navigator.clipboard.writeText(`{\n  "mcpServers": {\n    "article-gen": {\n      "url": "${typeof window !== "undefined" ? window.location.origin : "https://YOUR_DOMAIN"}/api/mcp",\n      "headers": {\n        "Authorization": "Bearer ${mcpApiKey}"\n      }\n    }\n  }\n}`)}
                           style={{ position: "absolute", top: 8, right: 8, padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: "var(--card)", border: "1px solid var(--card-border)", cursor: "pointer" }}>
                           Copy
                         </button>
                       </div>
+                      <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>The token is sent as an HTTP header — it never appears in URLs or server logs.</p>
                     </div>
                   )}
                 </div>
@@ -990,7 +994,7 @@ export default function SettingsPage() {
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Connect Claude Code</p>
-                  <p style={{ fontSize: 12, color: "var(--muted)" }}>Generate your personal MCP URL to start using Article Gen from Claude Code.</p>
+                  <p style={{ fontSize: 12, color: "var(--muted)" }}>Generate your personal MCP token to start using Article Gen from Claude Code.</p>
                 </div>
                 <button
                   type="button"
