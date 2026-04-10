@@ -1904,14 +1904,8 @@ export default function Home() {
                   (s) => s.result && !s.posted && !s.loading && !s.queued
                 ).length > 0 && (
                   <div className="mb-8">
-                    <h3
-                      className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{ background: "#007aff" }}
-                      />
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                      <span className="inline-block h-2 w-2 rounded-full bg-[var(--accent)]" />
                       Need to Post
                     </h3>
                     <div className="space-y-2">
@@ -1926,28 +1920,13 @@ export default function Home() {
                         .map((session) => (
                           <div
                             key={session.id}
-                            className="group flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors"
-                            style={{
-                              background: "var(--card)",
-                              borderColor: "var(--card-border)",
-                            }}
+                            className="group flex items-center gap-3 bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl px-4 py-3 transition-colors"
                           >
                             <button
                               onClick={() =>
                                 updateSession(session.id, { posted: true })
                               }
-                              className="flex-shrink-0 rounded-full border-2 p-0.5 transition-colors"
-                              style={{ borderColor: "var(--card-border)" }}
-                              onMouseEnter={(e) => {
-                                (
-                                  e.currentTarget as HTMLButtonElement
-                                ).style.borderColor = "var(--success)";
-                              }}
-                              onMouseLeave={(e) => {
-                                (
-                                  e.currentTarget as HTMLButtonElement
-                                ).style.borderColor = "var(--card-border)";
-                              }}
+                              className="flex-shrink-0 rounded-full border-2 border-[var(--border-default)] hover:border-[var(--accent)] p-0.5 transition-colors"
                               title="Mark as posted"
                             >
                               <span className="block h-3 w-3 rounded-full" />
@@ -1959,26 +1938,14 @@ export default function Home() {
                                 setShowDashboard(false);
                               }}
                             >
-                              <span
-                                className="block truncate text-sm font-medium"
-                                style={{ color: "var(--foreground)" }}
-                              >
+                              <span className="block truncate text-sm font-medium text-[var(--text-primary)]">
                                 {session.result?.title || session.topic}
                               </span>
-                              <span
-                                className="block truncate text-xs"
-                                style={{ color: "var(--muted)" }}
-                              >
+                              <span className="block truncate text-xs text-[var(--text-secondary)]">
                                 {session.result?.focusKeyword}
                               </span>
                             </button>
-                            <span
-                              className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider"
-                              style={{
-                                background: "rgba(0, 122, 255, 0.1)",
-                                color: "#007aff",
-                              }}
-                            >
+                            <span className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-[var(--accent-light)] text-[var(--accent)]">
                               Ready
                             </span>
                             <button
@@ -1988,10 +1955,7 @@ export default function Home() {
                                   setSessions((prev) => prev.filter((s) => s.id !== session.id));
                                 }
                               }}
-                              className="flex-shrink-0 rounded-lg p-1 opacity-0 transition-all group-hover:opacity-100"
-                              style={{ color: "var(--muted)" }}
-                              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; }}
-                              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}
+                              className="flex-shrink-0 rounded-lg p-1 opacity-0 transition-all group-hover:opacity-100 text-[var(--text-tertiary)] hover:text-red-500"
                               title="Delete article"
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

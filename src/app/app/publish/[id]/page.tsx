@@ -556,85 +556,88 @@ export default function PublishPage() {
           <div style={{ textAlign: "center", padding: 60, color: "var(--error)" }}>{error || "Article not found"}</div>
         ) : batchResults ? (
           /* Batch publish results */
-          <div style={{ maxWidth: 560, margin: "0 auto", paddingTop: 40 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 20, textAlign: "center" }}>Batch Publish Results</h1>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ maxWidth: 540, margin: "0 auto", paddingTop: 48 }}>
+            <div style={{ textAlign: "center", marginBottom: 28 }}>
+              <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>Batch Publish Results</h1>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                {batchResults.filter((r) => r.success).length} of {batchResults.length} platforms published successfully
+              </p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {batchResults.map((r, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderRadius: 10, background: "var(--surface-raised)", border: "1px solid var(--border-default)" }}>
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderRadius: 10, background: "var(--surface-base)", border: "1px solid var(--border-default)" }}>
                   {r.success ? (
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(52, 199, 89, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--success-light)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
                     </div>
                   ) : (
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(239, 68, 68, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--error)" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--error-light)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--error)" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                     </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, textTransform: "capitalize" }}>{platformLabel[r.platform as Platform] ?? r.platform}</div>
-                    {r.success ? (
-                      <div style={{ fontSize: 12, color: "var(--success)" }}>Published successfully</div>
-                    ) : (
-                      <div style={{ fontSize: 12, color: "var(--error)" }}>{r.error || "Failed"}</div>
-                    )}
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{platformLabel[r.platform as Platform] ?? r.platform}</div>
+                    <div style={{ fontSize: 12, color: r.success ? "var(--success)" : "var(--error)", marginTop: 1 }}>
+                      {r.success ? "Published successfully" : (r.error || "Failed")}
+                    </div>
                   </div>
                   {r.success && r.postUrl && (
                     <a href={r.postUrl} target="_blank" rel="noopener noreferrer"
-                      style={{ fontSize: 12, color: "var(--accent)", whiteSpace: "nowrap", textDecoration: "none", fontWeight: 600 }}>
+                      style={{ fontSize: 12, color: "var(--accent)", whiteSpace: "nowrap", textDecoration: "none", fontWeight: 600, padding: "4px 10px", borderRadius: 6, border: "1px solid var(--border-default)" }}>
                       View →
                     </a>
                   )}
                 </div>
               ))}
             </div>
-            <div style={{ textAlign: "center", marginTop: 24, display: "flex", gap: 12, justifyContent: "center" }}>
+            <div style={{ marginTop: 28, display: "flex", gap: 10, justifyContent: "center" }}>
               <button onClick={() => { setBatchResults(null); setBatchMode(false); setSelectedPlatforms(new Set()); }}
-                style={{ padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600, background: "var(--surface-raised)", border: "1px solid var(--border-default)", color: "var(--text-primary)", cursor: "pointer" }}>
+                style={{ padding: "9px 20px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--surface-base)", border: "1px solid var(--border-default)", color: "var(--text-primary)", cursor: "pointer" }}>
                 Publish More
               </button>
               <button onClick={() => router.push("/app")}
-                style={{ padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer" }}>
+                style={{ padding: "9px 20px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer" }}>
                 Back to Dashboard
               </button>
             </div>
           </div>
         ) : publishResult ? (
-          /* Success */
-          <div style={{ maxWidth: 500, margin: "0 auto", textAlign: "center", paddingTop: 40 }}>
-            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(52, 199, 89, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+          /* Success state */
+          <div style={{ maxWidth: 480, margin: "0 auto", textAlign: "center", paddingTop: 56 }}>
+            <div style={{ width: 60, height: 60, borderRadius: "50%", background: "var(--success-light)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
             </div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
-              Published to {platformLabel[publishResult.platform as Platform] ?? publishResult.platform}!
+            <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, color: "var(--text-primary)" }}>
+              Published to {platformLabel[publishResult.platform as Platform] ?? publishResult.platform}
             </h1>
-            <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: publishResult.imageErrors ? 12 : 24 }}>
-              &quot;{article.title}&quot; has been sent.
+            <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: publishResult.imageErrors?.length ? 16 : 28, lineHeight: 1.6 }}>
+              &quot;{article.title}&quot; has been sent successfully.
               {publishResult.imagesUploaded ? ` ${publishResult.imagesUploaded} image${publishResult.imagesUploaded > 1 ? "s" : ""} uploaded.` : ""}
             </p>
             {publishResult.imageErrors && publishResult.imageErrors.length > 0 && (
-              <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(239, 168, 68, 0.1)", color: "#b45309", fontSize: 13, marginBottom: 24, textAlign: "left" }}>
-                <strong>Some images failed to upload:</strong>
-                <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+              <div style={{ padding: "12px 16px", borderRadius: 8, background: "var(--warning-light)", border: "1px solid var(--border-default)", color: "var(--text-primary)", fontSize: 13, marginBottom: 24, textAlign: "left" }}>
+                <strong style={{ color: "var(--warning)" }}>Some images failed to upload:</strong>
+                <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: "var(--text-secondary)" }}>
                   {publishResult.imageErrors.map((err, i) => <li key={i} style={{ fontSize: 12 }}>{err}</li>)}
                 </ul>
               </div>
             )}
-            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
               {publishResult.postUrl && (
                 <a href={publishResult.postUrl} target="_blank" rel="noopener noreferrer"
-                  style={{ padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600, background: "var(--accent)", color: "#fff", textDecoration: "none", display: "inline-block" }}>
+                  style={{ padding: "9px 20px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--accent)", color: "#fff", textDecoration: "none", display: "inline-block" }}>
                   View Post
                 </a>
               )}
               {publishResult.editUrl && publishResult.editUrl !== publishResult.postUrl && (
                 <a href={publishResult.editUrl} target="_blank" rel="noopener noreferrer"
-                  style={{ padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600, background: "var(--surface-raised)", border: "1px solid var(--border-default)", color: "var(--text-primary)", textDecoration: "none", display: "inline-block" }}>
+                  style={{ padding: "9px 20px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--surface-base)", border: "1px solid var(--border-default)", color: "var(--text-primary)", textDecoration: "none", display: "inline-block" }}>
                   Edit Post
                 </a>
               )}
             </div>
             <button onClick={() => router.push("/app")}
-              style={{ marginTop: 20, padding: "8px 16px", borderRadius: 8, fontSize: 13, background: "transparent", border: "none", color: "var(--text-secondary)", cursor: "pointer" }}>
+              style={{ marginTop: 16, padding: "8px 16px", borderRadius: 8, fontSize: 13, background: "transparent", border: "none", color: "var(--text-secondary)", cursor: "pointer" }}>
               Back to Dashboard
             </button>
           </div>
@@ -642,29 +645,36 @@ export default function PublishPage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 32, alignItems: "start" }}>
             {/* Article Preview */}
             <div>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
-                <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{article.title || article.topic}</h1>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
+                <div>
+                  <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "var(--text-primary)", lineHeight: 1.3 }}>{article.title || article.topic}</h1>
+                  <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4, marginBottom: 0 }}>
+                    <span style={{ fontFamily: "monospace", background: "var(--surface-sunken)", padding: "1px 6px", borderRadius: 4, border: "1px solid var(--border-default)" }}>/{article.slug}</span>
+                    <span style={{ margin: "0 6px", color: "var(--border-strong)" }}>·</span>
+                    {article.article_markdown?.split(/\s+/).length || 0} words
+                  </p>
+                </div>
                 <button onClick={handleExportMarkdown}
-                  style={{ flexShrink: 0, padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--surface-raised)", border: "1px solid var(--border-default)", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
-                  ⬇ Export Markdown
+                  style={{ flexShrink: 0, padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--surface-base)", border: "1px solid var(--border-default)", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", color: "var(--text-primary)" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                  Export Markdown
                 </button>
               </div>
-              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
-                Slug: /{article.slug} &middot; {article.article_markdown?.split(/\s+/).length || 0} words
-              </p>
+
+              {/* Article content card */}
               <div className="article-preview"
-                style={{ background: "var(--surface-raised)", border: "1px solid var(--border-default)", borderRadius: 12, padding: "24px 28px", maxHeight: "70vh", overflow: "auto", fontSize: 14, lineHeight: 1.7 }}
+                style={{ background: "var(--surface-base)", border: "1px solid var(--border-default)", borderRadius: 12, padding: "28px 32px", maxHeight: "70vh", overflow: "auto", fontSize: 14, lineHeight: 1.75, marginTop: 14 }}
                 dangerouslySetInnerHTML={{ __html: previewHtml }}
               />
 
-              {/* AI Refresh */}
-              <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              {/* AI Refresh bar */}
+              <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <button
                   onClick={handleAiRefresh}
                   disabled={aiRefreshing}
                   style={{
-                    padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-                    background: "var(--surface-raised)", border: "1px solid var(--border-default)",
+                    padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    background: "var(--surface-base)", border: "1px solid var(--border-default)", color: "var(--text-primary)",
                     cursor: aiRefreshing ? "not-allowed" : "pointer",
                     opacity: aiRefreshing ? 0.6 : 1,
                     display: "flex", alignItems: "center", gap: 6,
@@ -672,18 +682,21 @@ export default function PublishPage() {
                 >
                   {aiRefreshing ? (
                     <>
-                      <svg className="progress-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
-                      Refreshing...
+                      <svg className="progress-spinner" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                      Refreshing with AI…
                     </>
                   ) : (
-                    <>🔄 Refresh with AI</>
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-4.95" /></svg>
+                      Refresh with AI
+                    </>
                   )}
                 </button>
                 {aiRefreshStats && (
                   <span style={{ fontSize: 12, color: "var(--success)", fontWeight: 500 }}>
-                    Words added: +{aiRefreshStats.wordsAdded}
+                    +{aiRefreshStats.wordsAdded} words
                     {aiRefreshStats.serpTopics.length > 0 && (
-                      <> | SERP topics: {aiRefreshStats.serpTopics.slice(0, 3).join(", ")}</>
+                      <span style={{ color: "var(--text-secondary)" }}> · SERP: {aiRefreshStats.serpTopics.slice(0, 3).join(", ")}</span>
                     )}
                   </span>
                 )}
@@ -693,9 +706,9 @@ export default function PublishPage() {
             {/* Publish Panel */}
             <div style={{ position: "sticky", top: 80 }}>
               {!hasAnyPlatform ? (
-                <div style={{ background: "var(--surface-raised)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 24 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No Platform Connected</h3>
-                  <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+                <div style={{ background: "var(--surface-base)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 24 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 6, color: "var(--text-primary)" }}>No Platform Connected</h3>
+                  <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16, lineHeight: 1.5 }}>
                     Connect a publishing platform in Settings to enable publishing.
                   </p>
                   <button onClick={() => router.push("/app/settings")}
