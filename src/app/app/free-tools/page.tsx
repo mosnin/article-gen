@@ -32,8 +32,7 @@ export default function FreeToolsPage() {
       </div>
 
       {/* Pricing card */}
-      <div className="mx-auto max-w-3xl rounded-2xl border-2 border-[var(--accent)] bg-[var(--surface-base)] p-8 bg-gradient-to-br from-[var(--accent-light)]/30 to-[var(--accent-light)]/60">
-
+      <div className="mx-auto max-w-3xl rounded-2xl border-2 border-[var(--accent)] bg-gradient-to-br from-[var(--accent-light)]/30 to-[var(--accent-light)]/60 bg-[var(--surface-base)] p-8">
         <div className="grid gap-8 lg:grid-cols-2">
           {/* Left: Pricing */}
           <div className="space-y-4">
@@ -76,7 +75,7 @@ export default function FreeToolsPage() {
                   <svg viewBox="0 0 20 20" fill="currentColor" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  <span className="text-xs text-[var(--text-secondary)] leading-tight">{f.text}</span>
+                  <span className="text-xs leading-tight text-[var(--text-secondary)]">{f.text}</span>
                 </div>
               ))}
             </div>
@@ -109,8 +108,8 @@ export default function FreeToolsPage() {
           { q: "How does the auto-pilot work?", a: "Our AI finds relevant keyword opportunities in your niche, builds and deploys SEO-optimized tools to your domain automatically, and keeps them updated." },
           { q: "Do I need to host the tools myself?", a: "No — tools are automatically hosted on a subdomain of your domain. We handle all infrastructure." },
         ].map((faq, i) => (
-          <details key={i} className="group rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)]">
-            <summary className="flex cursor-pointer items-center justify-between px-5 py-4 text-sm font-medium text-[var(--text-primary)] list-none">
+          <details key={i} className="group bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-sm font-medium text-[var(--text-primary)]">
               {faq.q}
               <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-[var(--text-tertiary)] transition-transform group-open:rotate-180">
                 <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />

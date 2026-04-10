@@ -214,35 +214,34 @@ export default function AnalyticsPage() {
 
       {/* Data table */}
       {!loading && !error && articles.length > 0 && (
-        <Card>
-          <CardContent className="pt-0 px-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border-default)]">
-                    <th className="text-left px-4 py-3">
-                      <SortHeader label="Article Title" sortKey="title" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
-                    </th>
-                    <th className="text-left px-4 py-3 hidden sm:table-cell">
-                      <SortHeader label="Platform" sortKey="platform" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
-                    </th>
-                    <th className="text-left px-4 py-3 hidden md:table-cell">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">URL</span>
-                    </th>
-                    <th className="text-right px-4 py-3">
-                      <SortHeader label="Clicks" sortKey="clicks" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} className="justify-end" />
-                    </th>
-                    <th className="text-right px-4 py-3">
-                      <SortHeader label="Impressions" sortKey="impressions" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} className="justify-end" />
-                    </th>
-                    <th className="text-right px-4 py-3 hidden sm:table-cell">
-                      <SortHeader label="CTR%" sortKey="ctr" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} className="justify-end" />
-                    </th>
-                    <th className="text-right px-4 py-3 hidden sm:table-cell">
-                      <SortHeader label="Avg Pos" sortKey="position" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} className="justify-end" />
-                    </th>
-                  </tr>
-                </thead>
+        <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--border-default)] bg-[var(--surface-raised)]">
+                  <th className="text-left px-4 py-3">
+                    <SortHeader label="Article Title" sortKey="title" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
+                  </th>
+                  <th className="text-left px-4 py-3 hidden sm:table-cell">
+                    <SortHeader label="Platform" sortKey="platform" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
+                  </th>
+                  <th className="text-left px-4 py-3 hidden md:table-cell">
+                    <span className="text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)]">URL</span>
+                  </th>
+                  <th className="text-right px-4 py-3">
+                    <SortHeader label="Clicks" sortKey="clicks" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} className="justify-end" />
+                  </th>
+                  <th className="text-right px-4 py-3">
+                    <SortHeader label="Impressions" sortKey="impressions" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} className="justify-end" />
+                  </th>
+                  <th className="text-right px-4 py-3 hidden sm:table-cell">
+                    <SortHeader label="CTR%" sortKey="ctr" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} className="justify-end" />
+                  </th>
+                  <th className="text-right px-4 py-3 hidden sm:table-cell">
+                    <SortHeader label="Avg Pos" sortKey="position" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} className="justify-end" />
+                  </th>
+                </tr>
+              </thead>
                 <tbody className="divide-y divide-[var(--border-default)]">
                   {sorted.map((article) => (
                     <tr
