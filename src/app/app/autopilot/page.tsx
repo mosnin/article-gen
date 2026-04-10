@@ -45,10 +45,10 @@ const CONTENT_TYPE_EMOJI: Record<string, string> = {
 };
 
 const DIFFICULTY_STYLES: Record<KeywordDifficulty["label"], string> = {
-  "Easy": "bg-emerald-50 text-emerald-700",
-  "Medium": "bg-yellow-50 text-yellow-700",
-  "Hard": "bg-orange-50 text-orange-700",
-  "Very Hard": "bg-red-50 text-red-700",
+  "Easy": "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+  "Medium": "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+  "Hard": "bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400",
+  "Very Hard": "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
 };
 
 function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId, isDragging, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd, difficulty, difficultyLoading }: {
@@ -79,13 +79,12 @@ function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId,
       onDrop={onDrop}
       onDragEnd={onDragEnd}
       className={cn(
-        "flex flex-col gap-2 p-4 rounded-xl border transition-all duration-200 cursor-grab active:cursor-grabbing",
-        slot.status === "approved" && "border-blue-200 bg-blue-50/50",
-        slot.status === "done" && "border-green-200 bg-green-50/50",
-        slot.status === "rejected" && "border-red-100 bg-red-50/30 opacity-60",
-        slot.status === "generating" && "border-amber-200 bg-amber-50/50",
-        slot.status === "pending" && "border-[var(--border-default)] bg-[var(--surface-base)]",
-        slot.status === "failed" && "border-red-200 bg-red-50/40",
+        "flex flex-col gap-2 p-4 rounded-xl border transition-all duration-200 cursor-grab active:cursor-grabbing bg-[var(--surface-base)] border-[var(--border-default)]",
+        slot.status === "approved" && "border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/20",
+        slot.status === "done" && "border-emerald-200 bg-emerald-50/30 dark:border-emerald-800 dark:bg-emerald-950/20",
+        slot.status === "rejected" && "opacity-50",
+        slot.status === "generating" && "border-amber-200 bg-amber-50/30 dark:border-amber-800 dark:bg-amber-950/20",
+        slot.status === "failed" && "border-red-200 bg-red-50/30 dark:border-red-800 dark:bg-red-950/20",
         isDragging && "opacity-50 scale-95",
         isDragOver && "ring-2 ring-[var(--accent)]",
       )}
@@ -112,7 +111,7 @@ function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId,
         <span className="text-[11px] text-[var(--text-tertiary)]">{slot.contentType}</span>
         {/* Difficulty badge */}
         {difficultyLoading && (
-          <span className="inline-block h-4 w-14 rounded-full bg-gray-200 animate-pulse" />
+          <span className="inline-block h-4 w-14 rounded-full bg-[var(--surface-sunken)] animate-pulse" />
         )}
         {!difficultyLoading && difficulty && (
           <span
@@ -128,11 +127,12 @@ function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId,
         {/* Uniqueness indicator */}
         {slot.uniquenessScore !== undefined && slot.uniquenessScore < 0.9 && (
           <span
-            className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+            className={cn(
+              "inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border",
               slot.uniquenessScore < 0.7
-                ? "bg-red-50 text-red-600 border border-red-200"
-                : "bg-yellow-50 text-yellow-700 border border-yellow-200"
-            }`}
+                ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800"
+                : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800"
+            )}
             title={slot.cannibalizesTitle ? `Similar to: "${slot.cannibalizesTitle}"` : undefined}
           >
             {slot.uniquenessScore < 0.7 ? "⛔ May cannibalize" : "⚠ Similar content"}
@@ -149,7 +149,7 @@ function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId,
           <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => onEdit(slot)}>
             Edit
           </Button>
-          <Button size="sm" variant="ghost" className="h-7 text-xs px-2 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => onReject(slot.id)}>
+          <Button size="sm" variant="ghost" className="h-7 text-xs px-2 text-[var(--text-tertiary)] hover:text-red-500 hover:bg-[var(--surface-sunken)]" onClick={() => onReject(slot.id)}>
             ✕
           </Button>
         </div>
@@ -165,7 +165,7 @@ function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId,
           >
             {isThisGenerating ? "Generating…" : "Generate Now"}
           </Button>
-          <Button size="sm" variant="ghost" className="h-7 text-xs px-2 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => onReject(slot.id)}>
+          <Button size="sm" variant="ghost" className="h-7 text-xs px-2 text-[var(--text-tertiary)] hover:text-red-500 hover:bg-[var(--surface-sunken)]" onClick={() => onReject(slot.id)}>
             ✕
           </Button>
         </div>
@@ -568,12 +568,18 @@ export default function AutopilotPage() {
               <span className="text-sm text-[var(--text-secondary)]">Auto-publish</span>
               <button
                 onClick={toggleAutopilot}
-                className="relative inline-flex h-6 w-11 rounded-full border-2 border-transparent transition-colors"
-                style={{ background: autopilotEnabled ? "var(--accent)" : "var(--border-strong)" }}
+                className={cn(
+                  "relative inline-flex h-6 w-11 rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2",
+                  autopilotEnabled ? "bg-[var(--accent)]" : "bg-[var(--border-default)]"
+                )}
+                aria-checked={autopilotEnabled}
+                role="switch"
               >
                 <span
-                  className="inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200"
-                  style={{ transform: autopilotEnabled ? "translateX(20px)" : "translateX(0)" }}
+                  className={cn(
+                    "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200",
+                    autopilotEnabled ? "translate-x-5" : "translate-x-0"
+                  )}
                 />
               </button>
             </div>
@@ -633,13 +639,13 @@ export default function AutopilotPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: "Total", value: stats.total, color: "text-[var(--text-primary)]" },
-              { label: "Approved", value: stats.approved, color: "text-blue-600" },
-              { label: "Published", value: stats.done, color: "text-green-600" },
+              { label: "Approved", value: stats.approved, color: "text-[var(--accent)]" },
+              { label: "Published", value: stats.done, color: "text-emerald-600 dark:text-emerald-400" },
               { label: "Pending", value: stats.pending, color: "text-[var(--text-secondary)]" },
             ].map((s) => (
-              <div key={s.label} className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl p-4 text-center">
-                <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-                <p className="text-xs text-[var(--text-secondary)] mt-0.5">{s.label}</p>
+              <div key={s.label} className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-4 text-center">
+                <p className={cn("text-2xl font-bold tabular-nums", s.color)}>{s.value}</p>
+                <p className="text-xs text-[var(--text-tertiary)] mt-0.5">{s.label}</p>
               </div>
             ))}
           </div>
