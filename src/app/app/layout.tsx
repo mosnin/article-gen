@@ -8,8 +8,6 @@ import { CommandPalette } from "@/components/ui/command-palette";
 import { createClient } from "@/lib/supabase-browser";
 import { Toaster } from "sonner";
 import { LowCreditBanner } from "./components/LowCreditBanner";
-import { BlogProvider } from "@/lib/blog-context";
-import type { Blog } from "@/lib/blog-context";
 
 export const dynamic = "force-dynamic";
 
@@ -45,8 +43,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [plan, setPlan] = useState("Free");
   const [userEmail, setUserEmail] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
-  const [blogs, setBlogs] = useState<Blog[]>([]);
-  const [siteName, setSiteName] = useState("");
 
   const supabase = createClient();
 
@@ -60,16 +56,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         return;
       }
       setUserEmail(user.email ?? "");
-
-      const { data: settingsData } = await supabase
-        .from("user_settings")
-        .select("wp_blogs, site_name, domain")
-        .eq("user_id", user.id)
-        .single();
-      if (settingsData?.wp_blogs && Array.isArray(settingsData.wp_blogs)) {
-        setBlogs(settingsData.wp_blogs as Blog[]);
-        setSiteName(settingsData.site_name ?? "");
-      }
 
       try {
         const res = await fetch("/api/credits");
@@ -119,28 +105,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </a>
       <Toaster position="top-right" richColors />
       <CommandPalette />
-      <BlogProvider initialBlogs={blogs}>
-        <Sidebar
-          credits={credits}
-          plan={plan}
-          userEmail={userEmail}
-          isAdmin={isAdmin}
-          onSignOut={handleSignOut}
-          mobileOpen={mobileNavOpen}
-          onMobileClose={() => setMobileNavOpen(false)}
+      <Sidebar
+        credits={credits}
+        plan={plan}
+        userEmail={userEmail}
+        isAdmin={isAdmin}
+        onSignOut={handleSignOut}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={() => setMobileNavOpen(false)}
+      />
+      <div className="lg:pl-[var(--sidebar-width)] flex min-h-screen flex-col">
+        <LowCreditBanner />
+        <Topbar
+          title={pageTitle}
+          onMenuClick={() => setMobileNavOpen(true)}
+          actions={<CmdKHint />}
         />
-        <div className="lg:pl-[var(--sidebar-width)] flex min-h-screen flex-col">
-          <LowCreditBanner />
-          <Topbar
-            title={pageTitle}
-            onMenuClick={() => setMobileNavOpen(true)}
-            actions={<CmdKHint />}
-          />
-          <main id="main-content" className="flex-1 px-4 py-6 lg:px-6 lg:py-8">
-            {children}
-          </main>
-        </div>
-      </BlogProvider>
+        <main id="main-content" className="flex-1 px-4 py-6 lg:px-6 lg:py-8">
+          {children}
+        </main>
+      </div>
     </>
   );
 }
@@ -160,7 +144,7 @@ function CmdKHint() {
         );
       }}
       aria-label="Open command palette (Cmd+K)"
-      className="hidden sm:flex items-center gap-1.5 rounded-md border border-[var(--border-default)] px-2.5 py-1.5 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:border-[var(--border-strong)] transition-colors bg-transparent"
+      className="hidden sm:flex items-center gap-1.5 rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-2.5 py-1 text-xs text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:border-[var(--border-strong,#cbd5e1)] transition-colors"
     >
       <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3" aria-hidden="true">
         <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />

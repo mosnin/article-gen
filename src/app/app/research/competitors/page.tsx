@@ -39,7 +39,7 @@ function LoadingSkeleton({ numCompetitors }: { numCompetitors: number }) {
   return (
     <div className="space-y-6">
       {/* Winning strategy skeleton */}
-      <div className="rounded-2xl border border-[var(--accent-light)] bg-[var(--accent-light)] p-6 space-y-3">
+      <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--accent-light)] p-6 space-y-3">
         <Skeleton className="h-5 w-40" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-5/6" />
@@ -47,7 +47,7 @@ function LoadingSkeleton({ numCompetitors }: { numCompetitors: number }) {
       </div>
 
       {/* Content gaps skeleton */}
-      <div className="rounded-xl border border-[var(--border-default)] bg-white p-5 space-y-3">
+      <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] p-5 space-y-3">
         <Skeleton className="h-5 w-32 mb-4" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -62,7 +62,7 @@ function LoadingSkeleton({ numCompetitors }: { numCompetitors: number }) {
       {/* Competitor cards skeleton */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: numCompetitors }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-[var(--border-default)] bg-white p-5 space-y-3">
+          <div key={i} className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] p-5 space-y-3">
             <div className="flex items-center gap-2">
               <Skeleton className="h-6 w-8 rounded-full" />
               <Skeleton className="h-5 w-36" />
@@ -86,19 +86,11 @@ function LoadingSkeleton({ numCompetitors }: { numCompetitors: number }) {
 
 function WinningStrategyBox({ strategy, wordCount }: { strategy: string; wordCount: number }) {
   return (
-    <div
-      className="rounded-2xl border border-blue-200 p-6 fade-in-up"
-      style={{
-        background: "linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%)",
-      }}
-    >
+    <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--accent-light)] p-6 fade-in-up">
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "var(--accent)", color: "#fff" }}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-9 h-9 rounded-xl bg-[var(--accent)] flex items-center justify-center shrink-0">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -112,14 +104,7 @@ function WinningStrategyBox({ strategy, wordCount }: { strategy: string; wordCou
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">GPT synthesis of top-ranking patterns</p>
           </div>
         </div>
-        <span
-          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border"
-          style={{
-            background: "#fff",
-            borderColor: "var(--accent)",
-            color: "var(--accent)",
-          }}
-        >
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border border-[var(--accent)] bg-[var(--surface-base)] text-[var(--accent)]">
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
@@ -139,7 +124,7 @@ function ContentGapCard({ gap, index }: { gap: string; index: number }) {
 
   return (
     <div
-      className="fade-in-up flex flex-col justify-between gap-3 rounded-xl border border-[var(--border-default)] bg-white p-4 hover:border-[var(--accent)] transition-colors"
+      className="fade-in-up flex flex-col justify-between gap-3 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] p-4 hover:border-[var(--accent)] transition-colors"
       style={{ animationDelay: `${index * 50}ms` }}
     >
       <div className="flex items-start gap-2">
@@ -148,7 +133,7 @@ function ContentGapCard({ gap, index }: { gap: string; index: number }) {
       </div>
       <button
         onClick={() => router.push(`/app/autopilot?topic=${encoded}`)}
-        className="flex items-center justify-center gap-1.5 w-full rounded-lg px-3 py-2 text-xs font-semibold border border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors"
+        className="flex items-center justify-center gap-1.5 w-full rounded-lg px-3 py-2 text-xs font-semibold border border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-secondary)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors"
       >
         <span>➕</span> Add to Plan
       </button>
@@ -159,24 +144,21 @@ function ContentGapCard({ gap, index }: { gap: string; index: number }) {
 // ─── Competitor Card ──────────────────────────────────────────────────────────
 
 function CompetitorCard({ page, index }: { page: CompetitorPage; index: number }) {
-  const rankColors = [
-    { bg: "#fef3c7", text: "#92400e", border: "#fde68a" }, // gold-ish
-    { bg: "#f1f5f9", text: "#475569", border: "#e2e8f0" }, // silver
-    { bg: "#fef7ee", text: "#9a3412", border: "#fed7aa" }, // bronze
+  const rankClasses = [
+    "bg-[var(--accent-light)] text-[var(--accent)] border-[var(--accent)]",     // #1
+    "bg-[var(--surface-sunken)] text-[var(--text-secondary)] border-[var(--border-default)]", // #2
+    "bg-[var(--surface-raised)] text-[var(--text-secondary)] border-[var(--border-default)]", // #3
   ];
-  const rankStyle = rankColors[index] ?? { bg: "#f9fafb", text: "#6b7280", border: "#e5e7eb" };
+  const rankClass = rankClasses[index] ?? "bg-[var(--surface-sunken)] text-[var(--text-secondary)] border-[var(--border-default)]";
 
   return (
     <div
-      className="fade-in-up flex flex-col gap-4 rounded-xl border border-[var(--border-default)] bg-white p-5"
+      className="fade-in-up flex flex-col gap-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] p-5"
       style={{ animationDelay: `${index * 60}ms` }}
     >
       {/* Header */}
       <div className="flex items-start gap-3">
-        <span
-          className="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold border"
-          style={{ background: rankStyle.bg, color: rankStyle.text, borderColor: rankStyle.border }}
-        >
+        <span className={`shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold border ${rankClass}`}>
           #{page.rank}
         </span>
         <div className="min-w-0 flex-1">
@@ -268,7 +250,7 @@ function CommonPatternsSection({
   return (
     <div className="grid gap-4 sm:grid-cols-2 fade-in-up">
       {/* Common Strengths */}
-      <div className="rounded-xl border border-green-200 bg-[var(--success-light)] p-5">
+      <div className="rounded-xl border border-[var(--border-default)] bg-[var(--success-light)] p-5">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 rounded-lg bg-[var(--success)] flex items-center justify-center shrink-0">
             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -291,7 +273,7 @@ function CommonPatternsSection({
       </div>
 
       {/* Common Weaknesses */}
-      <div className="rounded-xl border border-red-200 bg-[var(--error-light)] p-5">
+      <div className="rounded-xl border border-[var(--border-default)] bg-[var(--error-light)] p-5">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 rounded-lg bg-[var(--error)] flex items-center justify-center shrink-0">
             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -363,7 +345,7 @@ export default function CompetitorAnalyzerPage() {
       />
 
       {/* ── Input Form ────────────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-[var(--border-default)] bg-white p-5">
+      <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] p-5">
         <form onSubmit={handleAnalyze} className="flex flex-col sm:flex-row gap-3 items-end">
           <div className="flex-1 space-y-1.5">
             <Label htmlFor="competitor-keyword">Target keyword</Label>
@@ -390,7 +372,7 @@ export default function CompetitorAnalyzerPage() {
                   className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
                     numCompetitors === n
                       ? "bg-[var(--accent)] text-white border-[var(--accent)]"
-                      : "bg-white text-[var(--text-secondary)] border-[var(--border-default)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                      : "bg-[var(--surface-base)] text-[var(--text-secondary)] border-[var(--border-default)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
                   }`}
                 >
                   {n}
@@ -433,7 +415,7 @@ export default function CompetitorAnalyzerPage() {
 
       {/* ── Error State ───────────────────────────────────────────────────── */}
       {!loading && error && (
-        <div className="rounded-xl border border-red-200 bg-[var(--error-light)] p-6 flex items-start gap-4">
+        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--error-light)] p-6 flex items-start gap-4">
           <div className="w-10 h-10 rounded-full bg-[var(--error)] flex items-center justify-center shrink-0">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
@@ -450,10 +432,7 @@ export default function CompetitorAnalyzerPage() {
       {/* ── Empty State ───────────────────────────────────────────────────── */}
       {!loading && !error && analysis === null && (
         <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center"
-            style={{ background: "var(--surface-sunken)" }}
-          >
+          <div className="w-16 h-16 rounded-2xl bg-[var(--surface-sunken)] flex items-center justify-center">
             <svg className="w-8 h-8 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>

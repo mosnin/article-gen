@@ -48,7 +48,8 @@
   --card: #f9fafb;
   --card-border: #e5e7eb;
   --muted: #6b7280;
-  --sidebar-bg: #f9fafb;
+  --sidebar-bg: var(--surface-base);
+  --sidebar-border: var(--border-default);
 
   /* Layout */
   --sidebar-width: 240px;
@@ -95,7 +96,8 @@
   --card: #1f2937;
   --card-border: #374151;
   --muted: #9ca3af;
-  --sidebar-bg: #111827;
+  --sidebar-bg: var(--surface-base);
+  --sidebar-border: var(--border-default);
 
   /* Marketing public site tokens — dark */
   --marketing-bg: #0f172a;

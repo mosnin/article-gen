@@ -330,7 +330,7 @@ function BriefResult({ brief }: { brief: ContentBrief }) {
           <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
             Content Angle
           </p>
-          <div className="rounded-lg bg-[var(--accent-light)] border border-blue-200 dark:border-blue-900 px-4 py-3">
+          <div className="rounded-lg bg-[var(--accent-light)] border border-[var(--border-default)] px-4 py-3">
             <p className="text-sm text-[var(--text-primary)] leading-relaxed">
               {brief.contentAngle}
             </p>
@@ -410,9 +410,9 @@ function BriefResult({ brief }: { brief: ContentBrief }) {
                 className={cn(
                   "fade-in-up inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border",
                   i % 3 === 0
-                    ? "bg-[var(--accent-light)] text-[var(--accent)] border-blue-200 dark:border-blue-900"
+                    ? "bg-[var(--accent-light)] text-[var(--accent)] border-[var(--border-default)]"
                     : i % 3 === 1
-                    ? "bg-[var(--success-light)] text-[var(--success)] border-green-200 dark:border-green-900"
+                    ? "bg-[var(--success-light)] text-[var(--success)] border-[var(--border-default)]"
                     : "bg-[var(--surface-sunken)] text-[var(--text-secondary)] border-[var(--border-default)]"
                 )}
                 style={{ animationDelay: `${i * 25}ms` } as React.CSSProperties}

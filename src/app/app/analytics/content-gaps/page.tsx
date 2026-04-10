@@ -4,13 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
@@ -88,95 +81,85 @@ export default function ContentGapsPage() {
 
       {/* GSC not connected */}
       {gscNotConnected && (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent-light)]">
-              <svg viewBox="0 0 20 20" fill="currentColor" className="h-6 w-6 text-[var(--accent)]">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)]">Connect Google Search Console</h3>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                Link your GSC account to discover content optimization opportunities.
-              </p>
-            </div>
-            <Link href="/app/settings" className={buttonVariants()}>
-              Go to Settings
-            </Link>
-          </CardContent>
-        </Card>
+        <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-8 flex flex-col items-center gap-4 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent-light)]">
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-6 w-6 text-[var(--accent)]">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-[var(--text-primary)]">Connect Google Search Console</h3>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              Link your GSC account to discover content optimization opportunities.
+            </p>
+          </div>
+          <Link href="/app/settings" className={buttonVariants()}>
+            Go to Settings
+          </Link>
+        </div>
       )}
 
       {/* Loading skeleton */}
       {loading && !gscNotConnected && (
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-5 w-48" />
-              <Skeleton className="h-4 w-72" />
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 space-y-4">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-4 w-72" />
+            <div className="space-y-3 pt-1">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-14 w-full rounded-lg" />
               ))}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="h-4 w-64" />
-            </CardHeader>
-            <CardContent className="space-y-3">
+            </div>
+          </div>
+          <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 space-y-4">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-64" />
+            <div className="space-y-3 pt-1">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-14 w-full rounded-lg" />
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Error state */}
       {error && !loading && (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-            <p className="text-sm text-red-400">{error}</p>
-            <Button variant="outline" onClick={() => window.location.reload()}>
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-8 flex flex-col items-center gap-4 text-center">
+          <p className="text-sm text-[var(--text-secondary)]">{error}</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
       )}
 
       {/* Results */}
       {!loading && !error && !gscNotConnected && (
         <>
           {gaps.length === 0 && (
-            <Card>
-              <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-                <p className="text-sm text-[var(--text-secondary)]">
-                  No content gaps found. This could mean your site is performing well, or there is not enough search data yet.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-8 flex flex-col items-center gap-4 text-center">
+              <p className="text-sm text-[var(--text-secondary)]">
+                No content gaps found. This could mean your site is performing well, or there is not enough search data yet.
+              </p>
+            </div>
           )}
 
           {/* Optimize Existing Content */}
           {optimizeGaps.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Optimize Existing Content</CardTitle>
-                <CardDescription>
+            <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-[var(--border-default)]">
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Optimize Existing Content</h2>
+                <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
                   Articles that rank but underperform. These are quick wins — small rewrites can boost CTR significantly.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="hidden sm:grid sm:grid-cols-[1fr_100px_80px_80px_80px_120px] gap-3 px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                  <span>Query / Article</span>
-                  <span className="text-right">Impressions</span>
-                  <span className="text-right">CTR</span>
-                  <span className="text-right">Position</span>
-                  <span className="text-right">Clicks</span>
+                </p>
+              </div>
+              <div className="p-4">
+                <div className="hidden sm:grid sm:grid-cols-[1fr_100px_80px_80px_80px_120px] gap-3 px-3 pb-2">
+                  <span className="text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">Query / Article</span>
+                  <span className="text-right text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">Impressions</span>
+                  <span className="text-right text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">CTR</span>
+                  <span className="text-right text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">Position</span>
+                  <span className="text-right text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">Clicks</span>
                   <span />
                 </div>
                 <div className="divide-y divide-[var(--border-default)]">
@@ -223,26 +206,26 @@ export default function ContentGapsPage() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* Content Opportunities */}
           {createGaps.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Content Opportunities</CardTitle>
-                <CardDescription>
+            <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-[var(--border-default)]">
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Content Opportunities</h2>
+                <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
                   Queries with search visibility but no matching article. Create targeted content to capture this traffic.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="hidden sm:grid sm:grid-cols-[1fr_100px_80px_80px_80px_120px] gap-3 px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
-                  <span>Query</span>
-                  <span className="text-right">Impressions</span>
-                  <span className="text-right">CTR</span>
-                  <span className="text-right">Position</span>
-                  <span className="text-right">Clicks</span>
+                </p>
+              </div>
+              <div className="p-4">
+                <div className="hidden sm:grid sm:grid-cols-[1fr_100px_80px_80px_80px_120px] gap-3 px-3 pb-2">
+                  <span className="text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">Query</span>
+                  <span className="text-right text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">Impressions</span>
+                  <span className="text-right text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">CTR</span>
+                  <span className="text-right text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">Position</span>
+                  <span className="text-right text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">Clicks</span>
                   <span />
                 </div>
                 <div className="divide-y divide-[var(--border-default)]">
@@ -275,8 +258,8 @@ export default function ContentGapsPage() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
         </>
       )}

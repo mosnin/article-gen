@@ -1610,49 +1610,42 @@ export default function Home() {
 
   // Shared advanced settings panel JSX
   const advancedSettingsPanel = (
-    <div
-      className="rounded-xl border"
-      style={{
-        borderColor: "var(--card-border)",
-        background: "var(--card)",
-      }}
-    >
+    <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl">
       <button
         onClick={() => setShowAdvanced(!showAdvanced)}
-        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium"
-        style={{ color: "var(--foreground)" }}
+        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-[var(--text-primary)]"
       >
         <span className="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
             <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
           </svg>
           Advanced Settings
-          <span className="text-xs font-normal" style={{ color: "var(--muted)" }}>(optional)</span>
+          <span className="text-xs font-normal text-[var(--text-tertiary)]">(optional)</span>
         </span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showAdvanced ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showAdvanced ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
       {showAdvanced && (
-        <div className="space-y-3 border-t px-4 py-4" style={{ borderColor: "var(--card-border)" }}>
+        <div className="space-y-3 border-t border-[var(--border-default)] px-4 py-4">
           <div className="flex items-center justify-end gap-1">
             <input type="file" accept=".json" id="advanced-json-import" className="hidden" onChange={handleAdvancedJsonFile} />
-            <button onClick={() => document.getElementById("advanced-json-import")?.click()} className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors" style={{ color: "var(--accent)", background: "transparent" }} onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }} onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}>
+            <button onClick={() => document.getElementById("advanced-json-import")?.click()} className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-[var(--accent)] transition-colors hover:bg-[var(--surface-base)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
               Upload
             </button>
-            <span className="text-xs" style={{ color: "var(--card-border)" }}>|</span>
-            <button onClick={() => setShowAdvancedJsonPaste(!showAdvancedJsonPaste)} className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors" style={{ color: showAdvancedJsonPaste ? "var(--foreground)" : "var(--accent)", background: showAdvancedJsonPaste ? "var(--background)" : "transparent" }} onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }} onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = showAdvancedJsonPaste ? "var(--background)" : "transparent"; }}>
+            <span className="text-xs text-[var(--border-default)]">|</span>
+            <button onClick={() => setShowAdvancedJsonPaste(!showAdvancedJsonPaste)} className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors hover:bg-[var(--surface-base)] ${showAdvancedJsonPaste ? "text-[var(--text-primary)] bg-[var(--surface-base)]" : "text-[var(--accent)]"}`}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
               Paste
             </button>
           </div>
           {showAdvancedJsonPaste && (
-            <div className="rounded-lg border p-3" style={{ borderColor: "var(--card-border)", background: "var(--background)" }}>
-              <textarea value={advancedJsonValue} onChange={(e) => setAdvancedJsonValue(e.target.value)} placeholder={`{\n  "domain": "https://yourblog.com",\n  "siteName": "Your Blog Name",\n  "siteAbout": "A blog about...",\n  "authorName": "John Doe",\n  "authorAbout": "Expert in..."\n}`} rows={5} className="mb-2 w-full resize-none rounded-lg border px-3 py-2 font-mono text-xs transition-colors focus:outline-none" style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }} onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--accent)"; }} onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--card-border)"; }} />
+            <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-lg p-3">
+              <textarea value={advancedJsonValue} onChange={(e) => setAdvancedJsonValue(e.target.value)} placeholder={`{\n  "domain": "https://yourblog.com",\n  "siteName": "Your Blog Name",\n  "siteAbout": "A blog about...",\n  "authorName": "John Doe",\n  "authorAbout": "Expert in..."\n}`} rows={5} className="mb-2 w-full resize-none border border-[var(--border-default)] rounded-lg px-3 py-2 font-mono text-xs bg-[var(--surface-raised)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent" />
               <div className="flex justify-end">
-                <button onClick={handleAdvancedPasteSubmit} disabled={!advancedJsonValue.trim()} className="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-40" style={{ background: "var(--accent)" }}>Load Settings</button>
+                <button onClick={handleAdvancedPasteSubmit} disabled={!advancedJsonValue.trim()} className="bg-[var(--accent)] text-white rounded-lg px-3 py-1.5 text-xs font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-40">Load Settings</button>
               </div>
             </div>
           )}
@@ -1664,8 +1657,8 @@ export default function Home() {
             { key: "authorAbout" as const, label: "About the Author", placeholder: "Expert in sustainable living with 10 years of experience" },
           ].map((field) => (
             <div key={field.key}>
-              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--muted)" }}>{field.label}</label>
-              <input type="text" value={advancedSettings[field.key]} onChange={(e) => updateAdvanced(field.key, e.target.value)} placeholder={field.placeholder} className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none" style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }} onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }} onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }} />
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">{field.label}</label>
+              <input type="text" value={advancedSettings[field.key]} onChange={(e) => updateAdvanced(field.key, e.target.value)} placeholder={field.placeholder} className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent" />
             </div>
           ))}
         </div>
@@ -1674,16 +1667,16 @@ export default function Home() {
   );
 
   const blogSelectorPanel = wpBlogs.length > 0 ? (
-    <div className="flex items-center justify-between rounded-xl border px-4 py-3" style={{ borderColor: "var(--card-border)", background: "var(--card)" }}>
+    <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl flex items-center justify-between px-4 py-3">
       <div>
-        <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Publish to</div>
-        <div className="text-xs" style={{ color: "var(--muted)" }}>Choose blog-specific or general mode</div>
+        <div className="text-sm font-medium text-[var(--text-primary)]">Publish to</div>
+        <div className="text-xs text-[var(--text-secondary)]">Choose blog-specific or general mode</div>
       </div>
       <select
         value={selectedBlogId}
         onChange={(e) => handleScopeChange(e.target.value)}
-        className="rounded-lg border px-3 py-1.5 text-sm font-medium"
-        style={{ borderColor: "var(--card-border)", background: "var(--background)", color: "var(--foreground)", outline: "none", maxWidth: 180 }}
+        className="border border-[var(--border-default)] rounded-lg px-3 py-1.5 text-sm font-medium bg-[var(--surface-base)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+        style={{ maxWidth: 180 }}
       >
         <option value="">General mode (no specific blog)</option>
         {wpBlogs.map((blog) => (
@@ -1694,14 +1687,13 @@ export default function Home() {
   ) : (
     <button
       onClick={() => router.push("/app/settings")}
-      className="flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left"
-      style={{ borderColor: "var(--card-border)", background: "var(--card)", cursor: "pointer" }}
+      className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl flex w-full items-center justify-between px-4 py-3 text-left"
     >
       <div>
-        <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Connect a WordPress Blog</div>
-        <div className="text-xs" style={{ color: "var(--muted)" }}>Set up publishing in Settings</div>
+        <div className="text-sm font-medium text-[var(--text-primary)]">Connect a WordPress Blog</div>
+        <div className="text-xs text-[var(--text-secondary)]">Set up publishing in Settings</div>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
     </button>
   );
 
@@ -1719,8 +1711,7 @@ export default function Home() {
                 <div className="mb-8">
                   <button
                     onClick={() => setShowDashboard(false)}
-                    className="mb-6 flex items-center gap-1.5 text-sm font-medium"
-                    style={{ color: "var(--accent)" }}
+                    className="mb-6 flex items-center gap-1.5 text-sm font-medium text-[var(--accent)]"
                   >
                     <svg
                       width="14"
@@ -1736,16 +1727,13 @@ export default function Home() {
                     </svg>
                     Back
                   </button>
-                  <h2
-                    className="mb-2 text-3xl font-bold tracking-tight"
-                    style={{ color: "var(--foreground)" }}
-                  >
+                  <h2 className="mb-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]">
                     Dashboard
                   </h2>
-                  <p className="mb-1 text-xs" style={{ color: "var(--muted)" }}>
+                  <p className="mb-1 text-xs text-[var(--text-tertiary)]">
                     Scope: {selectedBlog ? selectedBlog.name || selectedBlog.url : "General mode (no specific blog)"}
                   </p>
-                  <p className="text-sm" style={{ color: "var(--muted)" }}>
+                  <p className="text-sm text-[var(--text-secondary)]">
                     {scopedSessions.filter((s) => s.result && !s.posted).length} need
                     to post &middot;{" "}
                     {scopedSessions.filter((s) => s.posted).length} posted
@@ -1754,29 +1742,29 @@ export default function Home() {
 
                 {/* Stats Cards */}
                 <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <div className="rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-                    <div className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+                  <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-4">
+                    <div className="text-2xl font-bold text-[var(--text-primary)]">
                       {scopedSessions.filter((s) => s.result).length}
                     </div>
-                    <div className="text-xs font-medium" style={{ color: "var(--muted)" }}>Articles Generated</div>
+                    <div className="text-xs font-medium text-[var(--text-secondary)]">Articles Generated</div>
                   </div>
-                  <div className="rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-                    <div className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+                  <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-4">
+                    <div className="text-2xl font-bold text-[var(--text-primary)]">
                       {scopedClusters.length}
                     </div>
-                    <div className="text-xs font-medium" style={{ color: "var(--muted)" }}>Topic Clusters</div>
+                    <div className="text-xs font-medium text-[var(--text-secondary)]">Topic Clusters</div>
                   </div>
-                  <div className="rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-                    <div className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+                  <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-4">
+                    <div className="text-2xl font-bold text-[var(--text-primary)]">
                       {scopedClusters.reduce((sum, c) => sum + c.clusterArticles.filter((a) => a.session?.result).length + (c.pillarSession?.result ? 1 : 0), 0)}
                     </div>
-                    <div className="text-xs font-medium" style={{ color: "var(--muted)" }}>Cluster Articles</div>
+                    <div className="text-xs font-medium text-[var(--text-secondary)]">Cluster Articles</div>
                   </div>
-                  <div className="rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-                    <div className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+                  <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-4">
+                    <div className="text-2xl font-bold text-[var(--text-primary)]">
                       {scopedSessions.filter((s) => s.result && !s.posted).length + scopedClusters.reduce((sum, c) => sum + c.clusterArticles.filter((a) => a.session?.result && !a.session.posted).length + (c.pillarSession?.result && !c.pillarSession.posted ? 1 : 0), 0)}
                     </div>
-                    <div className="text-xs font-medium" style={{ color: "var(--muted)" }}>Ready to Post</div>
+                    <div className="text-xs font-medium text-[var(--text-secondary)]">Ready to Post</div>
                   </div>
                 </div>
 

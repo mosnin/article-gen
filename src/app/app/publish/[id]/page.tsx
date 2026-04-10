@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import { marked } from "marked";
 import DOMPurify from "isomorphic-dompurify";
 import SnippetOptimizerPanel from "./SnippetOptimizerPanel";
-import NewsletterExportPanel from "./NewsletterExportPanel";
 import { toast } from "sonner";
 import type { NLPScoreResult } from "@/lib/nlp-scorer";
 
@@ -50,11 +49,11 @@ interface DevToAccount { id: string; name: string; }
 
 const inputStyle = {
   width: "100%", padding: "8px 12px", borderRadius: 8,
-  border: "1px solid var(--card-border)", background: "var(--background)",
-  fontSize: 13, outline: "none",
+  border: "1px solid var(--border-default)", background: "var(--surface-base)",
+  color: "var(--text-primary)", fontSize: 13, outline: "none",
 } as const;
 
-const labelStyle = { display: "block", fontSize: 12, fontWeight: 600, color: "var(--muted)", marginBottom: 4 } as const;
+const labelStyle = { display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4 } as const;
 
 const PLATFORMS: { id: Platform; label: string }[] = [
   { id: "wordpress", label: "WordPress" },
@@ -445,38 +444,13 @@ export default function PublishPage() {
 
   const handleExportMarkdown = () => {
     if (!article) return;
-    const slugFromTitle = article.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    const filename = (article.slug || slugFromTitle || "article") + ".md";
     const blob = new Blob([article.article_markdown || ""], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = filename;
+    a.download = `${article.slug || "article"}.md`;
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  const handleCheckSeoScore = async () => {
-    if (!article) return;
-    setNlpScoring(true);
-    setNlpScore(null);
-    setNlpScoreOpen(true);
-    try {
-      const res = await fetch("/api/content/score", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: article.article_markdown || "", keyword: article.topic || article.title }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setNlpScore(data as NLPScoreResult);
-      } else {
-        toast.error(data.error || "Failed to score content");
-      }
-    } catch {
-      toast.error("Failed to check SEO score");
-    }
-    setNlpScoring(false);
   };
 
   const handleAiRefresh = async () => {
@@ -533,96 +507,6 @@ export default function PublishPage() {
     setAiRefreshing(false);
   };
 
-  // ── Word count / reading time ────────────────────────────────────────────
-  const wordCount = useMemo(() => {
-    const text = article?.article_markdown ?? "";
-    return text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
-  }, [article?.article_markdown]);
-
-  const readingTime = useMemo(() => Math.max(1, Math.round(wordCount / 238)), [wordCount]);
-
-  const wordCountColor = wordCount >= 1000 ? "var(--success, #22c55e)" : wordCount >= 500 ? "#eab308" : "var(--error, #ef4444)";
-
-  // ── Save / update article markdown ──────────────────────────────────────
-  const handleSave = useCallback(async () => {
-    if (!article) return;
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { error: updateError } = await supabase
-        .from("articles")
-        .update({ article_markdown: article.article_markdown })
-        .eq("id", article.id)
-        .eq("user_id", user.id);
-      if (updateError) {
-        toast.error("Failed to save article");
-      } else {
-        toast.success("Article saved");
-        const html = DOMPurify.sanitize(await marked(article.article_markdown || ""));
-        setPreviewHtml(html);
-      }
-    } catch {
-      toast.error("Failed to save article");
-    }
-  }, [article, supabase]);
-
-  // ── Formatting helpers ───────────────────────────────────────────────────
-  const applyFormat = useCallback((format: "bold" | "italic" | "h2" | "h3" | "bullet") => {
-    const ta = editorRef.current;
-    if (!ta || !article) return;
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-    const selected = article.article_markdown.slice(start, end);
-    let prefix = "";
-    let suffix = "";
-    let placeholder = "";
-
-    if (format === "bold")   { prefix = "**"; suffix = "**"; placeholder = "bold text"; }
-    if (format === "italic") { prefix = "*";  suffix = "*";  placeholder = "italic text"; }
-    if (format === "h2")     { prefix = "## "; suffix = ""; placeholder = "Heading"; }
-    if (format === "h3")     { prefix = "### "; suffix = ""; placeholder = "Heading"; }
-    if (format === "bullet") { prefix = "- "; suffix = ""; placeholder = "List item"; }
-
-    const insertion = prefix + (selected || placeholder) + suffix;
-    const newMarkdown =
-      article.article_markdown.slice(0, start) +
-      insertion +
-      article.article_markdown.slice(end);
-
-    setArticle((prev) => prev ? { ...prev, article_markdown: newMarkdown } : prev);
-    setTimeout(() => {
-      if (!ta) return;
-      const selStart = start + prefix.length;
-      const selEnd = selStart + (selected || placeholder).length;
-      ta.focus();
-      ta.setSelectionRange(selStart, selEnd);
-    }, 0);
-  }, [article]);
-
-  // ── Keyboard shortcuts ───────────────────────────────────────────────────
-  const handleEditorKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const mod = e.ctrlKey || e.metaKey;
-    if (!mod) return;
-    if (e.key === "b") { e.preventDefault(); applyFormat("bold"); }
-    if (e.key === "i") { e.preventDefault(); applyFormat("italic"); }
-    if (e.key === "s") { e.preventDefault(); handleSave(); }
-  }, [applyFormat, handleSave]);
-
-  // ── Floating toolbar: show when text is selected ─────────────────────────
-  const handleEditorSelect = useCallback(() => {
-    const ta = editorRef.current;
-    if (!ta) return;
-    const hasSelection = ta.selectionStart !== ta.selectionEnd;
-    if (!hasSelection) { setToolbarVisible(false); return; }
-    const rect = ta.getBoundingClientRect();
-    setToolbarPos({ top: rect.top + window.scrollY - 48, left: rect.left + window.scrollX });
-    setToolbarVisible(true);
-  }, []);
-
-  const handleEditorBlur = useCallback(() => {
-    setTimeout(() => setToolbarVisible(false), 150);
-  }, []);
-
   const platformLabel: Record<Platform, string> = {
     wordpress: "WordPress",
     shopify: "Shopify",
@@ -643,25 +527,25 @@ export default function PublishPage() {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", background: "var(--background)" }}>
-        <svg className="progress-spinner" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", background: "var(--surface-base)" }}>
+        <svg className="progress-spinner" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
       </div>
     );
   }
 
   return (
-    <div style={{ background: "var(--background)", minHeight: "100vh" }}>
-      <header style={{ borderBottom: "1px solid var(--card-border)", background: "var(--background)", position: "sticky", top: 0, zIndex: 50 }}>
+    <div style={{ background: "var(--surface-base)", minHeight: "100vh" }}>
+      <header style={{ borderBottom: "1px solid var(--border-default)", background: "var(--surface-base)", position: "sticky", top: 0, zIndex: 50 }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <div style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }} onClick={() => router.push("/app")}>
               <Image src="/logo.png" alt="Article Sauce" width={28} height={28} />
               <span style={{ fontWeight: 700, fontSize: 17 }}>Article Sauce</span>
             </div>
-            <span style={{ color: "var(--muted)", fontSize: 13 }}>/</span>
+            <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>/</span>
             <span style={{ fontWeight: 600, fontSize: 14 }}>Publish Article</span>
           </div>
-          <button onClick={() => router.push("/app")} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, background: "var(--card)", border: "1px solid var(--card-border)", cursor: "pointer" }}>
+          <button onClick={() => router.push("/app")} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, background: "var(--surface-raised)", border: "1px solid var(--border-default)", cursor: "pointer" }}>
             Back to App
           </button>
         </div>
@@ -676,7 +560,7 @@ export default function PublishPage() {
             <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 20, textAlign: "center" }}>Batch Publish Results</h1>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {batchResults.map((r, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderRadius: 10, background: "var(--card)", border: "1px solid var(--card-border)" }}>
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderRadius: 10, background: "var(--surface-raised)", border: "1px solid var(--border-default)" }}>
                   {r.success ? (
                     <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(52, 199, 89, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
@@ -705,7 +589,7 @@ export default function PublishPage() {
             </div>
             <div style={{ textAlign: "center", marginTop: 24, display: "flex", gap: 12, justifyContent: "center" }}>
               <button onClick={() => { setBatchResults(null); setBatchMode(false); setSelectedPlatforms(new Set()); }}
-                style={{ padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600, background: "var(--card)", border: "1px solid var(--card-border)", color: "var(--foreground)", cursor: "pointer" }}>
+                style={{ padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600, background: "var(--surface-raised)", border: "1px solid var(--border-default)", color: "var(--text-primary)", cursor: "pointer" }}>
                 Publish More
               </button>
               <button onClick={() => router.push("/app")}
@@ -723,7 +607,7 @@ export default function PublishPage() {
             <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
               Published to {platformLabel[publishResult.platform as Platform] ?? publishResult.platform}!
             </h1>
-            <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: publishResult.imageErrors ? 12 : 24 }}>
+            <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: publishResult.imageErrors ? 12 : 24 }}>
               &quot;{article.title}&quot; has been sent.
               {publishResult.imagesUploaded ? ` ${publishResult.imagesUploaded} image${publishResult.imagesUploaded > 1 ? "s" : ""} uploaded.` : ""}
             </p>
@@ -744,165 +628,34 @@ export default function PublishPage() {
               )}
               {publishResult.editUrl && publishResult.editUrl !== publishResult.postUrl && (
                 <a href={publishResult.editUrl} target="_blank" rel="noopener noreferrer"
-                  style={{ padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600, background: "var(--card)", border: "1px solid var(--card-border)", color: "var(--foreground)", textDecoration: "none", display: "inline-block" }}>
+                  style={{ padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600, background: "var(--surface-raised)", border: "1px solid var(--border-default)", color: "var(--text-primary)", textDecoration: "none", display: "inline-block" }}>
                   Edit Post
                 </a>
               )}
             </div>
             <button onClick={() => router.push("/app")}
-              style={{ marginTop: 20, padding: "8px 16px", borderRadius: 8, fontSize: 13, background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer" }}>
+              style={{ marginTop: 20, padding: "8px 16px", borderRadius: 8, fontSize: 13, background: "transparent", border: "none", color: "var(--text-secondary)", cursor: "pointer" }}>
               Back to Dashboard
             </button>
           </div>
         ) : (
-          <>
-          {/* Floating formatting toolbar (appears on text selection) */}
-          {toolbarVisible && editMode && (
-            <div
-              style={{
-                position: "absolute",
-                top: toolbarPos.top,
-                left: toolbarPos.left,
-                zIndex: 200,
-                background: "var(--card)",
-                border: "1px solid var(--card-border)",
-                borderRadius: 8,
-                boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-                padding: "4px 6px",
-              }}
-              onMouseDown={(e) => e.preventDefault()}
-            >
-              {(["bold","italic","h2","h3","bullet"] as const).map((fmt) => {
-                const labels: Record<string, string> = { bold: "B", italic: "I", h2: "H2", h3: "H3", bullet: "•" };
-                const tips: Record<string, string> = { bold: "Bold (Ctrl+B)", italic: "Italic (Ctrl+I)", h2: "Heading 2", h3: "Heading 3", bullet: "Bullet list" };
-                return (
-                  <button
-                    key={fmt}
-                    title={tips[fmt]}
-                    onMouseDown={(e) => { e.preventDefault(); applyFormat(fmt); }}
-                    style={{
-                      padding: "4px 9px", borderRadius: 6, fontSize: 13,
-                      fontWeight: fmt === "bold" ? 800 : 600,
-                      fontStyle: fmt === "italic" ? "italic" : "normal",
-                      border: "none", background: "transparent", cursor: "pointer",
-                      color: "var(--foreground)", lineHeight: 1.4,
-                    }}
-                  >
-                    {labels[fmt]}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <div style={{ display: "grid", gridTemplateColumns: focusMode ? "1fr" : "1fr 360px", gap: 32, alignItems: "start" }}>
-            {/* Article Editor / Preview */}
-            <div style={{ background: focusMode ? "rgba(0,0,0,0.03)" : "transparent", borderRadius: focusMode ? 16 : 0, padding: focusMode ? "28px 32px" : 0 }}>
-              {/* Header row */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 32, alignItems: "start" }}>
+            {/* Article Preview */}
+            <div>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
                 <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{article.title || article.topic}</h1>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                  {/* Focus Mode button */}
-                  <button
-                    onClick={() => setFocusMode((f) => !f)}
-                    title={focusMode ? "Exit focus mode" : "Focus mode — hide sidebar"}
-                    style={{
-                      padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                      background: focusMode ? "var(--accent)" : "var(--card)",
-                      border: "1px solid var(--card-border)", cursor: "pointer",
-                      color: focusMode ? "#fff" : "var(--foreground)",
-                      display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap",
-                    }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-                    {focusMode ? "Exit Focus" : "Focus Mode"}
-                  </button>
-                  {/* Edit / Preview toggle */}
-                  <button
-                    onClick={() => setEditMode((m) => !m)}
-                    style={{
-                      padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                      background: editMode ? "var(--accent)" : "var(--card)",
-                      border: "1px solid var(--card-border)", cursor: "pointer",
-                      color: editMode ? "#fff" : "var(--foreground)", whiteSpace: "nowrap",
-                    }}>
-                    {editMode ? "Preview" : "Edit"}
-                  </button>
-                  <button onClick={handleExportMarkdown}
-                    style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--card)", border: "1px solid var(--card-border)", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
-                    ⬇ Export
-                  </button>
-                </div>
+                <button onClick={handleExportMarkdown}
+                  style={{ flexShrink: 0, padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--surface-raised)", border: "1px solid var(--border-default)", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+                  ⬇ Export Markdown
+                </button>
               </div>
-
-              {/* Slug + live word count / reading time */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 6 }}>
-                <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-                  Slug: /{article.slug}
-                </p>
-                <span style={{ fontSize: 13, fontWeight: 600, color: wordCountColor, transition: "color 0.3s" }}>
-                  {wordCount.toLocaleString()} word{wordCount !== 1 ? "s" : ""} &middot; {readingTime} min read
-                </span>
-              </div>
-
-              {/* Editor or Preview */}
-              {editMode ? (
-                <div style={{ border: "1px solid var(--card-border)", borderRadius: 12, overflow: "hidden" }}>
-                  {/* Inline formatting toolbar */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 10px", background: "var(--background)", borderBottom: "1px solid var(--card-border)", flexWrap: "wrap" }}>
-                    {(["bold","italic","h2","h3","bullet"] as const).map((fmt) => {
-                      const labels: Record<string, string> = { bold: "B", italic: "I", h2: "H2", h3: "H3", bullet: "• List" };
-                      const tips: Record<string, string> = { bold: "Bold (Ctrl+B)", italic: "Italic (Ctrl+I)", h2: "Heading 2", h3: "Heading 3", bullet: "Bullet list" };
-                      return (
-                        <button
-                          key={fmt}
-                          title={tips[fmt]}
-                          onMouseDown={(e) => { e.preventDefault(); applyFormat(fmt); }}
-                          style={{
-                            padding: "4px 10px", borderRadius: 6, fontSize: 12,
-                            fontWeight: fmt === "bold" ? 800 : 600,
-                            fontStyle: fmt === "italic" ? "italic" : "normal",
-                            border: "1px solid var(--card-border)", background: "var(--card)",
-                            cursor: "pointer", color: "var(--foreground)",
-                          }}>
-                          {labels[fmt]}
-                        </button>
-                      );
-                    })}
-                    <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--muted)", paddingRight: 4 }}>
-                      Ctrl+B / Ctrl+I / Ctrl+S
-                    </span>
-                    <button
-                      onClick={handleSave}
-                      style={{ padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer" }}>
-                      Save
-                    </button>
-                  </div>
-                  <textarea
-                    ref={editorRef}
-                    value={article.article_markdown || ""}
-                    onChange={(e) => setArticle((prev) => prev ? { ...prev, article_markdown: e.target.value } : prev)}
-                    onKeyDown={handleEditorKeyDown}
-                    onSelect={handleEditorSelect}
-                    onBlur={handleEditorBlur}
-                    style={{
-                      width: "100%", minHeight: 520, padding: "20px 24px",
-                      fontSize: 14, lineHeight: 1.8,
-                      fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                      background: "var(--background)", color: "var(--foreground)",
-                      border: "none", outline: "none", resize: "vertical", boxSizing: "border-box",
-                    }}
-                    spellCheck
-                  />
-                </div>
-              ) : (
-                <div className="article-preview"
-                  style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: "24px 28px", maxHeight: "70vh", overflow: "auto", fontSize: 14, lineHeight: 1.7 }}
-                  dangerouslySetInnerHTML={{ __html: previewHtml }}
-                />
-              )}
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+                Slug: /{article.slug} &middot; {article.article_markdown?.split(/\s+/).length || 0} words
+              </p>
+              <div className="article-preview"
+                style={{ background: "var(--surface-raised)", border: "1px solid var(--border-default)", borderRadius: 12, padding: "24px 28px", maxHeight: "70vh", overflow: "auto", fontSize: 14, lineHeight: 1.7 }}
+                dangerouslySetInnerHTML={{ __html: previewHtml }}
+              />
 
               {/* AI Refresh */}
               <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -911,7 +664,7 @@ export default function PublishPage() {
                   disabled={aiRefreshing}
                   style={{
                     padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-                    background: "var(--card)", border: "1px solid var(--card-border)",
+                    background: "var(--surface-raised)", border: "1px solid var(--border-default)",
                     cursor: aiRefreshing ? "not-allowed" : "pointer",
                     opacity: aiRefreshing ? 0.6 : 1,
                     display: "flex", alignItems: "center", gap: 6,
@@ -937,12 +690,12 @@ export default function PublishPage() {
               </div>
             </div>
 
-            {/* Publish Panel — hidden in focus mode */}
-            {!focusMode && <div style={{ position: "sticky", top: 80 }}>
+            {/* Publish Panel */}
+            <div style={{ position: "sticky", top: 80 }}>
               {!hasAnyPlatform ? (
-                <div style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: 24 }}>
+                <div style={{ background: "var(--surface-raised)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 24 }}>
                   <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No Platform Connected</h3>
-                  <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
+                  <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
                     Connect a publishing platform in Settings to enable publishing.
                   </p>
                   <button onClick={() => router.push("/app/settings")}
@@ -951,15 +704,15 @@ export default function PublishPage() {
                   </button>
                 </div>
               ) : (
-                <div style={{ background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ background: "var(--surface-raised)", border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden" }}>
                   {/* Platform tabs */}
-                  <div style={{ display: "flex", borderBottom: "1px solid var(--card-border)", overflowX: "auto" }}>
+                  <div style={{ display: "flex", borderBottom: "1px solid var(--border-default)", overflowX: "auto" }}>
                     {PLATFORMS.filter((p) => hasPlatform[p.id]).map((p) => (
                       <button key={p.id} onClick={() => { setActivePlatform(p.id); setError(""); }}
                         style={{
                           flex: 1, minWidth: "fit-content", padding: "12px 14px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", whiteSpace: "nowrap",
-                          background: activePlatform === p.id ? "var(--background)" : "transparent",
-                          color: activePlatform === p.id ? "var(--accent)" : "var(--muted)",
+                          background: activePlatform === p.id ? "var(--surface-base)" : "transparent",
+                          color: activePlatform === p.id ? "var(--accent)" : "var(--text-secondary)",
                           borderBottom: activePlatform === p.id ? "2px solid var(--accent)" : "2px solid transparent",
                         }}>
                         {p.label}
@@ -973,7 +726,7 @@ export default function PublishPage() {
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <label style={{ ...labelStyle, marginBottom: 0 }}>Publish to Multiple Platforms</label>
                         <div onClick={() => { setBatchMode(!batchMode); setError(""); setBatchResults(null); if (!batchMode) setSelectedPlatforms(new Set()); }}
-                          style={{ width: 36, height: 20, borderRadius: 10, background: batchMode ? "var(--accent)" : "var(--card-border)", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
+                          style={{ width: 36, height: 20, borderRadius: 10, background: batchMode ? "var(--accent)" : "var(--border-default)", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
                           <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: batchMode ? 18 : 2, transition: "left 0.2s" }} />
                         </div>
                       </div>
@@ -991,7 +744,7 @@ export default function PublishPage() {
                           ))}
                         </div>
                         {selectedPlatforms.size > 0 && (
-                          <p style={{ fontSize: 11, color: "var(--muted)", marginTop: -8 }}>
+                          <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: -8 }}>
                             {selectedPlatforms.size} platform{selectedPlatforms.size > 1 ? "s" : ""} selected. Each platform will use its default options configured below.
                           </p>
                         )}
@@ -1011,14 +764,14 @@ export default function PublishPage() {
                           </div>
                         )}
                         {wpBlogs.length === 1 && (
-                          <p style={{ fontSize: 12, color: "var(--muted)" }}>Publishing to <strong style={{ color: "var(--foreground)" }}>{wpBlogs[0].name || wpBlogs[0].url}</strong></p>
+                          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Publishing to <strong style={{ color: "var(--text-primary)" }}>{wpBlogs[0].name || wpBlogs[0].url}</strong></p>
                         )}
                         <div>
                           <label style={labelStyle}>Status</label>
                           <div style={{ display: "flex", gap: 8 }}>
                             {(["draft", "publish"] as const).map((s) => (
                               <button key={s} onClick={() => setPostStatus(s)}
-                                style={{ flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "1px solid", borderColor: postStatus === s ? "var(--accent)" : "var(--card-border)", background: postStatus === s ? "var(--accent)" : "var(--background)", color: postStatus === s ? "#fff" : "var(--foreground)", cursor: "pointer", textTransform: "capitalize" }}>
+                                style={{ flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "1px solid", borderColor: postStatus === s ? "var(--accent)" : "var(--border-default)", background: postStatus === s ? "var(--accent)" : "var(--surface-base)", color: postStatus === s ? "#fff" : "var(--text-primary)", cursor: "pointer", textTransform: "capitalize" }}>
                                 {s}
                               </button>
                             ))}
@@ -1031,15 +784,15 @@ export default function PublishPage() {
                               <label key={cat.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", borderRadius: 6, cursor: "pointer", background: selectedCategories.includes(cat.id) ? "rgba(0,0,0,0.04)" : "transparent", fontSize: 13 }}>
                                 <input type="checkbox" checked={selectedCategories.includes(cat.id)} onChange={() => toggleCategory(cat.id)} style={{ accentColor: "var(--accent)" }} />
                                 <span style={{ fontWeight: 500 }}>{cat.name}</span>
-                                <span style={{ color: "var(--muted)", fontSize: 11, marginLeft: "auto" }}>{cat.count}</span>
+                                <span style={{ color: "var(--text-secondary)", fontSize: 11, marginLeft: "auto" }}>{cat.count}</span>
                               </label>
                             ))}
-                            {categories.length === 0 && <p style={{ fontSize: 12, color: "var(--muted)" }}>No categories found</p>}
+                            {categories.length === 0 && <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>No categories found</p>}
                           </div>
                           <div style={{ display: "flex", gap: 8 }}>
                             <input type="text" placeholder="New category" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)}
                               onKeyDown={(e) => { if (e.key === "Enter") handleCreateCategory(); }}
-                              style={{ flex: 1, padding: "7px 12px", borderRadius: 8, border: "1px solid var(--card-border)", background: "var(--background)", fontSize: 13, outline: "none" }} />
+                              style={{ flex: 1, padding: "7px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--surface-base)", fontSize: 13, outline: "none" }} />
                             <button onClick={handleCreateCategory} disabled={creatingCategory || !newCategoryName.trim()}
                               style={{ padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: creatingCategory || !newCategoryName.trim() ? 0.5 : 1 }}>
                               {creatingCategory ? "..." : "Add"}
@@ -1051,15 +804,15 @@ export default function PublishPage() {
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                               <label style={labelStyle}>AI Images ({availableImages.length})</label>
                               <div onClick={() => setIncludeImages(!includeImages)}
-                                style={{ width: 36, height: 20, borderRadius: 10, background: includeImages ? "var(--accent)" : "var(--card-border)", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
+                                style={{ width: 36, height: 20, borderRadius: 10, background: includeImages ? "var(--accent)" : "var(--border-default)", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
                                 <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: includeImages ? 18 : 2, transition: "left 0.2s" }} />
                               </div>
                             </div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, opacity: includeImages ? 1 : 0.4, transition: "opacity 0.2s" }}>
                               {availableImages.map((img, i) => (
-                                <div key={i} style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--card-border)" }}>
+                                <div key={i} style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border-default)" }}>
                                   <img src={img.publicUrl} alt={img.altText} style={{ width: "100%", height: 70, objectFit: "cover", display: "block" }} />
-                                  <div style={{ padding: "3px 6px", fontSize: 10, color: "var(--muted)" }}>{img.type}</div>
+                                  <div style={{ padding: "3px 6px", fontSize: 10, color: "var(--text-secondary)" }}>{img.type}</div>
                                 </div>
                               ))}
                             </div>
@@ -1080,9 +833,9 @@ export default function PublishPage() {
                           </div>
                         )}
                         {shopifyAccounts.length === 1 && (
-                          <p style={{ fontSize: 12, color: "var(--muted)" }}>Publishing to <strong style={{ color: "var(--foreground)" }}>{shopifyAccounts[0].name || shopifyAccounts[0].shopDomain}</strong></p>
+                          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Publishing to <strong style={{ color: "var(--text-primary)" }}>{shopifyAccounts[0].name || shopifyAccounts[0].shopDomain}</strong></p>
                         )}
-                        <p style={{ fontSize: 12, color: "var(--muted)" }}>Article will be published to your Shopify blog.</p>
+                        <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Article will be published to your Shopify blog.</p>
                       </>
                     )}
 
@@ -1102,7 +855,7 @@ export default function PublishPage() {
                           <div style={{ display: "flex", gap: 8 }}>
                             {(["draft", "public", "unlisted"] as const).map((s) => (
                               <button key={s} onClick={() => setMediumStatus(s)}
-                                style={{ flex: 1, padding: "7px 8px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: "1px solid", borderColor: mediumStatus === s ? "var(--accent)" : "var(--card-border)", background: mediumStatus === s ? "var(--accent)" : "var(--background)", color: mediumStatus === s ? "#fff" : "var(--foreground)", cursor: "pointer", textTransform: "capitalize" }}>
+                                style={{ flex: 1, padding: "7px 8px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: "1px solid", borderColor: mediumStatus === s ? "var(--accent)" : "var(--border-default)", background: mediumStatus === s ? "var(--accent)" : "var(--surface-base)", color: mediumStatus === s ? "#fff" : "var(--text-primary)", cursor: "pointer", textTransform: "capitalize" }}>
                                 {s}
                               </button>
                             ))}
@@ -1131,14 +884,14 @@ export default function PublishPage() {
                           </div>
                         )}
                         {ghostBlogs.length === 1 && (
-                          <p style={{ fontSize: 12, color: "var(--muted)" }}>Publishing to <strong style={{ color: "var(--foreground)" }}>{ghostBlogs[0].name || ghostBlogs[0].url}</strong></p>
+                          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Publishing to <strong style={{ color: "var(--text-primary)" }}>{ghostBlogs[0].name || ghostBlogs[0].url}</strong></p>
                         )}
                         <div>
                           <label style={labelStyle}>Status</label>
                           <div style={{ display: "flex", gap: 8 }}>
                             {(["draft", "published"] as const).map((s) => (
                               <button key={s} onClick={() => setGhostStatus(s)}
-                                style={{ flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "1px solid", borderColor: ghostStatus === s ? "var(--accent)" : "var(--card-border)", background: ghostStatus === s ? "var(--accent)" : "var(--background)", color: ghostStatus === s ? "#fff" : "var(--foreground)", cursor: "pointer", textTransform: "capitalize" }}>
+                                style={{ flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "1px solid", borderColor: ghostStatus === s ? "var(--accent)" : "var(--border-default)", background: ghostStatus === s ? "var(--accent)" : "var(--surface-base)", color: ghostStatus === s ? "#fff" : "var(--text-primary)", cursor: "pointer", textTransform: "capitalize" }}>
                                 {s}
                               </button>
                             ))}
@@ -1165,11 +918,11 @@ export default function PublishPage() {
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <label style={{ ...labelStyle, marginBottom: 0 }}>Publish immediately</label>
                           <div onClick={() => setDevtoPublished(!devtoPublished)}
-                            style={{ width: 36, height: 20, borderRadius: 10, background: devtoPublished ? "var(--accent)" : "var(--card-border)", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
+                            style={{ width: 36, height: 20, borderRadius: 10, background: devtoPublished ? "var(--accent)" : "var(--border-default)", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
                             <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: devtoPublished ? 18 : 2, transition: "left 0.2s" }} />
                           </div>
                         </div>
-                        {!devtoPublished && <p style={{ fontSize: 11, color: "var(--muted)", marginTop: -8 }}>Will be saved as draft on Dev.to</p>}
+                        {!devtoPublished && <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: -8 }}>Will be saved as draft on Dev.to</p>}
                         <div>
                           <label style={labelStyle}>Tags (comma separated, max 4, lowercase)</label>
                           <input type="text" value={tagInput} onChange={(e) => setTagInput(e.target.value)} placeholder="javascript, webdev, tutorial" style={inputStyle} />
@@ -1182,13 +935,13 @@ export default function PublishPage() {
                     )}
 
                     {/* Schedule mode toggle */}
-                    <div style={{ display: "flex", gap: 6, borderRadius: 8, background: "var(--background)", border: "1px solid var(--card-border)", padding: 4 }}>
+                    <div style={{ display: "flex", gap: 6, borderRadius: 8, background: "var(--surface-base)", border: "1px solid var(--border-default)", padding: 4 }}>
                       <button onClick={() => { setScheduleMode(false); setError(""); setScheduleResult(null); }}
-                        style={{ flex: 1, padding: "7px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: !scheduleMode ? "var(--accent)" : "transparent", color: !scheduleMode ? "#fff" : "var(--muted)", transition: "all 0.15s" }}>
+                        style={{ flex: 1, padding: "7px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: !scheduleMode ? "var(--accent)" : "transparent", color: !scheduleMode ? "#fff" : "var(--text-secondary)", transition: "all 0.15s" }}>
                         Publish Now
                       </button>
                       <button onClick={() => { setScheduleMode(true); setError(""); setScheduleResult(null); }}
-                        style={{ flex: 1, padding: "7px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: scheduleMode ? "var(--accent)" : "transparent", color: scheduleMode ? "#fff" : "var(--muted)", transition: "all 0.15s" }}>
+                        style={{ flex: 1, padding: "7px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: scheduleMode ? "var(--accent)" : "transparent", color: scheduleMode ? "#fff" : "var(--text-secondary)", transition: "all 0.15s" }}>
                         Schedule
                       </button>
                     </div>
@@ -1244,14 +997,14 @@ export default function PublishPage() {
 
               {/* Scheduled status */}
               {article.publish_at && !article.posted && (
-                <div style={{ marginTop: 16, background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ marginTop: 16, background: "var(--surface-raised)", border: "1px solid var(--border-default)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--foreground)" }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
                       Scheduled for {new Date(article.publish_at).toLocaleString()}
                     </div>
                     {article.scheduled_platform && (
-                      <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "capitalize" }}>
+                      <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "capitalize" }}>
                         Platform: {article.scheduled_platform}
                       </div>
                     )}
@@ -1261,8 +1014,8 @@ export default function PublishPage() {
 
               {/* Publish History */}
               {publishLogs.length > 0 && (
-                <div style={{ marginTop: 24, background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, overflow: "hidden" }}>
-                  <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--card-border)" }}>
+                <div style={{ marginTop: 24, background: "var(--surface-raised)", border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-default)" }}>
                     <h3 style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Publish History</h3>
                   </div>
                   <div style={{ padding: "8px 0" }}>
@@ -1270,8 +1023,8 @@ export default function PublishPage() {
                       <div key={log.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px", gap: 12 }}>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontSize: 12, fontWeight: 600, textTransform: "capitalize" }}>{log.platform}</div>
-                          {log.account_name && <div style={{ fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{log.account_name}</div>}
-                          <div style={{ fontSize: 11, color: "var(--muted)" }}>{new Date(log.published_at).toLocaleDateString()}</div>
+                          {log.account_name && <div style={{ fontSize: 11, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{log.account_name}</div>}
+                          <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>{new Date(log.published_at).toLocaleDateString()}</div>
                         </div>
                         {log.post_url && (
                           <a href={log.post_url} target="_blank" rel="noopener noreferrer"
@@ -1291,109 +1044,8 @@ export default function PublishPage() {
                 articleContent={article.article_markdown || ""}
                 onApplySection={handleApplySnippetSection}
               />
-
-              {/* SEO Score Panel */}
-              <div style={{ marginTop: 16, background: "var(--card)", border: "1px solid var(--card-border)", borderRadius: 12, overflow: "hidden" }}>
-                <div
-                  style={{ padding: "12px 16px", borderBottom: nlpScoreOpen ? "1px solid var(--card-border)" : "none", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}
-                  onClick={() => setNlpScoreOpen((v) => !v)}
-                >
-                  <h3 style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>SEO Score</h3>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: nlpScoreOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}><polyline points="6 9 12 15 18 9" /></svg>
-                </div>
-                {nlpScoreOpen && (
-                  <div style={{ padding: "16px" }}>
-                    <button
-                      onClick={handleCheckSeoScore}
-                      disabled={nlpScoring}
-                      style={{ width: "100%", padding: "9px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--accent)", color: "#fff", border: "none", cursor: nlpScoring ? "not-allowed" : "pointer", opacity: nlpScoring ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
-                    >
-                      {nlpScoring ? (
-                        <>
-                          <svg className="progress-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
-                          Analyzing...
-                        </>
-                      ) : "Check SEO Score"}
-                    </button>
-
-                    {nlpScore && (
-                      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 14 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                          <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
-                            <svg width="64" height="64" viewBox="0 0 64 64">
-                              <circle cx="32" cy="32" r="26" fill="none" stroke="var(--card-border)" strokeWidth="7" />
-                              <circle
-                                cx="32" cy="32" r="26"
-                                fill="none"
-                                stroke={nlpScore.overallScore >= 70 ? "var(--success)" : nlpScore.overallScore >= 45 ? "#f59e0b" : "var(--error)"}
-                                strokeWidth="7"
-                                strokeLinecap="round"
-                                strokeDasharray={`${(nlpScore.overallScore / 100) * 163.4} 163.4`}
-                                strokeDashoffset="0"
-                                transform="rotate(-90 32 32)"
-                              />
-                            </svg>
-                            <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700 }}>{nlpScore.overallScore}</span>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 700 }}>Overall SEO Score</div>
-                            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                              {nlpScore.wordCount} words &middot; {nlpScore.sentenceCount} sentences
-                            </div>
-                          </div>
-                        </div>
-
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                          {([ ["Word Count", nlpScore.wordCountScore], ["Term Coverage", nlpScore.nlpTermsCoverage], ["Readability", nlpScore.readabilityScore], ["Questions", nlpScore.questionsCoverage] ] as [string, number][]).map(([label, val]) => (
-                            <div key={label}>
-                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 600, marginBottom: 3 }}>
-                                <span>{label}</span>
-                                <span style={{ color: val >= 70 ? "var(--success)" : val >= 45 ? "#f59e0b" : "var(--error)" }}>{val}</span>
-                              </div>
-                              <div style={{ height: 5, borderRadius: 4, background: "var(--card-border)" }}>
-                                <div style={{ height: "100%", borderRadius: 4, width: `${val}%`, background: val >= 70 ? "var(--success)" : val >= 45 ? "#f59e0b" : "var(--error)", transition: "width 0.4s" }} />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {nlpScore.missingNlpTerms.length > 0 && (
-                          <div>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Missing Terms</div>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                              {nlpScore.missingNlpTerms.map((term) => (
-                                <span key={term} style={{ padding: "2px 8px", borderRadius: 20, background: "rgba(239,68,68,0.08)", color: "var(--error)", fontSize: 11, fontWeight: 500, border: "1px solid rgba(239,68,68,0.2)" }}>{term}</span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {nlpScore.recommendations.length > 0 && (
-                          <div>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Recommendations</div>
-                            <ul style={{ margin: 0, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 4 }}>
-                              {nlpScore.recommendations.map((rec, i) => (
-                                <li key={i} style={{ fontSize: 12, color: "var(--foreground)", lineHeight: 1.5 }}>{rec}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Newsletter Export */}
-              <NewsletterExportPanel
-                articleContent={article.article_markdown || ""}
-                articleTitle={article.title || article.topic || ""}
-                focusKeyword={article.topic || undefined}
-                publishedUrl={publishLogs[0]?.post_url ?? undefined}
-              />
-            </div>}
+            </div>
           </div>
-          </>
         )}
       </main>
     </div>

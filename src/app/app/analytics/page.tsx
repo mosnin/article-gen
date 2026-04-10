@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { cn } from "@/lib/utils";
@@ -169,37 +168,33 @@ export default function AnalyticsPage() {
 
       {/* Loading state */}
       {loading && (
-        <Card>
-          <CardContent className="pt-6 space-y-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <Skeleton className="h-4 w-1/3" />
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-4 w-12" />
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-4 w-12" />
-                <Skeleton className="h-4 w-12" />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 space-y-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4">
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-12" />
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Error state */}
       {!loading && error && (
-        <Card>
-          <CardContent className="pt-6 flex flex-col items-center justify-center py-12 text-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-[var(--error-light)] flex items-center justify-center">
-              <svg className="w-6 h-6 text-[var(--error)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="font-medium text-[var(--text-primary)]">Failed to load analytics</p>
-              <p className="text-sm text-[var(--text-secondary)] mt-1 max-w-sm">{error}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-8 flex flex-col items-center justify-center text-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-[var(--error-light)] flex items-center justify-center">
+            <svg className="w-6 h-6 text-[var(--error)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+          </div>
+          <div>
+            <p className="font-medium text-[var(--text-primary)]">Failed to load analytics</p>
+            <p className="text-sm text-[var(--text-secondary)] mt-1 max-w-sm">{error}</p>
+          </div>
+        </div>
       )}
 
       {/* Empty state */}
