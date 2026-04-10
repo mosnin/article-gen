@@ -2275,18 +2275,7 @@ export default function Home() {
 
                     <button
                       onClick={handleGenerate}
-                      className="w-full rounded-xl py-3.5 text-base font-semibold text-white transition-all duration-200"
-                      style={{ background: "var(--accent)" }}
-                      onMouseEnter={(e) => {
-                        (
-                          e.currentTarget as HTMLButtonElement
-                        ).style.background = "var(--accent-hover)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (
-                          e.currentTarget as HTMLButtonElement
-                        ).style.background = "var(--accent)";
-                      }}
+                      className="bg-[var(--accent)] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors w-full py-3"
                     >
                       Generate Article{generateImages ? " (2 credits)" : " (1 credit)"}
                     </button>
@@ -2298,66 +2287,25 @@ export default function Home() {
                   <div className="space-y-5">
                     {/* Quality selector */}
                     <div>
-                      <label
-                        className="mb-2 block text-sm font-medium"
-                        style={{ color: "var(--muted)" }}
-                      >
+                      <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                         Article Quality
                       </label>
                       <div className="flex gap-3">
                         <button
                           onClick={() => setBatchQuality("standard")}
-                          className="flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-colors"
-                          style={{
-                            background:
-                              batchQuality === "standard"
-                                ? "var(--accent)"
-                                : "var(--card)",
-                            color:
-                              batchQuality === "standard"
-                                ? "#fff"
-                                : "var(--foreground)",
-                            borderColor:
-                              batchQuality === "standard"
-                                ? "var(--accent)"
-                                : "var(--card-border)",
-                          }}
+                          className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${batchQuality === "standard" ? "bg-[var(--accent)] text-white border-[var(--accent)]" : "bg-[var(--surface-base)] text-[var(--text-primary)] border-[var(--border-default)]"}`}
                         >
                           Standard
-                          <span
-                            className="block text-xs font-normal"
-                            style={{
-                              opacity: 0.7,
-                            }}
-                          >
+                          <span className="block text-xs font-normal opacity-70">
                             ~2,000 words
                           </span>
                         </button>
                         <button
                           onClick={() => setBatchQuality("premium")}
-                          className="flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-colors"
-                          style={{
-                            background:
-                              batchQuality === "premium"
-                                ? "var(--accent)"
-                                : "var(--card)",
-                            color:
-                              batchQuality === "premium"
-                                ? "#fff"
-                                : "var(--foreground)",
-                            borderColor:
-                              batchQuality === "premium"
-                                ? "var(--accent)"
-                                : "var(--card-border)",
-                          }}
+                          className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${batchQuality === "premium" ? "bg-[var(--accent)] text-white border-[var(--accent)]" : "bg-[var(--surface-base)] text-[var(--text-primary)] border-[var(--border-default)]"}`}
                         >
                           Premium
-                          <span
-                            className="block text-xs font-normal"
-                            style={{
-                              opacity: 0.7,
-                            }}
-                          >
+                          <span className="block text-xs font-normal opacity-70">
                             ~4,000 words
                           </span>
                         </button>

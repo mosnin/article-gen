@@ -717,30 +717,31 @@ export default function PublishPage() {
                   </button>
                 </div>
               ) : (
-                <div style={{ background: "var(--surface-raised)", border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ background: "var(--surface-base)", border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden" }}>
                   {/* Platform tabs */}
                   <div style={{ display: "flex", borderBottom: "1px solid var(--border-default)", overflowX: "auto" }}>
                     {PLATFORMS.filter((p) => hasPlatform[p.id]).map((p) => (
                       <button key={p.id} onClick={() => { setActivePlatform(p.id); setError(""); }}
                         style={{
-                          flex: 1, minWidth: "fit-content", padding: "12px 14px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", whiteSpace: "nowrap",
-                          background: activePlatform === p.id ? "var(--surface-base)" : "transparent",
+                          flex: 1, minWidth: "fit-content", padding: "11px 14px", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", whiteSpace: "nowrap",
+                          background: activePlatform === p.id ? "var(--surface-base)" : "var(--surface-raised)",
                           color: activePlatform === p.id ? "var(--accent)" : "var(--text-secondary)",
                           borderBottom: activePlatform === p.id ? "2px solid var(--accent)" : "2px solid transparent",
+                          transition: "color 0.15s",
                         }}>
                         {p.label}
                       </button>
                     ))}
                   </div>
 
-                  <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
                     {/* Batch mode toggle */}
                     {Object.values(hasPlatform).filter(Boolean).length > 1 && (
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <label style={{ ...labelStyle, marginBottom: 0 }}>Publish to Multiple Platforms</label>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 8, background: "var(--surface-raised)", border: "1px solid var(--border-default)" }}>
+                        <label style={{ ...labelStyle, marginBottom: 0, cursor: "pointer" }}>Publish to Multiple Platforms</label>
                         <div onClick={() => { setBatchMode(!batchMode); setError(""); setBatchResults(null); if (!batchMode) setSelectedPlatforms(new Set()); }}
-                          style={{ width: 36, height: 20, borderRadius: 10, background: batchMode ? "var(--accent)" : "var(--border-default)", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
-                          <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: batchMode ? 18 : 2, transition: "left 0.2s" }} />
+                          style={{ width: 36, height: 20, borderRadius: 10, background: batchMode ? "var(--accent)" : "var(--border-strong)", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
+                          <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: batchMode ? 18 : 2, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
                         </div>
                       </div>
                     )}
@@ -748,17 +749,17 @@ export default function PublishPage() {
                     {/* Batch mode: platform checkboxes */}
                     {batchMode && (
                       <>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                           {PLATFORMS.filter((p) => hasPlatform[p.id]).map((p) => (
-                            <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, cursor: "pointer", background: selectedPlatforms.has(p.id) ? "rgba(0,0,0,0.04)" : "transparent", fontSize: 13, fontWeight: 500 }}>
+                            <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, cursor: "pointer", background: selectedPlatforms.has(p.id) ? "var(--accent-light)" : "transparent", border: "1px solid", borderColor: selectedPlatforms.has(p.id) ? "var(--accent)" : "transparent", fontSize: 13, fontWeight: 500, transition: "all 0.15s" }}>
                               <input type="checkbox" checked={selectedPlatforms.has(p.id)} onChange={() => togglePlatformSelection(p.id)} style={{ accentColor: "var(--accent)" }} />
                               {p.label}
                             </label>
                           ))}
                         </div>
                         {selectedPlatforms.size > 0 && (
-                          <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: -8 }}>
-                            {selectedPlatforms.size} platform{selectedPlatforms.size > 1 ? "s" : ""} selected. Each platform will use its default options configured below.
+                          <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0 }}>
+                            {selectedPlatforms.size} platform{selectedPlatforms.size > 1 ? "s" : ""} selected. Each will use its default options below.
                           </p>
                         )}
                       </>
@@ -777,55 +778,55 @@ export default function PublishPage() {
                           </div>
                         )}
                         {wpBlogs.length === 1 && (
-                          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Publishing to <strong style={{ color: "var(--text-primary)" }}>{wpBlogs[0].name || wpBlogs[0].url}</strong></p>
+                          <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>Publishing to <strong style={{ color: "var(--text-primary)", fontWeight: 600 }}>{wpBlogs[0].name || wpBlogs[0].url}</strong></p>
                         )}
                         <div>
-                          <label style={labelStyle}>Status</label>
-                          <div style={{ display: "flex", gap: 8 }}>
+                          <label style={labelStyle}>Post Status</label>
+                          <div style={{ display: "flex", gap: 6 }}>
                             {(["draft", "publish"] as const).map((s) => (
                               <button key={s} onClick={() => setPostStatus(s)}
-                                style={{ flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "1px solid", borderColor: postStatus === s ? "var(--accent)" : "var(--border-default)", background: postStatus === s ? "var(--accent)" : "var(--surface-base)", color: postStatus === s ? "#fff" : "var(--text-primary)", cursor: "pointer", textTransform: "capitalize" }}>
-                                {s}
+                                style={{ flex: 1, padding: "7px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: "1px solid", borderColor: postStatus === s ? "var(--accent)" : "var(--border-default)", background: postStatus === s ? "var(--accent)" : "var(--surface-base)", color: postStatus === s ? "#fff" : "var(--text-secondary)", cursor: "pointer", textTransform: "capitalize", transition: "all 0.15s" }}>
+                                {s === "publish" ? "Live" : "Draft"}
                               </button>
                             ))}
                           </div>
                         </div>
                         <div>
                           <label style={labelStyle}>Categories</label>
-                          <div style={{ maxHeight: 160, overflow: "auto", marginBottom: 8, display: "flex", flexDirection: "column", gap: 2 }}>
+                          <div style={{ maxHeight: 152, overflow: "auto", marginBottom: 8, display: "flex", flexDirection: "column", gap: 1, border: "1px solid var(--border-default)", borderRadius: 8, padding: "4px 0" }}>
                             {categories.map((cat) => (
-                              <label key={cat.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", borderRadius: 6, cursor: "pointer", background: selectedCategories.includes(cat.id) ? "rgba(0,0,0,0.04)" : "transparent", fontSize: 13 }}>
+                              <label key={cat.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 10px", borderRadius: 6, cursor: "pointer", background: selectedCategories.includes(cat.id) ? "var(--accent-light)" : "transparent", fontSize: 13, transition: "background 0.1s" }}>
                                 <input type="checkbox" checked={selectedCategories.includes(cat.id)} onChange={() => toggleCategory(cat.id)} style={{ accentColor: "var(--accent)" }} />
-                                <span style={{ fontWeight: 500 }}>{cat.name}</span>
-                                <span style={{ color: "var(--text-secondary)", fontSize: 11, marginLeft: "auto" }}>{cat.count}</span>
+                                <span style={{ fontWeight: 500, flex: 1, color: "var(--text-primary)" }}>{cat.name}</span>
+                                <span style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{cat.count}</span>
                               </label>
                             ))}
-                            {categories.length === 0 && <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>No categories found</p>}
+                            {categories.length === 0 && <p style={{ fontSize: 12, color: "var(--text-secondary)", padding: "6px 10px", margin: 0 }}>No categories found</p>}
                           </div>
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <input type="text" placeholder="New category" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)}
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <input type="text" placeholder="New category name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)}
                               onKeyDown={(e) => { if (e.key === "Enter") handleCreateCategory(); }}
-                              style={{ flex: 1, padding: "7px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--surface-base)", fontSize: 13, outline: "none" }} />
+                              style={{ flex: 1, padding: "7px 10px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--surface-base)", fontSize: 12, outline: "none", color: "var(--text-primary)" }} />
                             <button onClick={handleCreateCategory} disabled={creatingCategory || !newCategoryName.trim()}
-                              style={{ padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: creatingCategory || !newCategoryName.trim() ? 0.5 : 1 }}>
-                              {creatingCategory ? "..." : "Add"}
+                              style={{ padding: "7px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: creatingCategory || !newCategoryName.trim() ? 0.5 : 1, whiteSpace: "nowrap" }}>
+                              {creatingCategory ? "..." : "+ Add"}
                             </button>
                           </div>
                         </div>
                         {availableImages.length > 0 && (
                           <div>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                              <label style={labelStyle}>AI Images ({availableImages.length})</label>
+                              <label style={labelStyle}>Include AI Images ({availableImages.length})</label>
                               <div onClick={() => setIncludeImages(!includeImages)}
-                                style={{ width: 36, height: 20, borderRadius: 10, background: includeImages ? "var(--accent)" : "var(--border-default)", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
-                                <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: includeImages ? 18 : 2, transition: "left 0.2s" }} />
+                                style={{ width: 36, height: 20, borderRadius: 10, background: includeImages ? "var(--accent)" : "var(--border-strong)", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
+                                <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: includeImages ? 18 : 2, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
                               </div>
                             </div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, opacity: includeImages ? 1 : 0.4, transition: "opacity 0.2s" }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, opacity: includeImages ? 1 : 0.35, transition: "opacity 0.2s" }}>
                               {availableImages.map((img, i) => (
                                 <div key={i} style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border-default)" }}>
-                                  <img src={img.publicUrl} alt={img.altText} style={{ width: "100%", height: 70, objectFit: "cover", display: "block" }} />
-                                  <div style={{ padding: "3px 6px", fontSize: 10, color: "var(--text-secondary)" }}>{img.type}</div>
+                                  <img src={img.publicUrl} alt={img.altText} style={{ width: "100%", height: 64, objectFit: "cover", display: "block" }} />
+                                  <div style={{ padding: "3px 7px", fontSize: 10, color: "var(--text-tertiary)", background: "var(--surface-raised)" }}>{img.type}</div>
                                 </div>
                               ))}
                             </div>
@@ -846,9 +847,9 @@ export default function PublishPage() {
                           </div>
                         )}
                         {shopifyAccounts.length === 1 && (
-                          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Publishing to <strong style={{ color: "var(--text-primary)" }}>{shopifyAccounts[0].name || shopifyAccounts[0].shopDomain}</strong></p>
+                          <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>Publishing to <strong style={{ color: "var(--text-primary)", fontWeight: 600 }}>{shopifyAccounts[0].name || shopifyAccounts[0].shopDomain}</strong></p>
                         )}
-                        <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Article will be published to your Shopify blog.</p>
+                        <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>Article will be published to your Shopify blog.</p>
                       </>
                     )}
 
@@ -864,22 +865,22 @@ export default function PublishPage() {
                           </div>
                         )}
                         <div>
-                          <label style={labelStyle}>Publish Status</label>
-                          <div style={{ display: "flex", gap: 8 }}>
+                          <label style={labelStyle}>Visibility</label>
+                          <div style={{ display: "flex", gap: 6 }}>
                             {(["draft", "public", "unlisted"] as const).map((s) => (
                               <button key={s} onClick={() => setMediumStatus(s)}
-                                style={{ flex: 1, padding: "7px 8px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: "1px solid", borderColor: mediumStatus === s ? "var(--accent)" : "var(--border-default)", background: mediumStatus === s ? "var(--accent)" : "var(--surface-base)", color: mediumStatus === s ? "#fff" : "var(--text-primary)", cursor: "pointer", textTransform: "capitalize" }}>
+                                style={{ flex: 1, padding: "7px 6px", borderRadius: 8, fontSize: 11, fontWeight: 600, border: "1px solid", borderColor: mediumStatus === s ? "var(--accent)" : "var(--border-default)", background: mediumStatus === s ? "var(--accent)" : "var(--surface-base)", color: mediumStatus === s ? "#fff" : "var(--text-secondary)", cursor: "pointer", textTransform: "capitalize", transition: "all 0.15s" }}>
                                 {s}
                               </button>
                             ))}
                           </div>
                         </div>
                         <div>
-                          <label style={labelStyle}>Tags (comma separated, max 5)</label>
+                          <label style={labelStyle}>Tags <span style={{ fontWeight: 400, color: "var(--text-tertiary)" }}>(comma-separated, max 5)</span></label>
                           <input type="text" value={tagInput} onChange={(e) => setTagInput(e.target.value)} placeholder="technology, programming, web" style={inputStyle} />
                         </div>
                         <div>
-                          <label style={labelStyle}>Canonical URL (optional)</label>
+                          <label style={labelStyle}>Canonical URL <span style={{ fontWeight: 400, color: "var(--text-tertiary)" }}>(optional)</span></label>
                           <input type="text" value={mediumCanonical} onChange={(e) => setMediumCanonical(e.target.value)} placeholder="https://yourblog.com/post" style={inputStyle} />
                         </div>
                       </>
@@ -897,21 +898,21 @@ export default function PublishPage() {
                           </div>
                         )}
                         {ghostBlogs.length === 1 && (
-                          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Publishing to <strong style={{ color: "var(--text-primary)" }}>{ghostBlogs[0].name || ghostBlogs[0].url}</strong></p>
+                          <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>Publishing to <strong style={{ color: "var(--text-primary)", fontWeight: 600 }}>{ghostBlogs[0].name || ghostBlogs[0].url}</strong></p>
                         )}
                         <div>
-                          <label style={labelStyle}>Status</label>
-                          <div style={{ display: "flex", gap: 8 }}>
+                          <label style={labelStyle}>Post Status</label>
+                          <div style={{ display: "flex", gap: 6 }}>
                             {(["draft", "published"] as const).map((s) => (
                               <button key={s} onClick={() => setGhostStatus(s)}
-                                style={{ flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "1px solid", borderColor: ghostStatus === s ? "var(--accent)" : "var(--border-default)", background: ghostStatus === s ? "var(--accent)" : "var(--surface-base)", color: ghostStatus === s ? "#fff" : "var(--text-primary)", cursor: "pointer", textTransform: "capitalize" }}>
-                                {s}
+                                style={{ flex: 1, padding: "7px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: "1px solid", borderColor: ghostStatus === s ? "var(--accent)" : "var(--border-default)", background: ghostStatus === s ? "var(--accent)" : "var(--surface-base)", color: ghostStatus === s ? "#fff" : "var(--text-secondary)", cursor: "pointer", textTransform: "capitalize", transition: "all 0.15s" }}>
+                                {s === "published" ? "Live" : "Draft"}
                               </button>
                             ))}
                           </div>
                         </div>
                         <div>
-                          <label style={labelStyle}>Tags (comma separated)</label>
+                          <label style={labelStyle}>Tags <span style={{ fontWeight: 400, color: "var(--text-tertiary)" }}>(comma-separated)</span></label>
                           <input type="text" value={tagInput} onChange={(e) => setTagInput(e.target.value)} placeholder="technology, tutorials" style={inputStyle} />
                         </div>
                       </>
@@ -928,33 +929,36 @@ export default function PublishPage() {
                             </select>
                           </div>
                         )}
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <label style={{ ...labelStyle, marginBottom: 0 }}>Publish immediately</label>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 8, background: "var(--surface-raised)", border: "1px solid var(--border-default)" }}>
+                          <label style={{ ...labelStyle, marginBottom: 0, cursor: "pointer" }}>Publish immediately</label>
                           <div onClick={() => setDevtoPublished(!devtoPublished)}
-                            style={{ width: 36, height: 20, borderRadius: 10, background: devtoPublished ? "var(--accent)" : "var(--border-default)", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
-                            <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: devtoPublished ? 18 : 2, transition: "left 0.2s" }} />
+                            style={{ width: 36, height: 20, borderRadius: 10, background: devtoPublished ? "var(--accent)" : "var(--border-strong)", position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0 }}>
+                            <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: devtoPublished ? 18 : 2, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
                           </div>
                         </div>
-                        {!devtoPublished && <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: -8 }}>Will be saved as draft on Dev.to</p>}
+                        {!devtoPublished && <p style={{ fontSize: 11, color: "var(--text-tertiary)", margin: 0 }}>Will be saved as a draft on Dev.to</p>}
                         <div>
-                          <label style={labelStyle}>Tags (comma separated, max 4, lowercase)</label>
+                          <label style={labelStyle}>Tags <span style={{ fontWeight: 400, color: "var(--text-tertiary)" }}>(comma-separated, max 4, lowercase)</span></label>
                           <input type="text" value={tagInput} onChange={(e) => setTagInput(e.target.value)} placeholder="javascript, webdev, tutorial" style={inputStyle} />
                         </div>
                         <div>
-                          <label style={labelStyle}>Canonical URL (optional)</label>
+                          <label style={labelStyle}>Canonical URL <span style={{ fontWeight: 400, color: "var(--text-tertiary)" }}>(optional)</span></label>
                           <input type="text" value={devtoCanonical} onChange={(e) => setDevtoCanonical(e.target.value)} placeholder="https://yourblog.com/post" style={inputStyle} />
                         </div>
                       </>
                     )}
 
+                    {/* Divider */}
+                    <div style={{ height: 1, background: "var(--border-default)", margin: "0 -2px" }} />
+
                     {/* Schedule mode toggle */}
-                    <div style={{ display: "flex", gap: 6, borderRadius: 8, background: "var(--surface-base)", border: "1px solid var(--border-default)", padding: 4 }}>
+                    <div style={{ display: "flex", gap: 4, borderRadius: 8, background: "var(--surface-raised)", border: "1px solid var(--border-default)", padding: 3 }}>
                       <button onClick={() => { setScheduleMode(false); setError(""); setScheduleResult(null); }}
-                        style={{ flex: 1, padding: "7px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: !scheduleMode ? "var(--accent)" : "transparent", color: !scheduleMode ? "#fff" : "var(--text-secondary)", transition: "all 0.15s" }}>
+                        style={{ flex: 1, padding: "7px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: !scheduleMode ? "var(--surface-base)" : "transparent", color: !scheduleMode ? "var(--text-primary)" : "var(--text-secondary)", boxShadow: !scheduleMode ? "0 1px 3px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
                         Publish Now
                       </button>
                       <button onClick={() => { setScheduleMode(true); setError(""); setScheduleResult(null); }}
-                        style={{ flex: 1, padding: "7px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: scheduleMode ? "var(--accent)" : "transparent", color: scheduleMode ? "#fff" : "var(--text-secondary)", transition: "all 0.15s" }}>
+                        style={{ flex: 1, padding: "7px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: scheduleMode ? "var(--surface-base)" : "transparent", color: scheduleMode ? "var(--text-primary)" : "var(--text-secondary)", boxShadow: scheduleMode ? "0 1px 3px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
                         Schedule
                       </button>
                     </div>
@@ -968,40 +972,40 @@ export default function PublishPage() {
                           value={scheduleDateTime}
                           onChange={(e) => setScheduleDateTime(e.target.value)}
                           min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
-                          style={{ ...inputStyle, colorScheme: "dark" }}
+                          style={{ ...inputStyle, colorScheme: "light dark" }}
                         />
                       </div>
                     )}
 
                     {/* Scheduled confirmation */}
                     {scheduleResult && (
-                      <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(52, 199, 89, 0.1)", color: "var(--success)", fontSize: 13, fontWeight: 500 }}>
+                      <div style={{ padding: "10px 12px", borderRadius: 8, background: "var(--success-light)", border: "1px solid var(--border-default)", color: "var(--success)", fontSize: 13, fontWeight: 500 }}>
                         Scheduled for {new Date(scheduleResult.scheduledAt).toLocaleString()}
                       </div>
                     )}
 
                     {/* Error */}
                     {error && (
-                      <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(239, 68, 68, 0.1)", color: "var(--error)", fontSize: 13 }}>
+                      <div style={{ padding: "10px 12px", borderRadius: 8, background: "var(--error-light)", border: "1px solid var(--border-default)", color: "var(--error)", fontSize: 13 }}>
                         {error}
                       </div>
                     )}
 
-                    {/* Publish / Schedule / Batch button */}
+                    {/* Primary action button */}
                     {batchMode ? (
                       <button onClick={handleBatchPublish} disabled={batchPublishing || selectedPlatforms.size === 0}
-                        style={{ width: "100%", padding: 12, borderRadius: 10, fontSize: 14, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: (batchPublishing || selectedPlatforms.size === 0) ? 0.6 : 1 }}>
-                        {batchPublishing ? "Publishing..." : `Publish to ${selectedPlatforms.size} Platform${selectedPlatforms.size !== 1 ? "s" : ""}`}
+                        style={{ width: "100%", padding: "11px 12px", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: (batchPublishing || selectedPlatforms.size === 0) ? 0.55 : 1, letterSpacing: "-0.01em" }}>
+                        {batchPublishing ? "Publishing…" : `Publish to ${selectedPlatforms.size} Platform${selectedPlatforms.size !== 1 ? "s" : ""}`}
                       </button>
                     ) : scheduleMode ? (
                       <button onClick={handleSchedule} disabled={scheduling || !scheduleDateTime}
-                        style={{ width: "100%", padding: 12, borderRadius: 10, fontSize: 14, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: (scheduling || !scheduleDateTime) ? 0.6 : 1 }}>
-                        {scheduling ? "Scheduling..." : `Schedule for ${platformLabel[activePlatform]}`}
+                        style={{ width: "100%", padding: "11px 12px", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: (scheduling || !scheduleDateTime) ? 0.55 : 1, letterSpacing: "-0.01em" }}>
+                        {scheduling ? "Scheduling…" : `Schedule for ${platformLabel[activePlatform]}`}
                       </button>
                     ) : (
                       <button onClick={handlePublish} disabled={publishing}
-                        style={{ width: "100%", padding: 12, borderRadius: 10, fontSize: 14, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: publishing ? 0.6 : 1 }}>
-                        {publishing ? "Publishing..." : `Publish to ${platformLabel[activePlatform]}`}
+                        style={{ width: "100%", padding: "11px 12px", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: publishing ? 0.55 : 1, letterSpacing: "-0.01em" }}>
+                        {publishing ? "Publishing…" : `Publish to ${platformLabel[activePlatform]}`}
                       </button>
                     )}
                   </div>
@@ -1010,15 +1014,15 @@ export default function PublishPage() {
 
               {/* Scheduled status */}
               {article.publish_at && !article.posted && (
-                <div style={{ marginTop: 16, background: "var(--surface-raised)", border: "1px solid var(--border-default)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                <div style={{ marginTop: 12, background: "var(--surface-base)", border: "1px solid var(--border-default)", borderRadius: 10, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
                       Scheduled for {new Date(article.publish_at).toLocaleString()}
                     </div>
                     {article.scheduled_platform && (
-                      <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "capitalize" }}>
-                        Platform: {article.scheduled_platform}
+                      <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "capitalize", marginTop: 1 }}>
+                        via {article.scheduled_platform}
                       </div>
                     )}
                   </div>
@@ -1027,21 +1031,21 @@ export default function PublishPage() {
 
               {/* Publish History */}
               {publishLogs.length > 0 && (
-                <div style={{ marginTop: 24, background: "var(--surface-raised)", border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden" }}>
-                  <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-default)" }}>
-                    <h3 style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Publish History</h3>
+                <div style={{ marginTop: 12, background: "var(--surface-base)", border: "1px solid var(--border-default)", borderRadius: 10, overflow: "hidden" }}>
+                  <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border-default)", background: "var(--surface-raised)" }}>
+                    <h3 style={{ fontSize: 12, fontWeight: 600, margin: 0, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Publish History</h3>
                   </div>
-                  <div style={{ padding: "8px 0" }}>
+                  <div>
                     {publishLogs.map((log) => (
-                      <div key={log.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px", gap: 12 }}>
+                      <div key={log.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 14px", gap: 12, borderBottom: "1px solid var(--border-default)" }}>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, textTransform: "capitalize" }}>{log.platform}</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, textTransform: "capitalize", color: "var(--text-primary)" }}>{platformLabel[log.platform as Platform] ?? log.platform}</div>
                           {log.account_name && <div style={{ fontSize: 11, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{log.account_name}</div>}
-                          <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>{new Date(log.published_at).toLocaleDateString()}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 1 }}>{new Date(log.published_at).toLocaleDateString()}</div>
                         </div>
                         {log.post_url && (
                           <a href={log.post_url} target="_blank" rel="noopener noreferrer"
-                            style={{ fontSize: 12, color: "var(--accent)", whiteSpace: "nowrap", textDecoration: "none", fontWeight: 500 }}>
+                            style={{ fontSize: 12, color: "var(--accent)", whiteSpace: "nowrap", textDecoration: "none", fontWeight: 600, padding: "3px 8px", borderRadius: 5, border: "1px solid var(--border-default)" }}>
                             View →
                           </a>
                         )}
