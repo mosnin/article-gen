@@ -80,7 +80,7 @@ function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId,
       onDragEnd={onDragEnd}
       className={cn(
         "flex flex-col gap-2 p-4 rounded-xl border transition-all duration-200 cursor-grab active:cursor-grabbing bg-[var(--surface-base)] border-[var(--border-default)]",
-        slot.status === "approved" && "border-blue-200 bg-blue-50/30 dark:border-blue-800 dark:bg-blue-950/20",
+        slot.status === "approved" && "border-[var(--accent)] bg-[var(--accent-light)]",
         slot.status === "done" && "border-emerald-200 bg-emerald-50/30 dark:border-emerald-800 dark:bg-emerald-950/20",
         slot.status === "rejected" && "opacity-50",
         slot.status === "generating" && "border-amber-200 bg-amber-50/30 dark:border-amber-800 dark:bg-amber-950/20",
@@ -536,7 +536,7 @@ export default function AutopilotPage() {
                 <div className="h-5 w-16 rounded-full skeleton" />
               </div>
               {/* Title bar — wide */}
-              <div className="h-4 rounded skeleton" style={{ width: `${60 + (i % 3) * 12}%` }} />
+              <div className={cn("h-4 rounded skeleton", [i % 3 === 0 ? "w-[60%]" : i % 3 === 1 ? "w-[72%]" : "w-[84%]"])} />
               {/* Second title line (shorter) */}
               <div className="h-4 w-3/5 rounded skeleton" />
               {/* Keyword chip row */}
@@ -640,7 +640,7 @@ export default function AutopilotPage() {
             {[
               { label: "Total", value: stats.total, color: "text-[var(--text-primary)]" },
               { label: "Approved", value: stats.approved, color: "text-[var(--accent)]" },
-              { label: "Published", value: stats.done, color: "text-emerald-600 dark:text-emerald-400" },
+              { label: "Published", value: stats.done, color: "text-[var(--accent)]" },
               { label: "Pending", value: stats.pending, color: "text-[var(--text-secondary)]" },
             ].map((s) => (
               <div key={s.label} className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-4 text-center">
