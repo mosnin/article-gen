@@ -2,8 +2,7 @@ import { inngest } from "@/lib/inngest";
 import { getAdminClient } from "@/lib/supabase-admin";
 
 export const onArticlePublished = inngest.createFunction(
-  { id: "on-article-published" },
-  { event: "article/published" },
+  { id: "on-article-published", triggers: [{ event: "article/published" }] },
   async ({ event }) => {
     const { articleId, userId, platform, accountName, postUrl, editUrl, postId } = event.data as {
       articleId: string;
@@ -49,8 +48,7 @@ export const onArticlePublished = inngest.createFunction(
 );
 
 export const weeklyContentReport = inngest.createFunction(
-  { id: "weekly-content-report" },
-  { cron: "0 9 * * 1" },
+  { id: "weekly-content-report", triggers: [{ cron: "0 9 * * 1" }] },
   async ({ step }) => {
     const result = await step.run("generate-weekly-reports", async () => {
       const supabase = getAdminClient();
