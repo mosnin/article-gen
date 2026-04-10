@@ -243,7 +243,7 @@ export default function GeneralSettingsPage() {
                 value={business.websiteUrl}
                 onChange={(e) => setBusiness((p) => ({ ...p, websiteUrl: e.target.value }))}
                 placeholder="https://yourdomain.com"
-                className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
               />
             </div>
 
@@ -254,7 +254,7 @@ export default function GeneralSettingsPage() {
                 value={business.businessName}
                 onChange={(e) => setBusiness((p) => ({ ...p, businessName: e.target.value }))}
                 placeholder="Your business name"
-                className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
               />
             </div>
 
@@ -272,7 +272,7 @@ export default function GeneralSettingsPage() {
                   <select
                     value={business.language}
                     onChange={(e) => setBusiness((p) => ({ ...p, language: e.target.value }))}
-                    className="w-full appearance-none rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 pr-8 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                    className="w-full appearance-none rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 pr-8 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                   >
                     {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
                   </select>
@@ -295,7 +295,7 @@ export default function GeneralSettingsPage() {
                   <select
                     value={business.country}
                     onChange={(e) => setBusiness((p) => ({ ...p, country: e.target.value }))}
-                    className="w-full appearance-none rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 pr-8 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                    className="w-full appearance-none rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 pr-8 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                   >
                     {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
@@ -322,7 +322,7 @@ export default function GeneralSettingsPage() {
                 value={business.description}
                 onChange={(e) => setBusiness((p) => ({ ...p, description: e.target.value }))}
                 placeholder="Describe your business, what you do, who you serve, and what makes you unique…"
-                className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] resize-none"
+                className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] resize-none"
               />
             </div>
           </div>
@@ -391,7 +391,7 @@ export default function GeneralSettingsPage() {
                     }
                   }}
                   placeholder={field.placeholder}
-                  className="flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                  className="flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 />
                 <Button
                   size="sm"
@@ -420,13 +420,13 @@ export default function GeneralSettingsPage() {
           <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] p-6">
             {gsc.connected ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-3 rounded-lg border border-[var(--success)] bg-green-50 px-4 py-3">
-                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 shrink-0 text-[var(--success)]">
+                <div className="flex items-center gap-3 rounded-lg border border-[var(--accent)] bg-[var(--accent-light)] px-4 py-3">
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 shrink-0 text-[var(--accent)]">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                   <div>
-                    <p className="text-sm font-medium text-green-800">Connected</p>
-                    <p className="text-xs text-green-600">{gsc.siteUrl}</p>
+                    <p className="text-sm font-medium text-[var(--text-primary)]">Connected</p>
+                    <p className="text-xs text-[var(--text-secondary)]">{gsc.siteUrl}</p>
                   </div>
                   <button
                     disabled={gscDisconnecting}
@@ -451,7 +451,7 @@ export default function GeneralSettingsPage() {
               </div>
             ) : (
               <div className="flex flex-col items-center gap-4 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--accent-light)]">
                   <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" fill="#4285F4" />
                     <path d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z" fill="white" />
@@ -479,7 +479,7 @@ export default function GeneralSettingsPage() {
                       value={gsc.siteUrl}
                       onChange={(e) => setGsc((p) => ({ ...p, siteUrl: e.target.value }))}
                       placeholder="https://yourdomain.com"
-                      className="flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                      className="flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                     />
                     <Button
                       variant="outline"

@@ -204,7 +204,7 @@ export default function ArticlesSettingsPage() {
                   <select
                     value={articleSettings.articleStyle}
                     onChange={(e) => updateArticle("articleStyle", e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                    className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                   >
                     {["Informative", "Conversational", "Professional", "Educational", "Persuasive", "Storytelling"].map((s) => (
                       <option key={s} value={s}>{s}</option>
@@ -224,7 +224,7 @@ export default function ArticlesSettingsPage() {
                   <select
                     value={articleSettings.internalLinks}
                     onChange={(e) => updateArticle("internalLinks", e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                    className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                   >
                     {["No internal links", "1 link per article", "2 links per article", "3 links per article", "5 links per article", "Auto"].map((s) => (
                       <option key={s} value={s}>{s}</option>
@@ -254,7 +254,7 @@ export default function ArticlesSettingsPage() {
                   value={articleSettings.globalInstructions}
                   onChange={(e) => updateArticle("globalInstructions", e.target.value)}
                   placeholder="Enter global instructions for all articles (e.g., 'Always include practical examples', 'Focus on actionable insights')..."
-                  className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] resize-none"
+                  className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] resize-none"
                 />
               </div>
             </div>
@@ -278,7 +278,7 @@ export default function ArticlesSettingsPage() {
                   type="text"
                   value={articleSettings.brandColor}
                   onChange={(e) => updateArticle("brandColor", e.target.value)}
-                  className="w-40 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                  className="w-40 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                   placeholder="#000000"
                 />
               </div>
@@ -313,7 +313,7 @@ export default function ArticlesSettingsPage() {
                   value={blogSettings.sitemapUrl}
                   onChange={(e) => updateBlog("sitemapUrl", e.target.value)}
                   placeholder="https://yourdomain.com/sitemap.xml"
-                  className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                  className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 />
               </div>
 
@@ -332,7 +332,7 @@ export default function ArticlesSettingsPage() {
                   value={blogSettings.blogUrl}
                   onChange={(e) => updateBlog("blogUrl", e.target.value)}
                   placeholder="https://yourblog.com/blog"
-                  className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                  className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 />
               </div>
 
@@ -358,7 +358,7 @@ export default function ArticlesSettingsPage() {
                       value={blogSettings[field.key]}
                       onChange={(e) => updateBlog(field.key, e.target.value)}
                       placeholder={field.placeholder}
-                      className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                      className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                     />
                   ))}
                 </div>

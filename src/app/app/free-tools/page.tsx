@@ -32,9 +32,8 @@ export default function FreeToolsPage() {
       </div>
 
       {/* Pricing card */}
-      <div className="mx-auto max-w-3xl rounded-2xl border-2 border-[var(--accent)] bg-[var(--surface-base)] p-8"
-        style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.03) 0%, rgba(124,58,237,0.06) 100%)" }}
-      >
+      <div className="mx-auto max-w-3xl rounded-2xl border-2 border-[var(--accent)] bg-[var(--surface-base)] p-8 bg-gradient-to-br from-[var(--accent-light)]/30 to-[var(--accent-light)]/60">
+
         <div className="grid gap-8 lg:grid-cols-2">
           {/* Left: Pricing */}
           <div className="space-y-4">
