@@ -73,7 +73,6 @@ export default function TeamPage() {
 
       if (error) throw error;
 
-      // Update UI only after confirmed backend write
       setInvitedUsers(updated);
       setEmail("");
       toast.success(`Invitation recorded for ${newInvite.email}`);
@@ -99,18 +98,20 @@ export default function TeamPage() {
       return;
     }
 
-    // Update UI only after confirmed backend write
     setInvitedUsers(updated);
     toast.success("User removed");
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-4">
       {/* Invite card */}
       <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] p-6">
-        <h2 className="mb-4 text-sm font-semibold text-[var(--text-primary)]">
+        <h2 className="mb-1 text-sm font-semibold text-[var(--text-primary)]">
           Invite users to your organization
         </h2>
+        <p className="mb-4 text-xs text-[var(--text-tertiary)]">
+          Members can view and manage articles. Admins can also manage settings and integrations.
+        </p>
 
         <div className="flex gap-2">
           <label htmlFor="invite-email" className="sr-only">Email address to invite</label>
@@ -120,8 +121,8 @@ export default function TeamPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleInvite()}
-            placeholder="email@gmail.com"
-            className="flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+            placeholder="email@example.com"
+            className="flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           />
           <Button onClick={handleInvite} loading={inviting} className="shrink-0">
             Invite
@@ -130,37 +131,47 @@ export default function TeamPage() {
 
         {/* Invited users list */}
         <div className="mt-5">
-          <p className="mb-3 text-xs font-semibold text-[var(--text-secondary)]">Invited Users</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+            Invited Members
+          </p>
 
           {invitedUsers.length === 0 ? (
-            <div className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-4 py-6 text-center">
-              <p className="text-sm text-[var(--text-tertiary)]">No invited users just yet</p>
+            <div className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-4 py-8 text-center">
+              <p className="text-sm text-[var(--text-tertiary)]">No members invited yet</p>
             </div>
           ) : (
-            <div className="divide-y divide-[var(--border-default)] rounded-lg border border-[var(--border-default)]">
+            <div className="divide-y divide-[var(--border-default)] rounded-lg border border-[var(--border-default)] overflow-hidden">
               {invitedUsers.map((u) => (
-                <div key={u.id} className="flex items-center justify-between px-4 py-3">
+                <div
+                  key={u.id}
+                  className="flex items-center justify-between px-4 py-3 bg-[var(--surface-base)] hover:bg-[var(--surface-raised)] transition-colors"
+                >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent-light)] text-sm font-semibold text-[var(--accent)]">
+                    {/* Avatar initial */}
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent-light)] text-xs font-bold text-[var(--accent)]">
                       {u.email[0].toUpperCase()}
                     </div>
                     <div>
                       <p className="text-sm font-medium text-[var(--text-primary)]">{u.email}</p>
-                      <p className="text-xs text-[var(--text-tertiary)] capitalize">{u.role}</p>
+                      {/* Role badge */}
+                      <span className="mt-0.5 inline-block rounded-full bg-[var(--surface-sunken)] px-2 py-0.5 text-[10px] font-semibold capitalize text-[var(--text-secondary)] border border-[var(--border-default)]">
+                        {u.role}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
+                    {/* Status badge */}
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                       u.status === "accepted"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-amber-100 text-amber-700"
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
                     }`}>
                       {u.status === "accepted" ? "Accepted" : "Pending"}
                     </span>
                     <button
                       onClick={() => handleRemove(u.id)}
                       aria-label={`Remove ${u.email}`}
-                      className="text-[var(--text-tertiary)] hover:text-[var(--error)] transition-colors"
+                      className="rounded p-0.5 text-[var(--text-tertiary)] hover:text-[var(--error,#ef4444)] transition-colors"
                     >
                       <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
                         <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -174,17 +185,14 @@ export default function TeamPage() {
         </div>
       </div>
 
-      {/* Info card */}
-      <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-sunken)] p-4">
-        <div className="flex items-start gap-3">
-          <svg viewBox="0 0 20 20" fill="currentColor" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-tertiary)]">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-          </svg>
-          <p className="text-xs text-[var(--text-secondary)]">
-            Invited members can view and manage articles within your organization. Admins can also manage settings and integrations.
-            Team collaboration requires a paid plan.
-          </p>
-        </div>
+      {/* Info note */}
+      <div className="flex items-start gap-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-4 py-3">
+        <svg viewBox="0 0 20 20" fill="currentColor" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-tertiary)]">
+          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+        </svg>
+        <p className="text-xs text-[var(--text-secondary)]">
+          Team collaboration requires a paid plan. Admins can manage settings and integrations in addition to articles.
+        </p>
       </div>
     </div>
   );
