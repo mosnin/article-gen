@@ -1971,14 +1971,8 @@ export default function Home() {
                 {/* Posted */}
                 {scopedSessions.filter((s) => s.posted).length > 0 && (
                   <div className="mb-8">
-                    <h3
-                      className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{ background: "var(--success)" }}
-                      />
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--success)" }} />
                       Posted
                     </h3>
                     <div className="space-y-2">
@@ -1987,11 +1981,7 @@ export default function Home() {
                         .map((session) => (
                           <div
                             key={session.id}
-                            className="group flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors"
-                            style={{
-                              background: "var(--card)",
-                              borderColor: "var(--card-border)",
-                            }}
+                            className="group flex items-center gap-3 bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl px-4 py-3 transition-colors"
                           >
                             <button
                               onClick={() =>
@@ -2021,25 +2011,16 @@ export default function Home() {
                                 setShowDashboard(false);
                               }}
                             >
-                              <span
-                                className="block truncate text-sm font-medium"
-                                style={{ color: "var(--foreground)" }}
-                              >
+                              <span className="block truncate text-sm font-medium text-[var(--text-primary)]">
                                 {session.result?.title || session.topic}
                               </span>
-                              <span
-                                className="block truncate text-xs"
-                                style={{ color: "var(--muted)" }}
-                              >
+                              <span className="block truncate text-xs text-[var(--text-secondary)]">
                                 {session.result?.focusKeyword}
                               </span>
                             </button>
                             <span
                               className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider"
-                              style={{
-                                background: "rgba(52, 199, 89, 0.1)",
-                                color: "var(--success)",
-                              }}
+                              style={{ background: "rgba(52, 199, 89, 0.1)", color: "var(--success)" }}
                             >
                               Posted
                             </span>
@@ -2050,10 +2031,7 @@ export default function Home() {
                                   setSessions((prev) => prev.filter((s) => s.id !== session.id));
                                 }
                               }}
-                              className="flex-shrink-0 rounded-lg p-1 opacity-0 transition-all group-hover:opacity-100"
-                              style={{ color: "var(--muted)" }}
-                              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; }}
-                              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}
+                              className="flex-shrink-0 rounded-lg p-1 opacity-0 transition-all group-hover:opacity-100 text-[var(--text-tertiary)] hover:text-red-500"
                               title="Delete article"
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2071,14 +2049,8 @@ export default function Home() {
                   (s) => (s.loading || s.queued) && !s.error
                 ).length > 0 && (
                   <div className="mb-8">
-                    <h3
-                      className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      <span
-                        className="sidebar-pulse inline-block h-2 w-2 rounded-full"
-                        style={{ background: "var(--accent)" }}
-                      />
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                      <span className="sidebar-pulse inline-block h-2 w-2 rounded-full bg-[var(--accent)]" />
                       In Progress
                     </h3>
                     <div className="space-y-2">
@@ -2089,31 +2061,16 @@ export default function Home() {
                         .map((session) => (
                           <div
                             key={session.id}
-                            className="flex items-center gap-3 rounded-xl border px-4 py-3"
-                            style={{
-                              background: "var(--card)",
-                              borderColor: "var(--card-border)",
-                            }}
+                            className="flex items-center gap-3 bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl px-4 py-3"
                           >
                             <span
-                              className={`block h-4 w-4 flex-shrink-0 rounded-full border-2 ${session.loading ? "sidebar-pulse" : ""}`}
-                              style={{
-                                borderColor: session.loading
-                                  ? "var(--accent)"
-                                  : "var(--card-border)",
-                              }}
+                              className={`block h-4 w-4 flex-shrink-0 rounded-full border-2 ${session.loading ? "sidebar-pulse border-[var(--accent)]" : "border-[var(--border-default)]"}`}
                             />
                             <span className="min-w-0 flex-1">
-                              <span
-                                className="block truncate text-sm font-medium"
-                                style={{ color: "var(--foreground)" }}
-                              >
+                              <span className="block truncate text-sm font-medium text-[var(--text-primary)]">
                                 {session.topic}
                               </span>
-                              <span
-                                className="block truncate text-xs"
-                                style={{ color: "var(--muted)" }}
-                              >
+                              <span className="block truncate text-xs text-[var(--text-secondary)]">
                                 {session.loading
                                   ? getStepLabel(session)
                                   : "Queued"}
@@ -2130,14 +2087,8 @@ export default function Home() {
                   (s) => s.error && !s.loading && !s.queued
                 ).length > 0 && (
                   <div className="mb-8">
-                    <h3
-                      className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{ background: "var(--error)" }}
-                      />
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--error)" }} />
                       Failed
                     </h3>
                     <div className="space-y-2">
@@ -2148,16 +2099,9 @@ export default function Home() {
                         .map((session) => (
                           <div
                             key={session.id}
-                            className="flex items-center gap-3 rounded-xl border px-4 py-3"
-                            style={{
-                              background: "var(--card)",
-                              borderColor: "var(--card-border)",
-                            }}
+                            className="flex items-center gap-3 bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl px-4 py-3"
                           >
-                            <span
-                              className="block h-2 w-2 flex-shrink-0 rounded-full"
-                              style={{ background: "var(--error)" }}
-                            />
+                            <span className="block h-2 w-2 flex-shrink-0 rounded-full" style={{ background: "var(--error)" }} />
                             <button
                               className="min-w-0 flex-1 text-left"
                               onClick={() => {
@@ -2165,16 +2109,10 @@ export default function Home() {
                                 setShowDashboard(false);
                               }}
                             >
-                              <span
-                                className="block truncate text-sm font-medium"
-                                style={{ color: "var(--foreground)" }}
-                              >
+                              <span className="block truncate text-sm font-medium text-[var(--text-primary)]">
                                 {session.topic}
                               </span>
-                              <span
-                                className="block truncate text-xs"
-                                style={{ color: "var(--error)" }}
-                              >
+                              <span className="block truncate text-xs" style={{ color: "var(--error)" }}>
                                 {session.error}
                               </span>
                             </button>
@@ -2182,10 +2120,7 @@ export default function Home() {
                               onClick={() => {
                                 setSessions((prev) => prev.filter((s) => s.id !== session.id));
                               }}
-                              className="flex-shrink-0 rounded-lg p-1"
-                              style={{ color: "var(--muted)" }}
-                              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; }}
-                              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}
+                              className="flex-shrink-0 rounded-lg p-1 text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
                               title="Remove"
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2204,36 +2139,23 @@ export default function Home() {
             {showForm && (
               <div className="mx-auto max-w-2xl">
                 <div className="mb-10 text-center">
-                  <h2
-                    className="mb-3 text-4xl font-bold tracking-tight"
-                    style={{ color: "var(--foreground)" }}
-                  >
+                  <h2 className="mb-3 text-4xl font-bold tracking-tight text-[var(--text-primary)]">
                     Generate SEO Articles
                   </h2>
-                  <p className="text-lg" style={{ color: "var(--muted)" }}>
+                  <p className="text-lg text-[var(--text-secondary)]">
                     Create SEO-optimized articles with metadata and image
                     prompts.
                   </p>
                 </div>
 
                 {/* Mode toggle */}
-                <div
-                  className="mb-8 flex overflow-hidden rounded-lg border"
-                  style={{ borderColor: "var(--card-border)" }}
-                >
+                <div className="mb-8 flex overflow-hidden rounded-lg border border-[var(--border-default)]">
                   <button
                     onClick={() => {
                       setMode("single");
                       setFormError("");
                     }}
-                    className="flex-1 px-4 py-2.5 text-sm font-medium transition-colors"
-                    style={{
-                      background:
-                        mode === "single"
-                          ? "var(--accent)"
-                          : "var(--card)",
-                      color: mode === "single" ? "#fff" : "var(--foreground)",
-                    }}
+                    className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${mode === "single" ? "bg-[var(--accent)] text-white" : "bg-[var(--surface-base)] text-[var(--text-primary)]"}`}
                   >
                     Single
                   </button>
@@ -2242,14 +2164,7 @@ export default function Home() {
                       setMode("batch");
                       setFormError("");
                     }}
-                    className="flex-1 px-4 py-2.5 text-sm font-medium transition-colors"
-                    style={{
-                      background:
-                        mode === "batch"
-                          ? "var(--accent)"
-                          : "var(--card)",
-                      color: mode === "batch" ? "#fff" : "var(--foreground)",
-                    }}
+                    className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors border-l border-[var(--border-default)] ${mode === "batch" ? "bg-[var(--accent)] text-white" : "bg-[var(--surface-base)] text-[var(--text-primary)]"}`}
                   >
                     Batch
                   </button>
@@ -2258,14 +2173,7 @@ export default function Home() {
                       setMode("cluster");
                       setFormError("");
                     }}
-                    className="flex-1 px-4 py-2.5 text-sm font-medium transition-colors"
-                    style={{
-                      background:
-                        mode === "cluster"
-                          ? "var(--accent)"
-                          : "var(--card)",
-                      color: mode === "cluster" ? "#fff" : "var(--foreground)",
-                    }}
+                    className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors border-l border-[var(--border-default)] ${mode === "cluster" ? "bg-[var(--accent)] text-white" : "bg-[var(--surface-base)] text-[var(--text-primary)]"}`}
                   >
                     Cluster
                   </button>
