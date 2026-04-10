@@ -162,7 +162,6 @@ export default function SettingsPage() {
 
   // MCP
   const [mcpApiKey, setMcpApiKey] = useState<string | null>(null);
-  const [mcpKeyVisible, setMcpKeyVisible] = useState(false);
   const [mcpLoading, setMcpLoading] = useState(false);
   const [mcpSetupOpen, setMcpSetupOpen] = useState(false);
 
@@ -235,7 +234,6 @@ export default function SettingsPage() {
       const data = await res.json() as { apiKey?: string };
       if (data.apiKey) {
         setMcpApiKey(data.apiKey);
-        setMcpKeyVisible(true);
       }
     } catch { /* ignore */ }
     finally { setMcpLoading(false); }
@@ -919,96 +917,90 @@ export default function SettingsPage() {
         {/* MCP Integration */}
         <section style={{ marginBottom: 40 }}>
           <div style={{ marginBottom: 16 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>MCP Integration (Claude Code)</h2>
-            <p style={{ fontSize: 13, color: "var(--muted)" }}>Connect Claude Code to your Article Gen account to manage articles, generate content, and run autopilot directly from your AI assistant.</p>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>Claude Code (MCP)</h2>
+            <p style={{ fontSize: 13, color: "var(--muted)" }}>Use Article Gen directly from Claude Code — generate content, manage autopilot, and run SEO tools without leaving your terminal.</p>
           </div>
           <div style={cardStyle}>
-            {/* Endpoint URL */}
-            <div style={{ ...sectionHeaderStyle, flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
-              <span style={labelStyle}>MCP Endpoint URL</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
-                <code style={{ flex: 1, fontFamily: "monospace", fontSize: 12, padding: "8px 12px", borderRadius: 8, background: "var(--background)", border: "1px solid var(--card-border)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {typeof window !== "undefined" ? `${window.location.origin}/api/mcp` : "/api/mcp"}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => { if (typeof window !== "undefined") navigator.clipboard.writeText(`${window.location.origin}/api/mcp`); }}
-                  style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--background)", border: "1px solid var(--card-border)", cursor: "pointer", whiteSpace: "nowrap" }}>
-                  Copy
-                </button>
-              </div>
-            </div>
-
-            {/* API Key */}
-            <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--card-border)", display: "flex", flexDirection: "column", gap: 10 }}>
-              <span style={labelStyle}>Your API Key</span>
-              {mcpApiKey ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <code style={{ flex: 1, fontFamily: "monospace", fontSize: 12, padding: "8px 12px", borderRadius: 8, background: "var(--background)", border: "1px solid var(--card-border)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {mcpKeyVisible ? mcpApiKey : "***...***"}
-                  </code>
-                  <button
-                    type="button"
-                    onClick={() => setMcpKeyVisible((v) => !v)}
-                    style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--background)", border: "1px solid var(--card-border)", cursor: "pointer" }}>
-                    {mcpKeyVisible ? "Hide" : "Show"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigator.clipboard.writeText(mcpApiKey)}
-                    style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--background)", border: "1px solid var(--card-border)", cursor: "pointer" }}>
-                    Copy
-                  </button>
-                  <button
-                    type="button"
-                    disabled={mcpLoading}
-                    onClick={() => { if (window.confirm("This will invalidate your existing key. Continue?")) generateMcpKey(); }}
-                    style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "var(--background)", border: "1px solid var(--card-border)", cursor: "pointer", opacity: mcpLoading ? 0.6 : 1 }}>
-                    {mcpLoading ? "Generating..." : "Regenerate"}
-                  </button>
+            {mcpApiKey ? (
+              <>
+                {/* Personal MCP URL — the only thing they need to copy */}
+                <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--card-border)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Your personal MCP URL</span>
+                    <button
+                      type="button"
+                      disabled={mcpLoading}
+                      onClick={() => { if (window.confirm("This will disconnect any existing Claude Code sessions. Continue?")) generateMcpKey(); }}
+                      style={{ fontSize: 11, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                      {mcpLoading ? "Rotating..." : "Rotate URL"}
+                    </button>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <code style={{ flex: 1, fontFamily: "monospace", fontSize: 12, padding: "10px 14px", borderRadius: 8, background: "var(--background)", border: "1px solid var(--card-border)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {typeof window !== "undefined" ? `${window.location.origin}/api/mcp/${mcpApiKey}` : `/api/mcp/${mcpApiKey}`}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => { if (typeof window !== "undefined") navigator.clipboard.writeText(`${window.location.origin}/api/mcp/${mcpApiKey}`); }}
+                      style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>
+                      Copy URL
+                    </button>
+                  </div>
+                  <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>This URL is unique to your account. Keep it private.</p>
                 </div>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 13, color: "var(--muted)" }}>No key generated</span>
+
+                {/* .mcp.json snippet */}
+                <div style={{ padding: "16px 20px" }}>
                   <button
                     type="button"
-                    disabled={mcpLoading}
-                    onClick={generateMcpKey}
-                    style={{ padding: "6px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: mcpLoading ? 0.6 : 1 }}>
-                    {mcpLoading ? "Generating..." : "Generate Key"}
+                    onClick={() => setMcpSetupOpen((v) => !v)}
+                    style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                      style={{ transform: mcpSetupOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                    How to connect Claude Code
                   </button>
-                </div>
-              )}
-            </div>
-
-            {/* Claude Code setup instructions */}
-            <div style={{ padding: "16px 20px" }}>
-              <button
-                type="button"
-                onClick={() => setMcpSetupOpen((v) => !v)}
-                style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                  style={{ transform: mcpSetupOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-                Claude Code setup instructions
-              </button>
-              {mcpSetupOpen && (
-                <div style={{ marginTop: 12 }}>
-                  <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>Add the following to your <code style={{ fontFamily: "monospace" }}>.mcp.json</code> file in your project root:</p>
-                  <pre style={{ fontFamily: "monospace", fontSize: 12, padding: "14px 16px", borderRadius: 8, background: "var(--background)", border: "1px solid var(--card-border)", overflow: "auto", margin: 0 }}>{`{
+                  {mcpSetupOpen && (
+                    <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                      <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
+                        Add this to your project&apos;s <code style={{ fontFamily: "monospace", fontSize: 11 }}>.mcp.json</code> — no extra credentials needed:
+                      </p>
+                      <div style={{ position: "relative" }}>
+                        <pre style={{ fontFamily: "monospace", fontSize: 12, padding: "14px 16px", borderRadius: 8, background: "var(--background)", border: "1px solid var(--card-border)", overflow: "auto", margin: 0 }}>{`{
   "mcpServers": {
     "article-gen": {
-      "url": "${typeof window !== "undefined" ? window.location.origin : "https://YOUR_DOMAIN"}/api/mcp",
-      "headers": {
-        "x-api-key": "${mcpApiKey ?? "YOUR_API_KEY"}"
-      }
+      "url": "${typeof window !== "undefined" ? window.location.origin : "https://YOUR_DOMAIN"}/api/mcp/${mcpApiKey}"
     }
   }
 }`}</pre>
+                        <button
+                          type="button"
+                          onClick={() => navigator.clipboard.writeText(`{\n  "mcpServers": {\n    "article-gen": {\n      "url": "${typeof window !== "undefined" ? window.location.origin : "https://YOUR_DOMAIN"}/api/mcp/${mcpApiKey}"\n    }\n  }\n}`)}
+                          style={{ position: "absolute", top: 8, right: 8, padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: "var(--card)", border: "1px solid var(--card-border)", cursor: "pointer" }}>
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <div style={{ padding: "24px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12, textAlign: "center" }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Connect Claude Code</p>
+                  <p style={{ fontSize: 12, color: "var(--muted)" }}>Generate your personal MCP URL to start using Article Gen from Claude Code.</p>
+                </div>
+                <button
+                  type="button"
+                  disabled={mcpLoading}
+                  onClick={generateMcpKey}
+                  style={{ padding: "9px 20px", borderRadius: 8, fontSize: 14, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: mcpLoading ? 0.6 : 1 }}>
+                  {mcpLoading ? "Setting up..." : "Activate Claude Code"}
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
