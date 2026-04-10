@@ -235,96 +235,98 @@ export default function GeneralSettingsPage() {
             </p>
           </div>
 
-          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] overflow-hidden divide-y divide-[var(--border-default)]">
-            <div className="px-5 py-4">
-              <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)]">Website to business</label>
-              <input
-                type="url"
-                value={business.websiteUrl}
-                onChange={(e) => setBusiness((p) => ({ ...p, websiteUrl: e.target.value }))}
-                placeholder="https://yourdomain.com"
-                className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-              />
-            </div>
+          {/* Website URL */}
+          <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 mb-4">
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Website URL</label>
+            <input
+              type="url"
+              value={business.websiteUrl}
+              onChange={(e) => setBusiness((p) => ({ ...p, websiteUrl: e.target.value }))}
+              placeholder="https://yourdomain.com"
+              className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            />
+          </div>
 
-            <div className="px-5 py-4">
-              <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)]">Business name</label>
-              <input
-                type="text"
-                value={business.businessName}
-                onChange={(e) => setBusiness((p) => ({ ...p, businessName: e.target.value }))}
-                placeholder="Your business name"
-                className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-              />
-            </div>
+          {/* Business Name */}
+          <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 mb-4">
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Business name</label>
+            <input
+              type="text"
+              value={business.businessName}
+              onChange={(e) => setBusiness((p) => ({ ...p, businessName: e.target.value }))}
+              placeholder="Your business name"
+              className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            />
+          </div>
 
-            <div className="grid grid-cols-2 gap-0 divide-x divide-[var(--border-default)]">
-              <div className="px-5 py-4">
-                <div className="mb-1.5 flex items-center gap-1">
-                  <label className="text-xs font-medium text-[var(--text-secondary)]">Language</label>
-                  <button className="text-[var(--text-tertiary)]">
-                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="relative">
-                  <select
-                    value={business.language}
-                    onChange={(e) => setBusiness((p) => ({ ...p, language: e.target.value }))}
-                    className="w-full appearance-none rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 pr-8 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-                  >
-                    {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
-                  </select>
-                  <svg viewBox="0 0 20 20" fill="currentColor" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-tertiary)]">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+          {/* Language + Country */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 mb-4">
+              <div className="flex items-center gap-1 mb-1">
+                <label className="block text-sm font-medium text-[var(--text-secondary)]">Language</label>
+                <button className="text-[var(--text-tertiary)]">
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                   </svg>
-                </div>
-              </div>
-
-              <div className="px-5 py-4">
-                <div className="mb-1.5 flex items-center gap-1">
-                  <label className="text-xs font-medium text-[var(--text-secondary)]">Country</label>
-                  <button className="text-[var(--text-tertiary)]">
-                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="relative">
-                  <select
-                    value={business.country}
-                    onChange={(e) => setBusiness((p) => ({ ...p, country: e.target.value }))}
-                    className="w-full appearance-none rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 pr-8 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-                  >
-                    {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <svg viewBox="0 0 20 20" fill="currentColor" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-tertiary)]">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            <div className="px-5 py-4">
-              <div className="mb-1.5 flex items-center justify-between">
-                <label className="text-xs font-medium text-[var(--text-secondary)]">Description</label>
-                <button
-                  onClick={handleAutoFill}
-                  disabled={autoFilling}
-                  className="rounded-lg border border-[var(--border-default)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] transition-colors disabled:opacity-50"
-                >
-                  {autoFilling ? "Analyzing…" : "Autocomplete With AI"}
                 </button>
               </div>
-              <textarea
-                rows={8}
-                value={business.description}
-                onChange={(e) => setBusiness((p) => ({ ...p, description: e.target.value }))}
-                placeholder="Describe your business, what you do, who you serve, and what makes you unique…"
-                className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] resize-none"
-              />
+              <div className="relative">
+                <select
+                  value={business.language}
+                  onChange={(e) => setBusiness((p) => ({ ...p, language: e.target.value }))}
+                  className="w-full appearance-none border border-[var(--border-default)] rounded-lg px-3 py-2 pr-8 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                >
+                  {LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+                <svg viewBox="0 0 20 20" fill="currentColor" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-tertiary)]">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </div>
             </div>
+
+            <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 mb-4">
+              <div className="flex items-center gap-1 mb-1">
+                <label className="block text-sm font-medium text-[var(--text-secondary)]">Country</label>
+                <button className="text-[var(--text-tertiary)]">
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+              <div className="relative">
+                <select
+                  value={business.country}
+                  onChange={(e) => setBusiness((p) => ({ ...p, country: e.target.value }))}
+                  className="w-full appearance-none border border-[var(--border-default)] rounded-lg px-3 py-2 pr-8 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                >
+                  {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <svg viewBox="0 0 20 20" fill="currentColor" className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-tertiary)]">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 mb-4">
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-[var(--text-secondary)]">Description</label>
+              <button
+                onClick={handleAutoFill}
+                disabled={autoFilling}
+                className="rounded-lg border border-[var(--border-default)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] transition-colors disabled:opacity-50"
+              >
+                {autoFilling ? "Analyzing…" : "Autocomplete With AI"}
+              </button>
+            </div>
+            <textarea
+              rows={8}
+              value={business.description}
+              onChange={(e) => setBusiness((p) => ({ ...p, description: e.target.value }))}
+              placeholder="Describe your business, what you do, who you serve, and what makes you unique…"
+              className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] resize-none"
+            />
           </div>
         </div>
       )}
@@ -365,8 +367,8 @@ export default function GeneralSettingsPage() {
               setInput: setKeywordInput,
             },
           ].map((field) => (
-            <div key={field.label} className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] p-5">
-              <label className="mb-3 block text-sm font-semibold text-[var(--text-primary)]">{field.label}</label>
+            <div key={field.label} className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 mb-4">
+              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{field.label}</label>
               <div className="mb-3 flex flex-wrap gap-1.5">
                 {field.items.map((item, i) => (
                   <span key={i} className="flex items-center gap-1.5 rounded-full bg-[var(--accent-light)] px-3 py-1 text-xs font-medium text-[var(--accent)]">
@@ -391,7 +393,7 @@ export default function GeneralSettingsPage() {
                     }
                   }}
                   placeholder={field.placeholder}
-                  className="flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                  className="flex-1 w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 />
                 <Button
                   size="sm"
@@ -417,7 +419,7 @@ export default function GeneralSettingsPage() {
             </p>
           </div>
 
-          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] p-6">
+          <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 mb-4">
             {gsc.connected ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-3 rounded-lg border border-[var(--accent)] bg-[var(--accent-light)] px-4 py-3">
@@ -479,7 +481,7 @@ export default function GeneralSettingsPage() {
                       value={gsc.siteUrl}
                       onChange={(e) => setGsc((p) => ({ ...p, siteUrl: e.target.value }))}
                       placeholder="https://yourdomain.com"
-                      className="flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                      className="flex-1 w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                     />
                     <Button
                       variant="outline"
