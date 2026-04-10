@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { createClient } from "@/lib/supabase-browser";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -52,7 +51,7 @@ function Sparkline({ data }: { data: number[] }) {
       <polyline
         points={pts}
         fill="none"
-        stroke="var(--brand)"
+        stroke="var(--accent)"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -75,29 +74,25 @@ function StatCard({
   trend?: number[];
 }) {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <p className="text-sm font-medium text-[var(--text-secondary)]">{label}</p>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <>
-            <Skeleton className="h-8 w-24" />
-            {description !== undefined && <Skeleton className="h-4 w-32 mt-1" />}
-          </>
-        ) : (
-          <>
-            <div className="flex items-end justify-between gap-2">
-              <p className="text-3xl font-bold text-[var(--text-primary)]">{value}</p>
-              {trend && trend.length >= 2 && <Sparkline data={trend} />}
-            </div>
-            {description && (
-              <p className="text-xs text-[var(--text-secondary)] mt-1">{description}</p>
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
+    <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5">
+      <p className="text-sm font-medium text-[var(--text-secondary)] mb-3">{label}</p>
+      {loading ? (
+        <>
+          <Skeleton className="h-8 w-24" />
+          {description !== undefined && <Skeleton className="h-4 w-32 mt-1" />}
+        </>
+      ) : (
+        <>
+          <div className="flex items-end justify-between gap-2">
+            <p className="text-3xl font-bold text-[var(--text-primary)]">{value}</p>
+            {trend && trend.length >= 2 && <Sparkline data={trend} />}
+          </div>
+          {description && (
+            <p className="text-xs text-[var(--text-secondary)] mt-1">{description}</p>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -354,9 +349,9 @@ export default function DashboardPage() {
         <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
           Recent Articles
         </h2>
-        <Card>
+        <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl overflow-hidden">
           {articlesLoading ? (
-            <CardContent className="pt-6 space-y-4">
+            <div className="p-6 space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="flex items-center justify-between gap-4">
                   <div className="flex-1 space-y-2">
@@ -367,9 +362,9 @@ export default function DashboardPage() {
                   <Skeleton className="h-4 w-20 shrink-0" />
                 </div>
               ))}
-            </CardContent>
+            </div>
           ) : recentArticles.length === 0 ? (
-            <CardContent className="pt-6 flex flex-col items-center justify-center py-12 text-center gap-4">
+            <div className="flex flex-col items-center justify-center py-12 text-center gap-4 px-6">
               <div className="w-12 h-12 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center">
                 <svg
                   className="w-6 h-6 text-[var(--text-secondary)]"
@@ -394,7 +389,7 @@ export default function DashboardPage() {
               <Button onClick={() => router.push("/app/generate")}>
                 Generate your first article
               </Button>
-            </CardContent>
+            </div>
           ) : (
             <div className="divide-y divide-[var(--border-default)]">
               {recentArticles.map((article) => (
@@ -426,7 +421,7 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-        </Card>
+        </div>
       </div>
 
       {/* Active Clusters */}
@@ -434,9 +429,9 @@ export default function DashboardPage() {
         <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
           Active Clusters
         </h2>
-        <Card>
+        <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl overflow-hidden">
           {clustersLoading ? (
-            <CardContent className="pt-6 space-y-4">
+            <div className="p-6 space-y-4">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="flex items-center justify-between gap-4">
                   <div className="flex-1 space-y-2">
@@ -447,9 +442,9 @@ export default function DashboardPage() {
                   <Skeleton className="h-4 w-16 shrink-0" />
                 </div>
               ))}
-            </CardContent>
+            </div>
           ) : activeClusters.length === 0 ? (
-            <CardContent className="pt-6 flex flex-col items-center justify-center py-12 text-center gap-4">
+            <div className="flex flex-col items-center justify-center py-12 text-center gap-4 px-6">
               <div className="w-12 h-12 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center">
                 <svg
                   className="w-6 h-6 text-[var(--text-secondary)]"
@@ -477,7 +472,7 @@ export default function DashboardPage() {
               >
                 Create a cluster
               </Button>
-            </CardContent>
+            </div>
           ) : (
             <div className="divide-y divide-[var(--border-default)]">
               {activeClusters.map((cluster) => (
@@ -508,7 +503,7 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-        </Card>
+        </div>
       </div>
     </div>
   );
