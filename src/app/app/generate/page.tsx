@@ -1771,10 +1771,7 @@ export default function Home() {
                 {/* Topic Clusters Visual */}
                 {scopedClusters.length > 0 && (
                   <div className="mb-8">
-                    <h3
-                      className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
-                      style={{ color: "var(--muted)" }}
-                    >
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="3" />
                         <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
@@ -1789,7 +1786,7 @@ export default function Home() {
                         const progress = totalArticles > 0 ? Math.round((completedArticles / totalArticles) * 100) : 0;
 
                         return (
-                          <div key={cluster.id} className="rounded-xl border overflow-hidden" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+                          <div key={cluster.id} className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl overflow-hidden">
                             <div className="flex items-center gap-3 p-4">
                               <button
                                 className="min-w-0 flex-1 text-left"
@@ -1802,17 +1799,17 @@ export default function Home() {
                                 }}
                               >
                                 <div className="flex items-center gap-2">
-                                  <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                                  <span className="text-sm font-semibold text-[var(--text-primary)]">
                                     {cluster.pillarKeyword || cluster.pillarTopic}
                                   </span>
                                   {cluster.generating && (
-                                    <span className="sidebar-pulse inline-block h-2 w-2 rounded-full" style={{ background: "var(--accent)" }} />
+                                    <span className="sidebar-pulse inline-block h-2 w-2 rounded-full bg-[var(--accent)]" />
                                   )}
                                   {!cluster.generating && cluster.generationPhase === "done" && (
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
                                   )}
                                 </div>
-                                <div className="mt-1 flex items-center gap-3 text-xs" style={{ color: "var(--muted)" }}>
+                                <div className="mt-1 flex items-center gap-3 text-xs text-[var(--text-tertiary)]">
                                   <span>{hasPillar ? "1 pillar" : "No pillar"}</span>
                                   <span>&middot;</span>
                                   <span>{completedArticles}/{totalArticles} articles</span>
@@ -1837,10 +1834,7 @@ export default function Home() {
                                     }
                                   }
                                 }}
-                                className="flex-shrink-0 rounded-lg p-1.5 transition-colors"
-                                style={{ color: "var(--muted)" }}
-                                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; }}
-                                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}
+                                className="flex-shrink-0 rounded-lg p-1.5 text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
                                 title="Delete cluster"
                               >
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1851,7 +1845,7 @@ export default function Home() {
                             {/* Progress bar */}
                             {totalArticles > 0 && (
                               <div className="px-4 pb-3">
-                                <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--card-border)" }}>
+                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border-default)]">
                                   <div
                                     className="h-full rounded-full transition-all duration-500"
                                     style={{ width: `${progress}%`, background: progress === 100 ? "var(--success)" : "var(--accent)" }}
@@ -1861,7 +1855,7 @@ export default function Home() {
                             )}
                             {/* Cluster article pills */}
                             {totalArticles > 0 && (
-                              <div className="flex flex-wrap gap-1.5 border-t px-4 py-3" style={{ borderColor: "var(--card-border)" }}>
+                              <div className="flex flex-wrap gap-1.5 border-t border-[var(--border-default)] px-4 py-3">
                                 {hasPillar && (
                                   <button
                                     onClick={() => {
@@ -1871,10 +1865,7 @@ export default function Home() {
                                       setActiveSessionId(null);
                                       setClusterActiveArticleId("pillar");
                                     }}
-                                    className="rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors"
-                                    style={{ background: "rgba(0, 122, 255, 0.1)", color: "var(--accent)" }}
-                                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(0, 122, 255, 0.2)"; }}
-                                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(0, 122, 255, 0.1)"; }}
+                                    className="rounded-full px-2.5 py-1 text-[10px] font-semibold bg-[var(--accent-light)] text-[var(--accent)] hover:opacity-80 transition-opacity"
                                   >
                                     Pillar
                                   </button>
@@ -1889,10 +1880,10 @@ export default function Home() {
                                       setActiveSessionId(null);
                                       setClusterActiveArticleId(art.id);
                                     }}
-                                    className="rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors"
+                                    className="rounded-full px-2.5 py-1 text-[10px] font-medium transition-opacity hover:opacity-80"
                                     style={{
                                       background: art.session?.result ? "rgba(52, 199, 89, 0.1)" : art.session?.loading ? "rgba(0, 122, 255, 0.08)" : "rgba(0,0,0,0.04)",
-                                      color: art.session?.result ? "var(--success)" : art.session?.loading ? "var(--accent)" : "var(--muted)",
+                                      color: art.session?.result ? "var(--success)" : art.session?.loading ? "var(--accent)" : "var(--text-tertiary)",
                                     }}
                                     title={art.concept}
                                   >

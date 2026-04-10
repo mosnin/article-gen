@@ -52,7 +52,7 @@ function SortHeader({
     <button
       onClick={() => onSort(sortKey)}
       className={cn(
-        "flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors",
+        "flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors",
         isActive && "text-[var(--text-primary)]",
         className,
       )}
@@ -281,10 +281,9 @@ export default function AnalyticsPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );
