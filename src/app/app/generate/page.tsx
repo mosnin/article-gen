@@ -2185,8 +2185,7 @@ export default function Home() {
                     <div>
                       <label
                         htmlFor="topic"
-                        className="mb-2 block text-sm font-medium"
-                        style={{ color: "var(--muted)" }}
+                        className="block text-sm font-medium text-[var(--text-secondary)] mb-1"
                       >
                         What should your article be about?
                       </label>
@@ -2196,22 +2195,7 @@ export default function Home() {
                         onChange={(e) => setFormTopic(e.target.value)}
                         placeholder="e.g., The Ultimate Guide to Indoor Herb Gardening for Beginners"
                         rows={3}
-                        className="w-full resize-none rounded-xl border px-4 py-3 text-base transition-colors focus:outline-none"
-                        style={{
-                          background: "var(--card)",
-                          borderColor: "var(--card-border)",
-                          color: "var(--foreground)",
-                        }}
-                        onFocus={(e) => {
-                          (
-                            e.target as HTMLTextAreaElement
-                          ).style.borderColor = "var(--accent)";
-                        }}
-                        onBlur={(e) => {
-                          (
-                            e.target as HTMLTextAreaElement
-                          ).style.borderColor = "var(--card-border)";
-                        }}
+                        className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent resize-none"
                         onKeyDown={(e) => {
                           if (
                             e.key === "Enter" &&
@@ -2226,15 +2210,10 @@ export default function Home() {
                     <div>
                       <label
                         htmlFor="keyword"
-                        className="mb-2 block text-sm font-medium"
-                        style={{ color: "var(--muted)" }}
+                        className="block text-sm font-medium text-[var(--text-secondary)] mb-1"
                       >
                         Focus Keyword{" "}
-                        <span
-                          style={{ color: "var(--muted)", opacity: 0.6 }}
-                        >
-                          (optional)
-                        </span>
+                        <span className="text-[var(--text-tertiary)] font-normal">(optional)</span>
                       </label>
                       <input
                         id="keyword"
@@ -2242,22 +2221,7 @@ export default function Home() {
                         value={formKeyword}
                         onChange={(e) => setFormKeyword(e.target.value)}
                         placeholder="e.g., indoor herb gardening"
-                        className="w-full rounded-xl border px-4 py-3 text-base transition-colors focus:outline-none"
-                        style={{
-                          background: "var(--card)",
-                          borderColor: "var(--card-border)",
-                          color: "var(--foreground)",
-                        }}
-                        onFocus={(e) => {
-                          (
-                            e.target as HTMLInputElement
-                          ).style.borderColor = "var(--accent)";
-                        }}
-                        onBlur={(e) => {
-                          (
-                            e.target as HTMLInputElement
-                          ).style.borderColor = "var(--card-border)";
-                        }}
+                        className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             handleGenerate();
@@ -2270,10 +2234,10 @@ export default function Home() {
 
                     {formError && (
                       <div
-                        className="rounded-xl border px-4 py-3 text-sm"
+                        className="rounded-lg border px-4 py-3 text-sm"
                         style={{
                           borderColor: "var(--error)",
-                          background: "rgba(239, 68, 68, 0.1)",
+                          background: "rgba(239, 68, 68, 0.08)",
                           color: "var(--error)",
                         }}
                       >
@@ -2284,23 +2248,20 @@ export default function Home() {
                     {blogSelectorPanel}
 
                     {/* Generate AI Images toggle */}
-                    <div
-                      className="flex items-center justify-between rounded-xl border px-4 py-3"
-                      style={{ borderColor: "var(--card-border)", background: "var(--card)" }}
-                    >
+                    <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 flex items-center justify-between">
                       <div>
-                        <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
+                        <div className="text-sm font-medium text-[var(--text-primary)]">
                           Generate AI Images
                         </div>
-                        <div className="text-xs" style={{ color: "var(--muted)" }}>
+                        <div className="text-xs text-[var(--text-secondary)] mt-0.5">
                           +1 credit &middot; 4 images at 1536x1024
                         </div>
                       </div>
                       <button
                         onClick={() => setGenerateImages(!generateImages)}
-                        className="relative h-6 w-11 rounded-full transition-colors duration-200"
+                        className="relative h-6 w-11 rounded-full transition-colors duration-200 flex-shrink-0"
                         style={{
-                          background: generateImages ? "var(--success)" : "var(--card-border)",
+                          background: generateImages ? "var(--accent)" : "var(--border-default)",
                         }}
                       >
                         <span
