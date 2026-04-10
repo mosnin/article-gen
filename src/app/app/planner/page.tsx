@@ -28,12 +28,12 @@ const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const CONTENT_TYPE_COLORS: Record<string, string> = {
   "How-to Guide": "text-[var(--accent)] bg-[var(--accent-light)]",
-  "Listicle": "text-amber-700 bg-amber-50",
-  "Comparison": "text-purple-700 bg-purple-50",
-  "Case Study": "text-green-700 bg-green-50",
-  "Review": "text-blue-700 bg-blue-50",
-  "Tutorial": "text-teal-700 bg-teal-50",
-  "Ultimate Guide": "text-indigo-700 bg-indigo-50",
+  "Listicle": "text-[var(--text-secondary)] bg-[var(--surface-sunken)]",
+  "Comparison": "text-[var(--text-secondary)] bg-[var(--surface-sunken)]",
+  "Case Study": "text-[var(--text-secondary)] bg-[var(--surface-sunken)]",
+  "Review": "text-[var(--accent)] bg-[var(--accent-light)]",
+  "Tutorial": "text-[var(--accent)] bg-[var(--accent-light)]",
+  "Ultimate Guide": "text-[var(--text-secondary)] bg-[var(--surface-sunken)]",
 };
 
 const CONTENT_TYPE_ABBREV: Record<string, string> = {
@@ -284,14 +284,14 @@ export default function PlannerPage() {
       />
 
       {/* Trial/upgrade banner */}
-      <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm text-blue-800">
-        <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-blue-500">
+      <div className="flex items-center gap-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] px-4 py-2.5 text-sm text-[var(--text-secondary)]">
+        <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-[var(--accent)]">
           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
         </svg>
         <span className="flex-1">
           Articles with no integration connected are saved as drafts. Connect an integration to publish automatically.
         </span>
-        <Button size="sm" variant="outline" className="shrink-0 border-blue-300 text-blue-700 hover:bg-blue-100" onClick={() => router.push("/app/integrations")}>
+        <Button size="sm" variant="outline" className="shrink-0" onClick={() => router.push("/app/integrations")}>
           Connect Integration
         </Button>
       </div>

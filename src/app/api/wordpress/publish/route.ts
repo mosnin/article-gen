@@ -4,6 +4,8 @@ import { downloadImage } from "@/lib/supabase-admin";
 import { marked } from "marked";
 import { decryptCredential } from "@/lib/wp-crypto";
 import { logPublishEvent } from "@/lib/publish-log";
+import { validatePublicUrl } from "@/lib/ssrf";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -189,6 +191,16 @@ export async function POST(req: NextRequest) {
     const wpUrl = creds.wpUrl;
     const auth = creds.auth;
 
+    // Validate WordPress URL to prevent SSRF
+    try {
+      validatePublicUrl(wpUrl);
+    } catch (e) {
+      return NextResponse.json(
+        { error: `Invalid WordPress URL: ${(e as Error).message}` },
+        { status: 400 }
+      );
+    }
+
     // Upload images from Supabase Storage to WordPress
     const uploadedImages: ImageUploadResult[] = [];
     let featuredMediaId: number | null = null;
@@ -292,7 +304,8 @@ export async function POST(req: NextRequest) {
     await supabase
       .from("articles")
       .update({ posted: true, updated_at: new Date().toISOString() })
-      .eq("id", articleId);
+      .eq("id", articleId)
+      .eq("user_id", user.id);
 
     await logPublishEvent(supabase, {
       userId: user.id,
@@ -313,7 +326,7 @@ export async function POST(req: NextRequest) {
       imageErrors: imageErrors.length > 0 ? imageErrors : undefined,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to publish to WordPress", error);
+    return NextResponse.json({ error: "Failed to publish to WordPress" }, { status: 500 });
   }
 }

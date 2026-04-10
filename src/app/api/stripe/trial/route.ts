@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { getStripe } from "@/lib/stripe";
 import { getOrCreateProfile } from "@/lib/credits";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,11 +16,52 @@ export async function POST(req: NextRequest) {
     const profile = await getOrCreateProfile(supabase, user.id);
 
     // Check if already on a paid plan / already trialed
-    if (profile.plan && profile.plan !== "free") {
+    if (profile.subscription_plan && profile.subscription_plan !== "free") {
       return NextResponse.json({ error: "Already on a paid plan" }, { status: 400 });
     }
 
+    // Also check Stripe directly in case webhook hasn't fired yet
     let customerId = profile.stripe_customer_id;
+    if (customerId) {
+      try {
+        const subs = await getStripe().subscriptions.list({
+          customer: customerId,
+          status: "all",
+          limit: 1,
+        });
+        if (subs.data.length > 0) {
+          const sub = subs.data[0];
+          if (sub.status === "active" || sub.status === "trialing") {
+            // Sync the plan back to the database so this doesn't happen again
+            const planMap: Record<string, string> = {};
+            const starterPrice = process.env.STRIPE_STARTER_PRICE_ID;
+            const growthPrice = process.env.STRIPE_GROWTH_PRICE_ID;
+            const proPrice = process.env.STRIPE_PRO_PRICE_ID;
+            const trialPrice = process.env.STRIPE_TRIAL_PRICE_ID;
+            if (starterPrice) planMap[starterPrice] = "starter";
+            if (growthPrice) planMap[growthPrice] = "growth";
+            if (proPrice) planMap[proPrice] = "pro";
+            if (trialPrice) planMap[trialPrice] = "starter";
+
+            const priceId = (sub.items.data[0]?.price as { id?: string })?.id ?? "";
+            const plan = planMap[priceId] || "starter";
+
+            await supabase
+              .from("user_profiles")
+              .update({
+                subscription_plan: plan,
+                subscription_status: sub.status,
+                stripe_subscription_id: sub.id,
+              })
+              .eq("user_id", user.id);
+
+            return NextResponse.json({ error: "Already on a paid plan" }, { status: 400 });
+          }
+        }
+      } catch {
+        // If Stripe check fails, continue with checkout flow
+      }
+    }
 
     if (!customerId) {
       const customer = await getStripe().customers.create({
@@ -69,7 +111,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to start trial", error);
+    return NextResponse.json({ error: "Failed to start trial" }, { status: 500 });
   }
 }

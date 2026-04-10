@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { logPublishEvent } from "@/lib/publish-log";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -111,7 +112,8 @@ export async function POST(req: NextRequest) {
     await supabase
       .from("articles")
       .update({ posted: true, published_platform: "notion", updated_at: new Date().toISOString() })
-      .eq("id", articleId);
+      .eq("id", articleId)
+      .eq("user_id", user.id);
 
     await logPublishEvent(supabase, {
       userId: user.id,
@@ -124,7 +126,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, pageId, pageUrl });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to publish to Notion", error);
+    return NextResponse.json({ error: "Failed to publish to Notion" }, { status: 500 });
   }
 }

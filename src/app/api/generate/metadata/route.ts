@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -24,8 +25,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { topic, focusKeyword, articleContext, researchContext } =
+    const { topic, focusKeyword, articleContext, researchContext, tone: rawTone, targetAudience: rawTargetAudience } =
       await req.json();
+
+    const tone =
+      typeof rawTone === "string" && rawTone.length <= 100
+        ? rawTone
+        : "Informative";
+    const targetAudience =
+      typeof rawTargetAudience === "string" && rawTargetAudience.length <= 100
+        ? rawTargetAudience
+        : "General audience";
 
     if (!topic || !articleContext || !researchContext) {
       return NextResponse.json(
@@ -64,6 +74,10 @@ ${researchContext}
 
 TOPIC: ${topic}
 ${focusKeyword ? `PREFERRED FOCUS KEYWORD: ${focusKeyword}` : ""}
+
+WRITING TONE: ${tone}
+TARGET AUDIENCE: ${targetAudience}
+Ensure the title and meta description match the specified tone and appeal to the target audience.
 
 Generate the following in EXACTLY this JSON format:
 {
@@ -129,9 +143,8 @@ The 5 keywords should be high-intent keywords related to the topic. They should 
 
     return NextResponse.json(metadata);
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "An unexpected error occurred";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to generate metadata", error);
+    return NextResponse.json({ error: "Failed to generate metadata" }, { status: 500 });
   } finally {
     await releaseGenerationSlot(supabase, user.id);
   }

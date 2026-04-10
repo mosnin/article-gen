@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
 import OpenAI from "openai";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 30;
 
@@ -25,8 +26,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { topic, focusKeyword, wordCount = 2000, advancedSettings } =
+    const { topic, focusKeyword, wordCount = 2000, advancedSettings, tone: rawTone, targetAudience: rawTargetAudience } =
       await req.json();
+
+    const tone =
+      typeof rawTone === "string" && rawTone.length <= 100
+        ? rawTone
+        : "Informative";
+    const targetAudience =
+      typeof rawTargetAudience === "string" && rawTargetAudience.length <= 100
+        ? rawTargetAudience
+        : "General audience";
 
     if (!topic || typeof topic !== "string" || topic.length > 300) {
       return NextResponse.json(
@@ -62,10 +72,14 @@ Focus keyword: ${focusKeyword || topic}
 ${advancedSettings?.domain ? `Site domain: ${advancedSettings.domain}` : ""}
 ${advancedSettings?.siteAbout ? `Site about: ${advancedSettings.siteAbout}` : ""}
 
+WRITING TONE: ${tone}
+TARGET AUDIENCE: ${targetAudience}
+Structure the outline to match the specified tone and audience level. Choose section topics and depth appropriate for this audience.
+
 Generate a well-structured SEO outline.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4.1-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -93,9 +107,8 @@ Generate a well-structured SEO outline.`;
       outline: parsed.outline || [],
     });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "An unexpected error occurred";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to generate outline", error);
+    return NextResponse.json({ error: "Failed to generate outline" }, { status: 500 });
   } finally {
     await releaseGenerationSlot(supabase, user.id);
   }

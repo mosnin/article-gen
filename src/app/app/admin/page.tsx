@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
@@ -25,6 +26,13 @@ interface UserProfile {
   article_count: number;
   recent_transactions: Transaction[];
 }
+
+const PLAN_CLASSES: Record<string, string> = {
+  free:    "text-[var(--text-tertiary)]",
+  starter: "text-blue-500",
+  growth:  "text-green-500",
+  pro:     "text-purple-500",
+};
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -96,64 +104,43 @@ export default function AdminDashboard() {
     u.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const planColors: Record<string, string> = {
-    free: "#86868b",
-    starter: "#007aff",
-    growth: "#34c759",
-    pro: "#af52de",
-  };
+  // Don't render anything until auth check completes — prevents flash of admin UI
+  if (loading && users.length === 0) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--surface-base)]">
+        <svg className="progress-spinner" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-label="Loading">
+          <path d="M12 2a10 10 0 0 1 10 10" />
+        </svg>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ background: "var(--background)", minHeight: "100vh" }}>
+    <div className="min-h-screen bg-[var(--surface-base)]">
       {/* Header */}
-      <header
-        style={{
-          borderBottom: "1px solid var(--card-border)",
-          background: "var(--background)",
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-        }}
-      >
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div
-              style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}
-              onClick={() => router.push("/app")}
-            >
-              <Image src="/logo.png" alt="Article Sauce" width={28} height={28} />
-              <span style={{ fontWeight: 700, fontSize: 17 }}>Article Sauce</span>
-            </div>
-            <span style={{ color: "var(--muted)", fontSize: 13 }}>/</span>
-            <span style={{ fontWeight: 600, fontSize: 14, color: "var(--error)" }}>Admin Dashboard</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <header className="sticky top-0 z-50 border-b border-[var(--border-default)] bg-[var(--surface-base)]">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/app")}
-              style={{
-                padding: "6px 14px",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 500,
-                background: "var(--card)",
-                border: "1px solid var(--card-border)",
-                cursor: "pointer",
-              }}
+              className="flex items-center gap-2.5 text-[var(--text-primary)] hover:opacity-80 transition-opacity"
+            >
+              <Image src="/logo.png" alt="Article Sauce" width={28} height={28} />
+              <span className="text-[17px] font-bold">Article Sauce</span>
+            </button>
+            <span className="text-[var(--text-tertiary)]">/</span>
+            <span className="text-sm font-semibold text-[var(--error,#ef4444)]">Admin Dashboard</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => router.push("/app")}
+              className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] px-3.5 py-1.5 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-sunken)] transition-colors"
             >
               Back to App
             </button>
             <button
               onClick={handleLogout}
-              style={{
-                padding: "6px 14px",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 500,
-                background: "var(--accent)",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
-              }}
+              className="rounded-lg bg-[var(--accent)] px-3.5 py-1.5 text-sm font-medium text-white hover:opacity-90 transition-opacity"
             >
               Sign Out
             </button>
@@ -161,236 +148,199 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px" }}>
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>Admin Dashboard</h1>
-          <p style={{ color: "var(--muted)", fontSize: 14 }}>Manage users, credits, and subscriptions</p>
+      <main className="mx-auto max-w-6xl px-6 py-8">
+        {/* Page title */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Admin Dashboard</h1>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Manage users, credits, and subscriptions</p>
         </div>
 
-        {/* Stats Overview */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 32 }}>
+        {/* Stats overview */}
+        <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[
-            { label: "Total Users", value: users.length },
-            { label: "Paid Users", value: users.filter((u) => u.subscription_plan !== "free").length },
+            { label: "Total Users",    value: users.length },
+            { label: "Paid Users",     value: users.filter((u) => u.subscription_plan !== "free").length },
             { label: "Admin Accounts", value: users.filter((u) => u.role === "admin").length },
             { label: "Total Articles", value: users.reduce((sum, u) => sum + u.article_count, 0) },
           ].map((stat) => (
             <div
               key={stat.label}
-              style={{
-                background: "var(--card)",
-                border: "1px solid var(--card-border)",
-                borderRadius: 12,
-                padding: "20px 24px",
-              }}
+              className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] px-5 py-4"
             >
-              <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 4 }}>{stat.label}</div>
-              <div style={{ fontSize: 28, fontWeight: 700 }}>{stat.value}</div>
+              <p className="text-xs text-[var(--text-tertiary)]">{stat.label}</p>
+              <p className="mt-1 text-2xl font-bold text-[var(--text-primary)]">{stat.value}</p>
             </div>
           ))}
         </div>
 
         {/* Search */}
-        <div style={{ marginBottom: 20 }}>
+        <div className="mb-5">
           <input
             type="text"
-            placeholder="Search by user ID, plan, or role..."
+            placeholder="Search by user ID, plan, or role…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: "100%",
-              maxWidth: 400,
-              padding: "10px 16px",
-              borderRadius: 10,
-              border: "1px solid var(--card-border)",
-              background: "var(--card)",
-              fontSize: 14,
-              outline: "none",
-            }}
+            className="w-full max-w-sm rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] px-4 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           />
         </div>
 
+        {/* Users list */}
         {loading ? (
-          <div style={{ textAlign: "center", padding: 60, color: "var(--muted)" }}>
-            <svg className="progress-spinner" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
-            <p style={{ marginTop: 12 }}>Loading users...</p>
+          <div className="flex flex-col items-center gap-3 py-16 text-[var(--text-tertiary)]">
+            <svg className="progress-spinner" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M12 2a10 10 0 0 1 10 10" />
+            </svg>
+            <p className="text-sm">Loading users…</p>
           </div>
         ) : error ? (
-          <div style={{ textAlign: "center", padding: 60, color: "var(--error)" }}>{error}</div>
+          <div className="py-16 text-center text-sm text-[var(--error,#ef4444)]">{error}</div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="flex flex-col gap-2">
             {filteredUsers.map((u) => (
               <div
                 key={u.user_id}
-                style={{
-                  background: "var(--card)",
-                  border: "1px solid var(--card-border)",
-                  borderRadius: 12,
-                  overflow: "hidden",
-                }}
+                className="overflow-hidden rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)]"
               >
-                {/* User Row */}
-                <div
-                  style={{
-                    padding: "16px 20px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    cursor: "pointer",
-                  }}
+                {/* User row — clickable to expand */}
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-[var(--surface-sunken)] transition-colors"
                   onClick={() => setExpandedUser(expandedUser === u.user_id ? null : u.user_id)}
+                  aria-expanded={expandedUser === u.user_id}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 14, fontWeight: 600 }}>
+                  <div className="flex items-center gap-4">
+                    {/* Avatar */}
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent-light)] text-sm font-bold text-[var(--accent)]">
                       {u.role === "admin" ? "A" : "U"}
                     </div>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "monospace" }}>{u.user_id.slice(0, 8)}...{u.user_id.slice(-4)}</div>
-                      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                      <p className="font-mono text-sm font-semibold text-[var(--text-primary)]">
+                        {u.user_id.slice(0, 8)}…{u.user_id.slice(-4)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">
                         Joined {new Date(u.created_at).toLocaleDateString()}
-                      </div>
+                      </p>
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Plan</div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: planColors[u.subscription_plan] || "var(--foreground)" }}>
+
+                  <div className="flex items-center gap-6">
+                    {/* Plan */}
+                    <div className="hidden text-center sm:block">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">Plan</p>
+                      <p className={`text-sm font-semibold ${PLAN_CLASSES[u.subscription_plan] ?? "text-[var(--text-primary)]"}`}>
                         {u.subscription_plan.charAt(0).toUpperCase() + u.subscription_plan.slice(1)}
-                      </div>
+                      </p>
                     </div>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Credits</div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>
-                        {u.role === "admin" ? "Unlimited" : u.credits}
-                      </div>
+                    {/* Credits */}
+                    <div className="hidden text-center sm:block">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">Credits</p>
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">
+                        {u.role === "admin" ? "∞" : u.credits}
+                      </p>
                     </div>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Articles</div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{u.article_count}</div>
+                    {/* Articles */}
+                    <div className="hidden text-center sm:block">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">Articles</p>
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">{u.article_count}</p>
                     </div>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Role</div>
-                      <div style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        padding: "2px 8px",
-                        borderRadius: 6,
-                        background: u.role === "admin" ? "var(--error)" : "var(--card-border)",
-                        color: u.role === "admin" ? "#fff" : "var(--foreground)",
-                      }}>
-                        {u.role}
-                      </div>
-                    </div>
+                    {/* Role badge */}
+                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                      u.role === "admin"
+                        ? "bg-[var(--error,#ef4444)] text-white"
+                        : "border border-[var(--border-default)] bg-[var(--surface-sunken)] text-[var(--text-secondary)]"
+                    }`}>
+                      {u.role}
+                    </span>
+                    {/* Chevron */}
                     <svg
                       width="16"
                       height="16"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke="var(--muted)"
+                      stroke="currentColor"
                       strokeWidth="2"
                       strokeLinecap="round"
-                      style={{
-                        transform: expandedUser === u.user_id ? "rotate(180deg)" : "rotate(0deg)",
-                        transition: "transform 0.2s",
-                      }}
+                      className={`shrink-0 text-[var(--text-tertiary)] transition-transform duration-200 ${
+                        expandedUser === u.user_id ? "rotate-180" : ""
+                      }`}
                     >
                       <polyline points="6 9 12 15 18 9" />
                     </svg>
                   </div>
-                </div>
+                </button>
 
-                {/* Expanded Details */}
+                {/* Expanded details */}
                 {expandedUser === u.user_id && (
-                  <div style={{ padding: "0 20px 20px", borderTop: "1px solid var(--card-border)" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 16 }}>
-                      {/* User Details */}
+                  <div className="border-t border-[var(--border-default)] px-5 pb-5 pt-4">
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                      {/* Account details */}
                       <div>
-                        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Account Details</h3>
-                        <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 8 }}>
-                          <div><span style={{ color: "var(--muted)" }}>User ID:</span> <span style={{ fontFamily: "monospace", fontSize: 12 }}>{u.user_id}</span></div>
-                          <div><span style={{ color: "var(--muted)" }}>Plan:</span> {u.subscription_plan}</div>
-                          <div><span style={{ color: "var(--muted)" }}>Status:</span> {u.subscription_status || "N/A"}</div>
-                          <div><span style={{ color: "var(--muted)" }}>Stripe ID:</span> {u.stripe_customer_id || "None"}</div>
-                          <div><span style={{ color: "var(--muted)" }}>Credits:</span> {u.role === "admin" ? "Unlimited" : u.credits}</div>
-                          <div><span style={{ color: "var(--muted)" }}>Articles:</span> {u.article_count}</div>
-                        </div>
+                        <h3 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Account Details</h3>
+                        <dl className="space-y-2 text-sm">
+                          {[
+                            { label: "User ID",    value: <span className="font-mono text-xs">{u.user_id}</span> },
+                            { label: "Plan",       value: u.subscription_plan },
+                            { label: "Status",     value: u.subscription_status || "N/A" },
+                            { label: "Stripe ID",  value: u.stripe_customer_id || "None" },
+                            { label: "Credits",    value: u.role === "admin" ? "Unlimited" : u.credits },
+                            { label: "Articles",   value: u.article_count },
+                          ].map(({ label, value }) => (
+                            <div key={label} className="flex gap-2">
+                              <dt className="w-20 shrink-0 text-[var(--text-tertiary)]">{label}</dt>
+                              <dd className="text-[var(--text-primary)]">{value}</dd>
+                            </div>
+                          ))}
+                        </dl>
 
-                        {/* Grant Credits */}
+                        {/* Grant credits */}
                         {u.role !== "admin" && (
-                          <div style={{ marginTop: 16 }}>
-                            <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Add Credits</h4>
-                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <div className="mt-4">
+                            <h4 className="mb-2 text-xs font-semibold text-[var(--text-secondary)]">Add Credits</h4>
+                            <div className="flex items-center gap-2">
                               <input
                                 type="number"
                                 min="1"
                                 placeholder="Amount"
                                 value={grantAmount[u.user_id] || ""}
-                                onChange={(e) => setGrantAmount((prev) => ({ ...prev, [u.user_id]: e.target.value }))}
-                                style={{
-                                  width: 100,
-                                  padding: "8px 12px",
-                                  borderRadius: 8,
-                                  border: "1px solid var(--card-border)",
-                                  background: "var(--background)",
-                                  fontSize: 13,
-                                  outline: "none",
-                                }}
+                                onChange={(e) =>
+                                  setGrantAmount((prev) => ({ ...prev, [u.user_id]: e.target.value }))
+                                }
+                                className="w-24 rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                               />
                               <button
                                 onClick={() => handleGrantCredits(u.user_id)}
-                                style={{
-                                  padding: "8px 16px",
-                                  borderRadius: 8,
-                                  fontSize: 13,
-                                  fontWeight: 600,
-                                  background: "var(--success)",
-                                  color: "#fff",
-                                  border: "none",
-                                  cursor: "pointer",
-                                }}
+                                className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 transition-colors"
                               >
                                 Add Credits
                               </button>
                             </div>
                             {grantMessage[u.user_id] && (
-                              <div style={{ fontSize: 12, color: "var(--success)", marginTop: 6 }}>
-                                {grantMessage[u.user_id]}
-                              </div>
+                              <p className="mt-1.5 text-xs text-green-600">{grantMessage[u.user_id]}</p>
                             )}
                           </div>
                         )}
                       </div>
 
-                      {/* Recent Transactions */}
+                      {/* Recent transactions */}
                       <div>
-                        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Recent Transactions</h3>
+                        <h3 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Recent Transactions</h3>
                         {u.recent_transactions.length === 0 ? (
-                          <p style={{ fontSize: 13, color: "var(--muted)" }}>No transactions yet</p>
+                          <p className="text-sm text-[var(--text-tertiary)]">No transactions yet</p>
                         ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <div className="flex flex-col gap-1.5">
                             {u.recent_transactions.map((t) => (
                               <div
                                 key={t.id}
-                                style={{
-                                  fontSize: 12,
-                                  padding: "8px 12px",
-                                  borderRadius: 8,
-                                  background: "var(--background)",
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  alignItems: "center",
-                                }}
+                                className="flex items-center justify-between rounded-lg bg-[var(--surface-sunken)] px-3 py-2 text-xs"
                               >
                                 <div>
-                                  <div style={{ fontWeight: 500 }}>{t.description || t.type}</div>
-                                  <div style={{ color: "var(--muted)", marginTop: 2 }}>
-                                    {new Date(t.created_at).toLocaleDateString()} {new Date(t.created_at).toLocaleTimeString()}
-                                  </div>
+                                  <p className="font-medium text-[var(--text-primary)]">{t.description || t.type}</p>
+                                  <p className="mt-0.5 text-[var(--text-tertiary)]">
+                                    {new Date(t.created_at).toLocaleDateString()}{" "}
+                                    {new Date(t.created_at).toLocaleTimeString()}
+                                  </p>
                                 </div>
-                                <span style={{
-                                  fontWeight: 700,
-                                  color: t.amount > 0 ? "var(--success)" : "var(--error)",
-                                }}>
+                                <span className={`ml-4 font-bold ${t.amount > 0 ? "text-green-600" : "text-[var(--error,#ef4444)]"}`}>
                                   {t.amount > 0 ? "+" : ""}{t.amount}
                                 </span>
                               </div>

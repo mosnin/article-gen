@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -24,7 +25,16 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { niche, count } = await req.json();
+    const { niche, count, tone: rawTone, targetAudience: rawTargetAudience } = await req.json();
+
+    const tone =
+      typeof rawTone === "string" && rawTone.length <= 100
+        ? rawTone
+        : "Informative";
+    const targetAudience =
+      typeof rawTargetAudience === "string" && rawTargetAudience.length <= 100
+        ? rawTargetAudience
+        : "General audience";
 
     if (!niche) {
       return NextResponse.json(
@@ -64,6 +74,10 @@ export async function POST(req: NextRequest) {
           role: "user",
           content: `Generate exactly ${articleCount} unique, high-value SEO article ideas for the niche: "${niche}"
 
+WRITING TONE: ${tone}
+TARGET AUDIENCE: ${targetAudience}
+Generate ideas that match the specified tone and appeal to the target audience.
+
 REQUIREMENTS:
 - Each idea should target a specific, searchable topic with clear user intent
 - Focus keywords should be realistic long-tail keywords people actually search for
@@ -93,9 +107,8 @@ Generate exactly ${articleCount} ideas.`,
 
     return NextResponse.json({ ideas: parsed.ideas || [] });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "An unexpected error occurred";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to generate ideas", error);
+    return NextResponse.json({ error: "Failed to generate ideas" }, { status: 500 });
   } finally {
     await releaseGenerationSlot(supabase, user.id);
   }

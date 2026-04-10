@@ -37,6 +37,19 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServiceClient();
 
+  // Deduplicate Stripe events — Stripe retries on failure which can cause
+  // double-credit grants. Use INSERT...ON CONFLICT to skip already-processed events.
+  const { error: dedupError } = await supabase
+    .from("stripe_webhook_events")
+    .insert({ event_id: event.id, event_type: event.type })
+    .select()
+    .single();
+
+  if (dedupError?.code === "23505") {
+    // Unique violation — already processed, return 200 to stop retries
+    return NextResponse.json({ received: true, duplicate: true });
+  }
+
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object;

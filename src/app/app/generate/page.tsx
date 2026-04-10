@@ -15,12 +15,12 @@ import type {
   AdvancedSettings,
   ClusterArticle,
   TopicCluster,
-} from "./types";
-import { HelpPage } from "./components/HelpPage";
-import { IdeasModal } from "./components/IdeasModal";
-import { ClusterView } from "./components/ClusterView";
-import { ArticleResultPanel } from "./components/ArticleResultPanel";
-import OutlineEditor, { type OutlineItem } from "./components/OutlineEditor";
+} from "../types";
+import { HelpPage } from "../components/HelpPage";
+import { IdeasModal } from "../components/IdeasModal";
+import { ClusterView } from "../components/ClusterView";
+import { ArticleResultPanel } from "../components/ArticleResultPanel";
+import OutlineEditor, { type OutlineItem } from "../components/OutlineEditor";
 
 const STEPS = [
   "Organizing context & researching facts...",
@@ -145,6 +145,10 @@ export default function Home() {
   const [gscImporting, setGscImporting] = useState(false);
   const [showGscPicker, setShowGscPicker] = useState(false);
   const [gscQueries, setGscQueries] = useState<Array<{ query: string; impressions: number; clicks: number }>>([]);
+
+  // Brand voice settings (from selected preset)
+  const [activeTone, setActiveTone] = useState("Informative");
+  const [activeTargetAudience, setActiveTargetAudience] = useState("General audience");
 
   // AI Image generation toggles
   const [generateImages, setGenerateImages] = useState(false);
@@ -496,13 +500,15 @@ export default function Home() {
       focusKeyword: string | undefined,
       quality: "standard" | "premium" = "premium",
       withImages: boolean = false,
-      blogId?: string
+      blogId?: string,
+      tone: string = "Informative",
+      targetAudience: string = "General audience"
     ) => {
       try {
         // Batch 1: Context + Research (parallel inside the route)
         const { data: researchData } = await safeFetch(
           "/api/generate/research",
-          { topic, focusKeyword }
+          { topic, focusKeyword, tone, targetAudience }
         );
 
         updateSession(id, { currentStep: 1 });
@@ -515,6 +521,8 @@ export default function Home() {
             focusKeyword,
             articleContext: researchData.articleContext,
             researchContext: researchData.researchContext,
+            tone,
+            targetAudience,
           }
         );
 
@@ -546,6 +554,8 @@ export default function Home() {
             allKeywords,
             targetWordCount,
             advancedSettings: effectiveSettings,
+            tone,
+            targetAudience,
           }
         );
 
@@ -643,7 +653,7 @@ export default function Home() {
 
       await Promise.all(
         batch.map((item) =>
-          runGeneration(item.id, item.topic, item.focusKeyword, item.quality, item.withImages, item.blogId)
+          runGeneration(item.id, item.topic, item.focusKeyword, item.quality, item.withImages, item.blogId, item.tone || "Informative", item.targetAudience || "General audience")
         )
       );
 
@@ -707,7 +717,7 @@ export default function Home() {
     setFormKeyword("");
     setFormError("");
 
-    runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined);
+    runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined, activeTone, activeTargetAudience);
   };
 
   const handlePreviewOutline = async () => {
@@ -725,6 +735,8 @@ export default function Home() {
           topic: formTopic.trim(),
           focusKeyword: formKeyword.trim() || undefined,
           advancedSettings,
+          tone: activeTone,
+          targetAudience: activeTargetAudience,
         }),
       });
       const data = await res.json() as { title?: string; outline?: Array<{ level: number; heading: string; notes?: string }>; error?: string };
@@ -784,7 +796,7 @@ export default function Home() {
     setFormKeyword("");
     setFormError("");
 
-    runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined);
+    runGeneration(id, topic, focusKeyword, "premium", generateImages, selectedBlogId || undefined, activeTone, activeTargetAudience);
     setGeneratingWithOutline(false);
     setOutline([]);
   };
@@ -844,6 +856,8 @@ export default function Home() {
         quality: batchQuality,
         withImages: batchGenerateImages,
         blogId: selectedBlogId || undefined,
+        tone: activeTone,
+        targetAudience: activeTargetAudience,
       }))
     );
 
@@ -865,7 +879,11 @@ export default function Home() {
       session.id,
       session.topic,
       session.focusKeyword || undefined,
-      session.quality
+      session.quality,
+      false,
+      undefined,
+      activeTone,
+      activeTargetAudience
     );
   };
 
@@ -1094,6 +1112,8 @@ export default function Home() {
         body: JSON.stringify({
           niche: ideasNiche.trim(),
           count: ideasCount,
+          tone: activeTone,
+          targetAudience: activeTargetAudience,
         }),
       });
       const data = await res.json();
@@ -1159,12 +1179,14 @@ export default function Home() {
       focusKeyword: string | undefined,
       quality: "standard" | "premium",
       interlinking?: Record<string, unknown>,
-      withImages: boolean = false
+      withImages: boolean = false,
+      tone: string = "Informative",
+      targetAudience: string = "General audience"
     ) => {
       try {
         const { data: researchData } = await safeFetch(
           "/api/generate/research",
-          { topic, focusKeyword }
+          { topic, focusKeyword, tone, targetAudience }
         );
 
         updateClusterArticle(clusterId, articleId, { currentStep: 1 });
@@ -1176,6 +1198,8 @@ export default function Home() {
             focusKeyword,
             articleContext: researchData.articleContext,
             researchContext: researchData.researchContext,
+            tone,
+            targetAudience,
           }
         );
 
@@ -1207,6 +1231,8 @@ export default function Home() {
             targetWordCount,
             advancedSettings: clusterSettings,
             interlinking,
+            tone,
+            targetAudience,
           }
         );
 
@@ -1345,6 +1371,8 @@ export default function Home() {
           pillarTopic: clusterPillarTopic.trim(),
           pillarKeyword: clusterPillarKeyword.trim() || undefined,
           count: articleCount,
+          tone: activeTone,
+          targetAudience: activeTargetAudience,
         }),
       });
       const data = await res.json();
@@ -1429,7 +1457,9 @@ export default function Home() {
           clusterPillarKeyword.trim() || undefined,
           "premium",
           undefined,
-          withImages
+          withImages,
+          activeTone,
+          activeTargetAudience
         );
 
         if (!pillarSlug) {
@@ -1497,7 +1527,9 @@ export default function Home() {
                 pillarTopic: clusterPillarTopic.trim(),
                 siblingUrls,
               },
-              withImages
+              withImages,
+              activeTone,
+              activeTargetAudience
             );
           })
         );
@@ -1558,7 +1590,9 @@ export default function Home() {
             isPillar: true,
             clusterUrls: allClusterUrls,
           },
-          withImages
+          withImages,
+          activeTone,
+          activeTargetAudience
         );
       }
 
@@ -1576,49 +1610,42 @@ export default function Home() {
 
   // Shared advanced settings panel JSX
   const advancedSettingsPanel = (
-    <div
-      className="rounded-xl border"
-      style={{
-        borderColor: "var(--card-border)",
-        background: "var(--card)",
-      }}
-    >
+    <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl">
       <button
         onClick={() => setShowAdvanced(!showAdvanced)}
-        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium"
-        style={{ color: "var(--foreground)" }}
+        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-[var(--text-primary)]"
       >
         <span className="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
             <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
           </svg>
           Advanced Settings
-          <span className="text-xs font-normal" style={{ color: "var(--muted)" }}>(optional)</span>
+          <span className="text-xs font-normal text-[var(--text-tertiary)]">(optional)</span>
         </span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showAdvanced ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showAdvanced ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
       {showAdvanced && (
-        <div className="space-y-3 border-t px-4 py-4" style={{ borderColor: "var(--card-border)" }}>
+        <div className="space-y-3 border-t border-[var(--border-default)] px-4 py-4">
           <div className="flex items-center justify-end gap-1">
             <input type="file" accept=".json" id="advanced-json-import" className="hidden" onChange={handleAdvancedJsonFile} />
-            <button onClick={() => document.getElementById("advanced-json-import")?.click()} className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors" style={{ color: "var(--accent)", background: "transparent" }} onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }} onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}>
+            <button onClick={() => document.getElementById("advanced-json-import")?.click()} className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-[var(--accent)] transition-colors hover:bg-[var(--surface-base)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
               Upload
             </button>
-            <span className="text-xs" style={{ color: "var(--card-border)" }}>|</span>
-            <button onClick={() => setShowAdvancedJsonPaste(!showAdvancedJsonPaste)} className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors" style={{ color: showAdvancedJsonPaste ? "var(--foreground)" : "var(--accent)", background: showAdvancedJsonPaste ? "var(--background)" : "transparent" }} onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--background)"; }} onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = showAdvancedJsonPaste ? "var(--background)" : "transparent"; }}>
+            <span className="text-xs text-[var(--border-default)]">|</span>
+            <button onClick={() => setShowAdvancedJsonPaste(!showAdvancedJsonPaste)} className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors hover:bg-[var(--surface-base)] ${showAdvancedJsonPaste ? "text-[var(--text-primary)] bg-[var(--surface-base)]" : "text-[var(--accent)]"}`}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
               Paste
             </button>
           </div>
           {showAdvancedJsonPaste && (
-            <div className="rounded-lg border p-3" style={{ borderColor: "var(--card-border)", background: "var(--background)" }}>
-              <textarea value={advancedJsonValue} onChange={(e) => setAdvancedJsonValue(e.target.value)} placeholder={`{\n  "domain": "https://yourblog.com",\n  "siteName": "Your Blog Name",\n  "siteAbout": "A blog about...",\n  "authorName": "John Doe",\n  "authorAbout": "Expert in..."\n}`} rows={5} className="mb-2 w-full resize-none rounded-lg border px-3 py-2 font-mono text-xs transition-colors focus:outline-none" style={{ background: "var(--card)", borderColor: "var(--card-border)", color: "var(--foreground)" }} onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--accent)"; }} onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--card-border)"; }} />
+            <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-lg p-3">
+              <textarea value={advancedJsonValue} onChange={(e) => setAdvancedJsonValue(e.target.value)} placeholder={`{\n  "domain": "https://yourblog.com",\n  "siteName": "Your Blog Name",\n  "siteAbout": "A blog about...",\n  "authorName": "John Doe",\n  "authorAbout": "Expert in..."\n}`} rows={5} className="mb-2 w-full resize-none border border-[var(--border-default)] rounded-lg px-3 py-2 font-mono text-xs bg-[var(--surface-raised)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent" />
               <div className="flex justify-end">
-                <button onClick={handleAdvancedPasteSubmit} disabled={!advancedJsonValue.trim()} className="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-40" style={{ background: "var(--accent)" }}>Load Settings</button>
+                <button onClick={handleAdvancedPasteSubmit} disabled={!advancedJsonValue.trim()} className="bg-[var(--accent)] text-white rounded-lg px-3 py-1.5 text-xs font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-40">Load Settings</button>
               </div>
             </div>
           )}
@@ -1630,8 +1657,8 @@ export default function Home() {
             { key: "authorAbout" as const, label: "About the Author", placeholder: "Expert in sustainable living with 10 years of experience" },
           ].map((field) => (
             <div key={field.key}>
-              <label className="mb-1 block text-xs font-medium" style={{ color: "var(--muted)" }}>{field.label}</label>
-              <input type="text" value={advancedSettings[field.key]} onChange={(e) => updateAdvanced(field.key, e.target.value)} placeholder={field.placeholder} className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none" style={{ background: "var(--background)", borderColor: "var(--card-border)", color: "var(--foreground)" }} onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }} onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }} />
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">{field.label}</label>
+              <input type="text" value={advancedSettings[field.key]} onChange={(e) => updateAdvanced(field.key, e.target.value)} placeholder={field.placeholder} className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent" />
             </div>
           ))}
         </div>
@@ -1640,16 +1667,16 @@ export default function Home() {
   );
 
   const blogSelectorPanel = wpBlogs.length > 0 ? (
-    <div className="flex items-center justify-between rounded-xl border px-4 py-3" style={{ borderColor: "var(--card-border)", background: "var(--card)" }}>
+    <div className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl flex items-center justify-between px-4 py-3">
       <div>
-        <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Publish to</div>
-        <div className="text-xs" style={{ color: "var(--muted)" }}>Choose blog-specific or general mode</div>
+        <div className="text-sm font-medium text-[var(--text-primary)]">Publish to</div>
+        <div className="text-xs text-[var(--text-secondary)]">Choose blog-specific or general mode</div>
       </div>
       <select
         value={selectedBlogId}
         onChange={(e) => handleScopeChange(e.target.value)}
-        className="rounded-lg border px-3 py-1.5 text-sm font-medium"
-        style={{ borderColor: "var(--card-border)", background: "var(--background)", color: "var(--foreground)", outline: "none", maxWidth: 180 }}
+        className="border border-[var(--border-default)] rounded-lg px-3 py-1.5 text-sm font-medium bg-[var(--surface-base)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+        style={{ maxWidth: 180 }}
       >
         <option value="">General mode (no specific blog)</option>
         {wpBlogs.map((blog) => (
@@ -1660,14 +1687,13 @@ export default function Home() {
   ) : (
     <button
       onClick={() => router.push("/app/settings")}
-      className="flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left"
-      style={{ borderColor: "var(--card-border)", background: "var(--card)", cursor: "pointer" }}
+      className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl flex w-full items-center justify-between px-4 py-3 text-left"
     >
       <div>
-        <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Connect a WordPress Blog</div>
-        <div className="text-xs" style={{ color: "var(--muted)" }}>Set up publishing in Settings</div>
+        <div className="text-sm font-medium text-[var(--text-primary)]">Connect a WordPress Blog</div>
+        <div className="text-xs text-[var(--text-secondary)]">Set up publishing in Settings</div>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
     </button>
   );
 
@@ -1685,8 +1711,7 @@ export default function Home() {
                 <div className="mb-8">
                   <button
                     onClick={() => setShowDashboard(false)}
-                    className="mb-6 flex items-center gap-1.5 text-sm font-medium"
-                    style={{ color: "var(--accent)" }}
+                    className="mb-6 flex items-center gap-1.5 text-sm font-medium text-[var(--accent)]"
                   >
                     <svg
                       width="14"
@@ -1702,16 +1727,13 @@ export default function Home() {
                     </svg>
                     Back
                   </button>
-                  <h2
-                    className="mb-2 text-3xl font-bold tracking-tight"
-                    style={{ color: "var(--foreground)" }}
-                  >
+                  <h2 className="mb-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]">
                     Dashboard
                   </h2>
-                  <p className="mb-1 text-xs" style={{ color: "var(--muted)" }}>
+                  <p className="mb-1 text-xs text-[var(--text-tertiary)]">
                     Scope: {selectedBlog ? selectedBlog.name || selectedBlog.url : "General mode (no specific blog)"}
                   </p>
-                  <p className="text-sm" style={{ color: "var(--muted)" }}>
+                  <p className="text-sm text-[var(--text-secondary)]">
                     {scopedSessions.filter((s) => s.result && !s.posted).length} need
                     to post &middot;{" "}
                     {scopedSessions.filter((s) => s.posted).length} posted
@@ -1720,39 +1742,36 @@ export default function Home() {
 
                 {/* Stats Cards */}
                 <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <div className="rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-                    <div className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+                  <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-4">
+                    <div className="text-2xl font-bold text-[var(--text-primary)]">
                       {scopedSessions.filter((s) => s.result).length}
                     </div>
-                    <div className="text-xs font-medium" style={{ color: "var(--muted)" }}>Articles Generated</div>
+                    <div className="text-xs font-medium text-[var(--text-secondary)]">Articles Generated</div>
                   </div>
-                  <div className="rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-                    <div className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+                  <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-4">
+                    <div className="text-2xl font-bold text-[var(--text-primary)]">
                       {scopedClusters.length}
                     </div>
-                    <div className="text-xs font-medium" style={{ color: "var(--muted)" }}>Topic Clusters</div>
+                    <div className="text-xs font-medium text-[var(--text-secondary)]">Topic Clusters</div>
                   </div>
-                  <div className="rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-                    <div className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+                  <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-4">
+                    <div className="text-2xl font-bold text-[var(--text-primary)]">
                       {scopedClusters.reduce((sum, c) => sum + c.clusterArticles.filter((a) => a.session?.result).length + (c.pillarSession?.result ? 1 : 0), 0)}
                     </div>
-                    <div className="text-xs font-medium" style={{ color: "var(--muted)" }}>Cluster Articles</div>
+                    <div className="text-xs font-medium text-[var(--text-secondary)]">Cluster Articles</div>
                   </div>
-                  <div className="rounded-xl border p-4" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
-                    <div className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>
+                  <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-4">
+                    <div className="text-2xl font-bold text-[var(--text-primary)]">
                       {scopedSessions.filter((s) => s.result && !s.posted).length + scopedClusters.reduce((sum, c) => sum + c.clusterArticles.filter((a) => a.session?.result && !a.session.posted).length + (c.pillarSession?.result && !c.pillarSession.posted ? 1 : 0), 0)}
                     </div>
-                    <div className="text-xs font-medium" style={{ color: "var(--muted)" }}>Ready to Post</div>
+                    <div className="text-xs font-medium text-[var(--text-secondary)]">Ready to Post</div>
                   </div>
                 </div>
 
                 {/* Topic Clusters Visual */}
                 {scopedClusters.length > 0 && (
                   <div className="mb-8">
-                    <h3
-                      className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
-                      style={{ color: "var(--muted)" }}
-                    >
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="3" />
                         <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
@@ -1767,7 +1786,7 @@ export default function Home() {
                         const progress = totalArticles > 0 ? Math.round((completedArticles / totalArticles) * 100) : 0;
 
                         return (
-                          <div key={cluster.id} className="rounded-xl border overflow-hidden" style={{ background: "var(--card)", borderColor: "var(--card-border)" }}>
+                          <div key={cluster.id} className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl overflow-hidden">
                             <div className="flex items-center gap-3 p-4">
                               <button
                                 className="min-w-0 flex-1 text-left"
@@ -1780,17 +1799,17 @@ export default function Home() {
                                 }}
                               >
                                 <div className="flex items-center gap-2">
-                                  <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                                  <span className="text-sm font-semibold text-[var(--text-primary)]">
                                     {cluster.pillarKeyword || cluster.pillarTopic}
                                   </span>
                                   {cluster.generating && (
-                                    <span className="sidebar-pulse inline-block h-2 w-2 rounded-full" style={{ background: "var(--accent)" }} />
+                                    <span className="sidebar-pulse inline-block h-2 w-2 rounded-full bg-[var(--accent)]" />
                                   )}
                                   {!cluster.generating && cluster.generationPhase === "done" && (
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
                                   )}
                                 </div>
-                                <div className="mt-1 flex items-center gap-3 text-xs" style={{ color: "var(--muted)" }}>
+                                <div className="mt-1 flex items-center gap-3 text-xs text-[var(--text-tertiary)]">
                                   <span>{hasPillar ? "1 pillar" : "No pillar"}</span>
                                   <span>&middot;</span>
                                   <span>{completedArticles}/{totalArticles} articles</span>
@@ -1815,10 +1834,7 @@ export default function Home() {
                                     }
                                   }
                                 }}
-                                className="flex-shrink-0 rounded-lg p-1.5 transition-colors"
-                                style={{ color: "var(--muted)" }}
-                                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; }}
-                                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}
+                                className="flex-shrink-0 rounded-lg p-1.5 text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
                                 title="Delete cluster"
                               >
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1829,7 +1845,7 @@ export default function Home() {
                             {/* Progress bar */}
                             {totalArticles > 0 && (
                               <div className="px-4 pb-3">
-                                <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--card-border)" }}>
+                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border-default)]">
                                   <div
                                     className="h-full rounded-full transition-all duration-500"
                                     style={{ width: `${progress}%`, background: progress === 100 ? "var(--success)" : "var(--accent)" }}
@@ -1839,7 +1855,7 @@ export default function Home() {
                             )}
                             {/* Cluster article pills */}
                             {totalArticles > 0 && (
-                              <div className="flex flex-wrap gap-1.5 border-t px-4 py-3" style={{ borderColor: "var(--card-border)" }}>
+                              <div className="flex flex-wrap gap-1.5 border-t border-[var(--border-default)] px-4 py-3">
                                 {hasPillar && (
                                   <button
                                     onClick={() => {
@@ -1849,10 +1865,7 @@ export default function Home() {
                                       setActiveSessionId(null);
                                       setClusterActiveArticleId("pillar");
                                     }}
-                                    className="rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors"
-                                    style={{ background: "rgba(0, 122, 255, 0.1)", color: "var(--accent)" }}
-                                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(0, 122, 255, 0.2)"; }}
-                                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(0, 122, 255, 0.1)"; }}
+                                    className="rounded-full px-2.5 py-1 text-[10px] font-semibold bg-[var(--accent-light)] text-[var(--accent)] hover:opacity-80 transition-opacity"
                                   >
                                     Pillar
                                   </button>
@@ -1867,10 +1880,10 @@ export default function Home() {
                                       setActiveSessionId(null);
                                       setClusterActiveArticleId(art.id);
                                     }}
-                                    className="rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors"
+                                    className="rounded-full px-2.5 py-1 text-[10px] font-medium transition-opacity hover:opacity-80"
                                     style={{
                                       background: art.session?.result ? "rgba(52, 199, 89, 0.1)" : art.session?.loading ? "rgba(0, 122, 255, 0.08)" : "rgba(0,0,0,0.04)",
-                                      color: art.session?.result ? "var(--success)" : art.session?.loading ? "var(--accent)" : "var(--muted)",
+                                      color: art.session?.result ? "var(--success)" : art.session?.loading ? "var(--accent)" : "var(--text-tertiary)",
                                     }}
                                     title={art.concept}
                                   >
@@ -1891,14 +1904,8 @@ export default function Home() {
                   (s) => s.result && !s.posted && !s.loading && !s.queued
                 ).length > 0 && (
                   <div className="mb-8">
-                    <h3
-                      className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{ background: "#007aff" }}
-                      />
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                      <span className="inline-block h-2 w-2 rounded-full bg-[var(--accent)]" />
                       Need to Post
                     </h3>
                     <div className="space-y-2">
@@ -1913,28 +1920,13 @@ export default function Home() {
                         .map((session) => (
                           <div
                             key={session.id}
-                            className="group flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors"
-                            style={{
-                              background: "var(--card)",
-                              borderColor: "var(--card-border)",
-                            }}
+                            className="group flex items-center gap-3 bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl px-4 py-3 transition-colors"
                           >
                             <button
                               onClick={() =>
                                 updateSession(session.id, { posted: true })
                               }
-                              className="flex-shrink-0 rounded-full border-2 p-0.5 transition-colors"
-                              style={{ borderColor: "var(--card-border)" }}
-                              onMouseEnter={(e) => {
-                                (
-                                  e.currentTarget as HTMLButtonElement
-                                ).style.borderColor = "var(--success)";
-                              }}
-                              onMouseLeave={(e) => {
-                                (
-                                  e.currentTarget as HTMLButtonElement
-                                ).style.borderColor = "var(--card-border)";
-                              }}
+                              className="flex-shrink-0 rounded-full border-2 border-[var(--border-default)] hover:border-[var(--accent)] p-0.5 transition-colors"
                               title="Mark as posted"
                             >
                               <span className="block h-3 w-3 rounded-full" />
@@ -1946,26 +1938,14 @@ export default function Home() {
                                 setShowDashboard(false);
                               }}
                             >
-                              <span
-                                className="block truncate text-sm font-medium"
-                                style={{ color: "var(--foreground)" }}
-                              >
+                              <span className="block truncate text-sm font-medium text-[var(--text-primary)]">
                                 {session.result?.title || session.topic}
                               </span>
-                              <span
-                                className="block truncate text-xs"
-                                style={{ color: "var(--muted)" }}
-                              >
+                              <span className="block truncate text-xs text-[var(--text-secondary)]">
                                 {session.result?.focusKeyword}
                               </span>
                             </button>
-                            <span
-                              className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider"
-                              style={{
-                                background: "rgba(0, 122, 255, 0.1)",
-                                color: "#007aff",
-                              }}
-                            >
+                            <span className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-[var(--accent-light)] text-[var(--accent)]">
                               Ready
                             </span>
                             <button
@@ -1975,10 +1955,7 @@ export default function Home() {
                                   setSessions((prev) => prev.filter((s) => s.id !== session.id));
                                 }
                               }}
-                              className="flex-shrink-0 rounded-lg p-1 opacity-0 transition-all group-hover:opacity-100"
-                              style={{ color: "var(--muted)" }}
-                              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; }}
-                              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}
+                              className="flex-shrink-0 rounded-lg p-1 opacity-0 transition-all group-hover:opacity-100 text-[var(--text-tertiary)] hover:text-red-500"
                               title="Delete article"
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1994,14 +1971,8 @@ export default function Home() {
                 {/* Posted */}
                 {scopedSessions.filter((s) => s.posted).length > 0 && (
                   <div className="mb-8">
-                    <h3
-                      className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{ background: "var(--success)" }}
-                      />
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--success)" }} />
                       Posted
                     </h3>
                     <div className="space-y-2">
@@ -2010,11 +1981,7 @@ export default function Home() {
                         .map((session) => (
                           <div
                             key={session.id}
-                            className="group flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors"
-                            style={{
-                              background: "var(--card)",
-                              borderColor: "var(--card-border)",
-                            }}
+                            className="group flex items-center gap-3 bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl px-4 py-3 transition-colors"
                           >
                             <button
                               onClick={() =>
@@ -2044,25 +2011,16 @@ export default function Home() {
                                 setShowDashboard(false);
                               }}
                             >
-                              <span
-                                className="block truncate text-sm font-medium"
-                                style={{ color: "var(--foreground)" }}
-                              >
+                              <span className="block truncate text-sm font-medium text-[var(--text-primary)]">
                                 {session.result?.title || session.topic}
                               </span>
-                              <span
-                                className="block truncate text-xs"
-                                style={{ color: "var(--muted)" }}
-                              >
+                              <span className="block truncate text-xs text-[var(--text-secondary)]">
                                 {session.result?.focusKeyword}
                               </span>
                             </button>
                             <span
                               className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider"
-                              style={{
-                                background: "rgba(52, 199, 89, 0.1)",
-                                color: "var(--success)",
-                              }}
+                              style={{ background: "rgba(52, 199, 89, 0.1)", color: "var(--success)" }}
                             >
                               Posted
                             </span>
@@ -2073,10 +2031,7 @@ export default function Home() {
                                   setSessions((prev) => prev.filter((s) => s.id !== session.id));
                                 }
                               }}
-                              className="flex-shrink-0 rounded-lg p-1 opacity-0 transition-all group-hover:opacity-100"
-                              style={{ color: "var(--muted)" }}
-                              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; }}
-                              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}
+                              className="flex-shrink-0 rounded-lg p-1 opacity-0 transition-all group-hover:opacity-100 text-[var(--text-tertiary)] hover:text-red-500"
                               title="Delete article"
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2094,14 +2049,8 @@ export default function Home() {
                   (s) => (s.loading || s.queued) && !s.error
                 ).length > 0 && (
                   <div className="mb-8">
-                    <h3
-                      className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      <span
-                        className="sidebar-pulse inline-block h-2 w-2 rounded-full"
-                        style={{ background: "var(--accent)" }}
-                      />
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                      <span className="sidebar-pulse inline-block h-2 w-2 rounded-full bg-[var(--accent)]" />
                       In Progress
                     </h3>
                     <div className="space-y-2">
@@ -2112,31 +2061,16 @@ export default function Home() {
                         .map((session) => (
                           <div
                             key={session.id}
-                            className="flex items-center gap-3 rounded-xl border px-4 py-3"
-                            style={{
-                              background: "var(--card)",
-                              borderColor: "var(--card-border)",
-                            }}
+                            className="flex items-center gap-3 bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl px-4 py-3"
                           >
                             <span
-                              className={`block h-4 w-4 flex-shrink-0 rounded-full border-2 ${session.loading ? "sidebar-pulse" : ""}`}
-                              style={{
-                                borderColor: session.loading
-                                  ? "var(--accent)"
-                                  : "var(--card-border)",
-                              }}
+                              className={`block h-4 w-4 flex-shrink-0 rounded-full border-2 ${session.loading ? "sidebar-pulse border-[var(--accent)]" : "border-[var(--border-default)]"}`}
                             />
                             <span className="min-w-0 flex-1">
-                              <span
-                                className="block truncate text-sm font-medium"
-                                style={{ color: "var(--foreground)" }}
-                              >
+                              <span className="block truncate text-sm font-medium text-[var(--text-primary)]">
                                 {session.topic}
                               </span>
-                              <span
-                                className="block truncate text-xs"
-                                style={{ color: "var(--muted)" }}
-                              >
+                              <span className="block truncate text-xs text-[var(--text-secondary)]">
                                 {session.loading
                                   ? getStepLabel(session)
                                   : "Queued"}
@@ -2153,14 +2087,8 @@ export default function Home() {
                   (s) => s.error && !s.loading && !s.queued
                 ).length > 0 && (
                   <div className="mb-8">
-                    <h3
-                      className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{ background: "var(--error)" }}
-                      />
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--error)" }} />
                       Failed
                     </h3>
                     <div className="space-y-2">
@@ -2171,16 +2099,9 @@ export default function Home() {
                         .map((session) => (
                           <div
                             key={session.id}
-                            className="flex items-center gap-3 rounded-xl border px-4 py-3"
-                            style={{
-                              background: "var(--card)",
-                              borderColor: "var(--card-border)",
-                            }}
+                            className="flex items-center gap-3 bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl px-4 py-3"
                           >
-                            <span
-                              className="block h-2 w-2 flex-shrink-0 rounded-full"
-                              style={{ background: "var(--error)" }}
-                            />
+                            <span className="block h-2 w-2 flex-shrink-0 rounded-full" style={{ background: "var(--error)" }} />
                             <button
                               className="min-w-0 flex-1 text-left"
                               onClick={() => {
@@ -2188,16 +2109,10 @@ export default function Home() {
                                 setShowDashboard(false);
                               }}
                             >
-                              <span
-                                className="block truncate text-sm font-medium"
-                                style={{ color: "var(--foreground)" }}
-                              >
+                              <span className="block truncate text-sm font-medium text-[var(--text-primary)]">
                                 {session.topic}
                               </span>
-                              <span
-                                className="block truncate text-xs"
-                                style={{ color: "var(--error)" }}
-                              >
+                              <span className="block truncate text-xs" style={{ color: "var(--error)" }}>
                                 {session.error}
                               </span>
                             </button>
@@ -2205,10 +2120,7 @@ export default function Home() {
                               onClick={() => {
                                 setSessions((prev) => prev.filter((s) => s.id !== session.id));
                               }}
-                              className="flex-shrink-0 rounded-lg p-1"
-                              style={{ color: "var(--muted)" }}
-                              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--error)"; }}
-                              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)"; }}
+                              className="flex-shrink-0 rounded-lg p-1 text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
                               title="Remove"
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2227,36 +2139,23 @@ export default function Home() {
             {showForm && (
               <div className="mx-auto max-w-2xl">
                 <div className="mb-10 text-center">
-                  <h2
-                    className="mb-3 text-4xl font-bold tracking-tight"
-                    style={{ color: "var(--foreground)" }}
-                  >
+                  <h2 className="mb-3 text-4xl font-bold tracking-tight text-[var(--text-primary)]">
                     Generate SEO Articles
                   </h2>
-                  <p className="text-lg" style={{ color: "var(--muted)" }}>
+                  <p className="text-lg text-[var(--text-secondary)]">
                     Create SEO-optimized articles with metadata and image
                     prompts.
                   </p>
                 </div>
 
                 {/* Mode toggle */}
-                <div
-                  className="mb-8 flex overflow-hidden rounded-lg border"
-                  style={{ borderColor: "var(--card-border)" }}
-                >
+                <div className="mb-8 flex overflow-hidden rounded-lg border border-[var(--border-default)]">
                   <button
                     onClick={() => {
                       setMode("single");
                       setFormError("");
                     }}
-                    className="flex-1 px-4 py-2.5 text-sm font-medium transition-colors"
-                    style={{
-                      background:
-                        mode === "single"
-                          ? "var(--accent)"
-                          : "var(--card)",
-                      color: mode === "single" ? "#fff" : "var(--foreground)",
-                    }}
+                    className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${mode === "single" ? "bg-[var(--accent)] text-white" : "bg-[var(--surface-base)] text-[var(--text-primary)]"}`}
                   >
                     Single
                   </button>
@@ -2265,14 +2164,7 @@ export default function Home() {
                       setMode("batch");
                       setFormError("");
                     }}
-                    className="flex-1 px-4 py-2.5 text-sm font-medium transition-colors"
-                    style={{
-                      background:
-                        mode === "batch"
-                          ? "var(--accent)"
-                          : "var(--card)",
-                      color: mode === "batch" ? "#fff" : "var(--foreground)",
-                    }}
+                    className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors border-l border-[var(--border-default)] ${mode === "batch" ? "bg-[var(--accent)] text-white" : "bg-[var(--surface-base)] text-[var(--text-primary)]"}`}
                   >
                     Batch
                   </button>
@@ -2281,14 +2173,7 @@ export default function Home() {
                       setMode("cluster");
                       setFormError("");
                     }}
-                    className="flex-1 px-4 py-2.5 text-sm font-medium transition-colors"
-                    style={{
-                      background:
-                        mode === "cluster"
-                          ? "var(--accent)"
-                          : "var(--card)",
-                      color: mode === "cluster" ? "#fff" : "var(--foreground)",
-                    }}
+                    className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors border-l border-[var(--border-default)] ${mode === "cluster" ? "bg-[var(--accent)] text-white" : "bg-[var(--surface-base)] text-[var(--text-primary)]"}`}
                   >
                     Cluster
                   </button>
@@ -2300,8 +2185,7 @@ export default function Home() {
                     <div>
                       <label
                         htmlFor="topic"
-                        className="mb-2 block text-sm font-medium"
-                        style={{ color: "var(--muted)" }}
+                        className="block text-sm font-medium text-[var(--text-secondary)] mb-1"
                       >
                         What should your article be about?
                       </label>
@@ -2311,22 +2195,7 @@ export default function Home() {
                         onChange={(e) => setFormTopic(e.target.value)}
                         placeholder="e.g., The Ultimate Guide to Indoor Herb Gardening for Beginners"
                         rows={3}
-                        className="w-full resize-none rounded-xl border px-4 py-3 text-base transition-colors focus:outline-none"
-                        style={{
-                          background: "var(--card)",
-                          borderColor: "var(--card-border)",
-                          color: "var(--foreground)",
-                        }}
-                        onFocus={(e) => {
-                          (
-                            e.target as HTMLTextAreaElement
-                          ).style.borderColor = "var(--accent)";
-                        }}
-                        onBlur={(e) => {
-                          (
-                            e.target as HTMLTextAreaElement
-                          ).style.borderColor = "var(--card-border)";
-                        }}
+                        className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent resize-none"
                         onKeyDown={(e) => {
                           if (
                             e.key === "Enter" &&
@@ -2341,15 +2210,10 @@ export default function Home() {
                     <div>
                       <label
                         htmlFor="keyword"
-                        className="mb-2 block text-sm font-medium"
-                        style={{ color: "var(--muted)" }}
+                        className="block text-sm font-medium text-[var(--text-secondary)] mb-1"
                       >
                         Focus Keyword{" "}
-                        <span
-                          style={{ color: "var(--muted)", opacity: 0.6 }}
-                        >
-                          (optional)
-                        </span>
+                        <span className="text-[var(--text-tertiary)] font-normal">(optional)</span>
                       </label>
                       <input
                         id="keyword"
@@ -2357,22 +2221,7 @@ export default function Home() {
                         value={formKeyword}
                         onChange={(e) => setFormKeyword(e.target.value)}
                         placeholder="e.g., indoor herb gardening"
-                        className="w-full rounded-xl border px-4 py-3 text-base transition-colors focus:outline-none"
-                        style={{
-                          background: "var(--card)",
-                          borderColor: "var(--card-border)",
-                          color: "var(--foreground)",
-                        }}
-                        onFocus={(e) => {
-                          (
-                            e.target as HTMLInputElement
-                          ).style.borderColor = "var(--accent)";
-                        }}
-                        onBlur={(e) => {
-                          (
-                            e.target as HTMLInputElement
-                          ).style.borderColor = "var(--card-border)";
-                        }}
+                        className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             handleGenerate();
@@ -2385,10 +2234,10 @@ export default function Home() {
 
                     {formError && (
                       <div
-                        className="rounded-xl border px-4 py-3 text-sm"
+                        className="rounded-lg border px-4 py-3 text-sm"
                         style={{
                           borderColor: "var(--error)",
-                          background: "rgba(239, 68, 68, 0.1)",
+                          background: "rgba(239, 68, 68, 0.08)",
                           color: "var(--error)",
                         }}
                       >
@@ -2399,23 +2248,20 @@ export default function Home() {
                     {blogSelectorPanel}
 
                     {/* Generate AI Images toggle */}
-                    <div
-                      className="flex items-center justify-between rounded-xl border px-4 py-3"
-                      style={{ borderColor: "var(--card-border)", background: "var(--card)" }}
-                    >
+                    <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 flex items-center justify-between">
                       <div>
-                        <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
+                        <div className="text-sm font-medium text-[var(--text-primary)]">
                           Generate AI Images
                         </div>
-                        <div className="text-xs" style={{ color: "var(--muted)" }}>
+                        <div className="text-xs text-[var(--text-secondary)] mt-0.5">
                           +1 credit &middot; 4 images at 1536x1024
                         </div>
                       </div>
                       <button
                         onClick={() => setGenerateImages(!generateImages)}
-                        className="relative h-6 w-11 rounded-full transition-colors duration-200"
+                        className="relative h-6 w-11 rounded-full transition-colors duration-200 flex-shrink-0"
                         style={{
-                          background: generateImages ? "var(--success)" : "var(--card-border)",
+                          background: generateImages ? "var(--accent)" : "var(--border-default)",
                         }}
                       >
                         <span
@@ -2429,18 +2275,7 @@ export default function Home() {
 
                     <button
                       onClick={handleGenerate}
-                      className="w-full rounded-xl py-3.5 text-base font-semibold text-white transition-all duration-200"
-                      style={{ background: "var(--accent)" }}
-                      onMouseEnter={(e) => {
-                        (
-                          e.currentTarget as HTMLButtonElement
-                        ).style.background = "var(--accent-hover)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (
-                          e.currentTarget as HTMLButtonElement
-                        ).style.background = "var(--accent)";
-                      }}
+                      className="bg-[var(--accent)] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors w-full py-3"
                     >
                       Generate Article{generateImages ? " (2 credits)" : " (1 credit)"}
                     </button>
@@ -2452,66 +2287,25 @@ export default function Home() {
                   <div className="space-y-5">
                     {/* Quality selector */}
                     <div>
-                      <label
-                        className="mb-2 block text-sm font-medium"
-                        style={{ color: "var(--muted)" }}
-                      >
+                      <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                         Article Quality
                       </label>
                       <div className="flex gap-3">
                         <button
                           onClick={() => setBatchQuality("standard")}
-                          className="flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-colors"
-                          style={{
-                            background:
-                              batchQuality === "standard"
-                                ? "var(--accent)"
-                                : "var(--card)",
-                            color:
-                              batchQuality === "standard"
-                                ? "#fff"
-                                : "var(--foreground)",
-                            borderColor:
-                              batchQuality === "standard"
-                                ? "var(--accent)"
-                                : "var(--card-border)",
-                          }}
+                          className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${batchQuality === "standard" ? "bg-[var(--accent)] text-white border-[var(--accent)]" : "bg-[var(--surface-base)] text-[var(--text-primary)] border-[var(--border-default)]"}`}
                         >
                           Standard
-                          <span
-                            className="block text-xs font-normal"
-                            style={{
-                              opacity: 0.7,
-                            }}
-                          >
+                          <span className="block text-xs font-normal opacity-70">
                             ~2,000 words
                           </span>
                         </button>
                         <button
                           onClick={() => setBatchQuality("premium")}
-                          className="flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-colors"
-                          style={{
-                            background:
-                              batchQuality === "premium"
-                                ? "var(--accent)"
-                                : "var(--card)",
-                            color:
-                              batchQuality === "premium"
-                                ? "#fff"
-                                : "var(--foreground)",
-                            borderColor:
-                              batchQuality === "premium"
-                                ? "var(--accent)"
-                                : "var(--card-border)",
-                          }}
+                          className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${batchQuality === "premium" ? "bg-[var(--accent)] text-white border-[var(--accent)]" : "bg-[var(--surface-base)] text-[var(--text-primary)] border-[var(--border-default)]"}`}
                         >
                           Premium
-                          <span
-                            className="block text-xs font-normal"
-                            style={{
-                              opacity: 0.7,
-                            }}
-                          >
+                          <span className="block text-xs font-normal opacity-70">
                             ~4,000 words
                           </span>
                         </button>
@@ -2521,10 +2315,7 @@ export default function Home() {
                     {/* Article list */}
                     <div>
                       <div className="mb-2 flex items-center justify-between">
-                        <label
-                          className="text-sm font-medium"
-                          style={{ color: "var(--muted)" }}
-                        >
+                        <label className="text-sm font-medium text-[var(--text-secondary)]">
                           Articles ({batchItems.length}/25)
                         </label>
                         <div className="flex items-center gap-1">
@@ -2539,127 +2330,35 @@ export default function Home() {
                             onClick={() =>
                               document.getElementById("json-import")?.click()
                             }
-                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
-                            style={{
-                              color: "var(--accent)",
-                              background: "transparent",
-                            }}
-                            onMouseEnter={(e) => {
-                              (
-                                e.currentTarget as HTMLButtonElement
-                              ).style.background = "var(--card)";
-                            }}
-                            onMouseLeave={(e) => {
-                              (
-                                e.currentTarget as HTMLButtonElement
-                              ).style.background = "transparent";
-                            }}
+                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-[var(--accent)] hover:bg-[var(--surface-sunken)] transition-colors"
                           >
-                            <svg
-                              width="12"
-                              height="12"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                               <polyline points="17 8 12 3 7 8" />
                               <line x1="12" y1="3" x2="12" y2="15" />
                             </svg>
                             Upload
                           </button>
-                          <span
-                            className="text-xs"
-                            style={{ color: "var(--card-border)" }}
-                          >
-                            |
-                          </span>
+                          <span className="text-xs text-[var(--border-default)]">|</span>
                           <button
                             onClick={() => {
                               setShowJsonPaste(!showJsonPaste);
                               setFormError("");
                             }}
-                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
-                            style={{
-                              color: showJsonPaste
-                                ? "var(--foreground)"
-                                : "var(--accent)",
-                              background: showJsonPaste
-                                ? "var(--card)"
-                                : "transparent",
-                            }}
-                            onMouseEnter={(e) => {
-                              (
-                                e.currentTarget as HTMLButtonElement
-                              ).style.background = "var(--card)";
-                            }}
-                            onMouseLeave={(e) => {
-                              (
-                                e.currentTarget as HTMLButtonElement
-                              ).style.background = showJsonPaste
-                                ? "var(--card)"
-                                : "transparent";
-                            }}
+                            className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors hover:bg-[var(--surface-sunken)] ${showJsonPaste ? "text-[var(--text-primary)] bg-[var(--surface-sunken)]" : "text-[var(--accent)]"}`}
                           >
-                            <svg
-                              width="12"
-                              height="12"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <rect
-                                x="9"
-                                y="9"
-                                width="13"
-                                height="13"
-                                rx="2"
-                                ry="2"
-                              />
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                             </svg>
                             Paste
                           </button>
-                          <span
-                            className="text-xs"
-                            style={{ color: "var(--card-border)" }}
-                          >
-                            |
-                          </span>
+                          <span className="text-xs text-[var(--border-default)]">|</span>
                           <button
                             onClick={() => setShowIdeas(true)}
-                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors"
-                            style={{
-                              color: "var(--accent)",
-                              background: "transparent",
-                            }}
-                            onMouseEnter={(e) => {
-                              (
-                                e.currentTarget as HTMLButtonElement
-                              ).style.background = "var(--card)";
-                            }}
-                            onMouseLeave={(e) => {
-                              (
-                                e.currentTarget as HTMLButtonElement
-                              ).style.background = "transparent";
-                            }}
+                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-[var(--accent)] hover:bg-[var(--surface-sunken)] transition-colors"
                           >
-                            <svg
-                              width="12"
-                              height="12"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M9 18h6" />
                               <path d="M10 22h4" />
                               <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
@@ -2669,13 +2368,7 @@ export default function Home() {
                         </div>
                       </div>
                       {showJsonPaste && (
-                        <div
-                          className="mb-3 rounded-xl border p-3"
-                          style={{
-                            borderColor: "var(--card-border)",
-                            background: "var(--card)",
-                          }}
-                        >
+                        <div className="mb-3 bg-[var(--surface-base)] border border-[var(--border-default)] rounded-lg p-3">
                           <textarea
                             value={jsonPasteValue}
                             onChange={(e) => setJsonPasteValue(e.target.value)}
@@ -2684,35 +2377,16 @@ export default function Home() {
   { "concept": "Another article topic", "keyword": "another keyword" }
 ]`}
                             rows={6}
-                            className="mb-2 w-full resize-none rounded-lg border px-3 py-2 font-mono text-xs transition-colors focus:outline-none"
-                            style={{
-                              background: "var(--background)",
-                              borderColor: "var(--card-border)",
-                              color: "var(--foreground)",
-                            }}
-                            onFocus={(e) => {
-                              (
-                                e.target as HTMLTextAreaElement
-                              ).style.borderColor = "var(--accent)";
-                            }}
-                            onBlur={(e) => {
-                              (
-                                e.target as HTMLTextAreaElement
-                              ).style.borderColor = "var(--card-border)";
-                            }}
+                            className="mb-2 border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-sunken)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent resize-none font-mono text-xs"
                           />
                           <div className="flex items-center justify-between">
-                            <span
-                              className="text-xs"
-                              style={{ color: "var(--muted)" }}
-                            >
+                            <span className="text-xs text-[var(--text-secondary)]">
                               Paste a JSON array of articles
                             </span>
                             <button
                               onClick={handlePasteJsonSubmit}
                               disabled={!jsonPasteValue.trim()}
-                              className="rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-40"
-                              style={{ background: "var(--accent)" }}
+                              className="bg-[var(--accent)] text-white rounded-lg px-3 py-1.5 text-xs font-semibold hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-40"
                             >
                               Load Articles
                             </button>
@@ -2721,98 +2395,34 @@ export default function Home() {
                       )}
                       <div className="space-y-2">
                         {batchItems.map((item, index) => (
-                          <div
-                            key={item.id}
-                            className="flex items-center gap-2"
-                          >
-                            <span
-                              className="w-6 text-right text-xs tabular-nums"
-                              style={{ color: "var(--muted)" }}
-                            >
+                          <div key={item.id} className="flex items-center gap-2">
+                            <span className="w-6 text-right text-xs tabular-nums text-[var(--text-tertiary)]">
                               {index + 1}
                             </span>
                             <input
                               type="text"
                               value={item.topic}
                               onChange={(e) =>
-                                updateBatchItem(
-                                  item.id,
-                                  "topic",
-                                  e.target.value
-                                )
+                                updateBatchItem(item.id, "topic", e.target.value)
                               }
                               placeholder="Article topic"
-                              className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
-                              style={{
-                                background: "var(--card)",
-                                borderColor: "var(--card-border)",
-                                color: "var(--foreground)",
-                              }}
-                              onFocus={(e) => {
-                                (
-                                  e.target as HTMLInputElement
-                                ).style.borderColor = "var(--accent)";
-                              }}
-                              onBlur={(e) => {
-                                (
-                                  e.target as HTMLInputElement
-                                ).style.borderColor = "var(--card-border)";
-                              }}
+                              className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] min-w-0 flex-1 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                             />
                             <input
                               type="text"
                               value={item.keyword}
                               onChange={(e) =>
-                                updateBatchItem(
-                                  item.id,
-                                  "keyword",
-                                  e.target.value
-                                )
+                                updateBatchItem(item.id, "keyword", e.target.value)
                               }
                               placeholder="Keyword"
-                              className="w-36 rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
-                              style={{
-                                background: "var(--card)",
-                                borderColor: "var(--card-border)",
-                                color: "var(--foreground)",
-                              }}
-                              onFocus={(e) => {
-                                (
-                                  e.target as HTMLInputElement
-                                ).style.borderColor = "var(--accent)";
-                              }}
-                              onBlur={(e) => {
-                                (
-                                  e.target as HTMLInputElement
-                                ).style.borderColor = "var(--card-border)";
-                              }}
+                              className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-36 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                             />
                             {batchItems.length > 1 && (
                               <button
                                 onClick={() => removeBatchItem(item.id)}
-                                className="rounded p-1 transition-colors"
-                                style={{ color: "var(--muted)" }}
-                                onMouseEnter={(e) => {
-                                  (
-                                    e.currentTarget as HTMLButtonElement
-                                  ).style.color = "var(--error)";
-                                }}
-                                onMouseLeave={(e) => {
-                                  (
-                                    e.currentTarget as HTMLButtonElement
-                                  ).style.color = "var(--muted)";
-                                }}
+                                className="rounded p-1 text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
                               >
-                                <svg
-                                  width="16"
-                                  height="16"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <line x1="18" y1="6" x2="6" y2="18" />
                                   <line x1="6" y1="6" x2="18" y2="18" />
                                 </svg>
@@ -2827,38 +2437,9 @@ export default function Home() {
                     {batchItems.length < 25 && (
                       <button
                         onClick={addBatchItem}
-                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed px-4 py-2.5 text-sm font-medium transition-colors"
-                        style={{
-                          borderColor: "var(--card-border)",
-                          color: "var(--muted)",
-                        }}
-                        onMouseEnter={(e) => {
-                          (
-                            e.currentTarget as HTMLButtonElement
-                          ).style.borderColor = "var(--accent)";
-                          (
-                            e.currentTarget as HTMLButtonElement
-                          ).style.color = "var(--foreground)";
-                        }}
-                        onMouseLeave={(e) => {
-                          (
-                            e.currentTarget as HTMLButtonElement
-                          ).style.borderColor = "var(--card-border)";
-                          (
-                            e.currentTarget as HTMLButtonElement
-                          ).style.color = "var(--muted)";
-                        }}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-[var(--border-default)] px-4 py-2.5 text-sm font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] transition-colors"
                       >
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="12" y1="5" x2="12" y2="19" />
                           <line x1="5" y1="12" x2="19" y2="12" />
                         </svg>
@@ -2869,18 +2450,15 @@ export default function Home() {
                     {blogSelectorPanel}
 
                     {/* Generate AI Images Toggle */}
-                    <div
-                      className="flex items-center justify-between rounded-xl border p-4"
-                      style={{ borderColor: "var(--card-border)", background: "var(--card)" }}
-                    >
+                    <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 flex items-center justify-between">
                       <div>
-                        <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Generate AI Images</div>
-                        <div className="text-xs" style={{ color: "var(--muted)" }}>+1 credit per article &middot; 4 images each</div>
+                        <div className="text-sm font-medium text-[var(--text-primary)]">Generate AI Images</div>
+                        <div className="text-xs text-[var(--text-secondary)] mt-0.5">+1 credit per article &middot; 4 images each</div>
                       </div>
                       <button
                         onClick={() => setBatchGenerateImages(!batchGenerateImages)}
-                        className="relative h-6 w-11 rounded-full transition-colors duration-200"
-                        style={{ background: batchGenerateImages ? "var(--success)" : "var(--card-border)" }}
+                        className="relative h-6 w-11 rounded-full transition-colors duration-200 flex-shrink-0"
+                        style={{ background: batchGenerateImages ? "var(--accent)" : "var(--border-default)" }}
                       >
                         <span
                           className="absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200"
@@ -2893,12 +2471,8 @@ export default function Home() {
 
                     {formError && (
                       <div
-                        className="rounded-xl border px-4 py-3 text-sm"
-                        style={{
-                          borderColor: "var(--error)",
-                          background: "rgba(239, 68, 68, 0.1)",
-                          color: "var(--error)",
-                        }}
+                        className="rounded-lg border px-4 py-3 text-sm"
+                        style={{ borderColor: "var(--error)", background: "rgba(239, 68, 68, 0.08)", color: "var(--error)" }}
                       >
                         {formError}
                       </div>
@@ -2907,29 +2481,14 @@ export default function Home() {
                     <button
                       onClick={handleBatchGenerate}
                       disabled={validBatchCount === 0}
-                      className="w-full rounded-xl py-3.5 text-base font-semibold text-white transition-all duration-200 disabled:opacity-40"
-                      style={{ background: "var(--accent)" }}
-                      onMouseEnter={(e) => {
-                        if (validBatchCount > 0)
-                          (
-                            e.currentTarget as HTMLButtonElement
-                          ).style.background = "var(--accent-hover)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (
-                          e.currentTarget as HTMLButtonElement
-                        ).style.background = "var(--accent)";
-                      }}
+                      className="bg-[var(--accent)] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors w-full py-3 disabled:opacity-40"
                     >
                       Generate {validBatchCount}{" "}
                       {validBatchCount === 1 ? "Article" : "Articles"}
                       {batchGenerateImages ? ` (${validBatchCount * 2} credits)` : ` (${validBatchCount} credit${validBatchCount === 1 ? "" : "s"})`}
                     </button>
 
-                    <p
-                      className="text-center text-xs"
-                      style={{ color: "var(--muted)" }}
-                    >
+                    <p className="text-center text-xs text-[var(--text-tertiary)]">
                       Articles generate 2 at a time with 60-second intervals
                       between batches to stay within rate limits.
                     </p>
@@ -2939,23 +2498,17 @@ export default function Home() {
                 {/* Cluster mode form */}
                 {mode === "cluster" && (
                   <div className="space-y-5">
-                    <div
-                      className="rounded-xl border p-4"
-                      style={{
-                        background: "var(--card)",
-                        borderColor: "var(--card-border)",
-                      }}
-                    >
+                    <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5">
                       <div className="mb-3 flex items-center gap-2">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <circle cx="12" cy="12" r="3" />
                           <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                         </svg>
-                        <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                        <span className="text-sm font-semibold text-[var(--text-primary)]">
                           Topic Cluster Generator
                         </span>
                       </div>
-                      <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+                      <p className="text-xs leading-relaxed text-[var(--text-secondary)]">
                         Generate a comprehensive topic cluster: one pillar page plus interlinked cluster articles.
                         All articles will link back to the pillar page and cross-link to each other following SEO best practices.
                         Advanced settings with your domain are required for internal linking.
@@ -2963,39 +2516,29 @@ export default function Home() {
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-medium" style={{ color: "var(--muted)" }}>
+                      <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                         Article Quality
                       </label>
                       <div className="flex gap-3">
                         <button
                           onClick={() => setClusterQuality("standard")}
-                          className="flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-colors"
-                          style={{
-                            background: clusterQuality === "standard" ? "var(--accent)" : "var(--card)",
-                            color: clusterQuality === "standard" ? "#fff" : "var(--foreground)",
-                            borderColor: clusterQuality === "standard" ? "var(--accent)" : "var(--card-border)",
-                          }}
+                          className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${clusterQuality === "standard" ? "bg-[var(--accent)] text-white border-[var(--accent)]" : "bg-[var(--surface-base)] text-[var(--text-primary)] border-[var(--border-default)]"}`}
                         >
                           Standard
-                          <span className="block text-xs font-normal" style={{ opacity: 0.7 }}>~2,000 words</span>
+                          <span className="block text-xs font-normal opacity-70">~2,000 words</span>
                         </button>
                         <button
                           onClick={() => setClusterQuality("premium")}
-                          className="flex-1 rounded-xl border px-4 py-3 text-sm font-medium transition-colors"
-                          style={{
-                            background: clusterQuality === "premium" ? "var(--accent)" : "var(--card)",
-                            color: clusterQuality === "premium" ? "#fff" : "var(--foreground)",
-                            borderColor: clusterQuality === "premium" ? "var(--accent)" : "var(--card-border)",
-                          }}
+                          className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${clusterQuality === "premium" ? "bg-[var(--accent)] text-white border-[var(--accent)]" : "bg-[var(--surface-base)] text-[var(--text-primary)] border-[var(--border-default)]"}`}
                         >
                           Premium
-                          <span className="block text-xs font-normal" style={{ opacity: 0.7 }}>~4,000 words</span>
+                          <span className="block text-xs font-normal opacity-70">~4,000 words</span>
                         </button>
                       </div>
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-medium" style={{ color: "var(--muted)" }}>
+                      <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                         Number of Cluster Articles
                       </label>
                       <div className="flex items-center gap-3">
@@ -3014,20 +2557,13 @@ export default function Home() {
                           max={30}
                           value={clusterCount}
                           onChange={(e) => setClusterCount(Math.min(30, Math.max(1, Number(e.target.value))))}
-                          className="w-16 rounded-lg border px-3 py-2 text-center text-sm font-medium focus:outline-none"
-                          style={{
-                            background: "var(--card)",
-                            borderColor: "var(--card-border)",
-                            color: "var(--foreground)",
-                          }}
-                          onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }}
-                          onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }}
+                          className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-16 text-center font-medium focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-medium" style={{ color: "var(--muted)" }}>
+                      <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                         Pillar Page Topic
                       </label>
                       <textarea
@@ -3035,19 +2571,12 @@ export default function Home() {
                         onChange={(e) => setClusterPillarTopic(e.target.value)}
                         placeholder="e.g., The Complete Guide to Indoor Herb Gardening"
                         rows={3}
-                        className="w-full resize-none rounded-xl border px-4 py-3 text-base transition-colors focus:outline-none"
-                        style={{
-                          background: "var(--card)",
-                          borderColor: "var(--card-border)",
-                          color: "var(--foreground)",
-                        }}
-                        onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--accent)"; }}
-                        onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--card-border)"; }}
+                        className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent resize-none"
                       />
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-medium" style={{ color: "var(--muted)" }}>
+                      <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                         Pillar Focus Keyword
                       </label>
                       <input
@@ -3055,38 +2584,27 @@ export default function Home() {
                         value={clusterPillarKeyword}
                         onChange={(e) => setClusterPillarKeyword(e.target.value)}
                         placeholder="e.g., indoor herb gardening"
-                        className="w-full rounded-xl border px-4 py-3 text-base transition-colors focus:outline-none"
-                        style={{
-                          background: "var(--card)",
-                          borderColor: "var(--card-border)",
-                          color: "var(--foreground)",
-                        }}
-                        onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }}
-                        onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }}
+                        className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                       />
                     </div>
 
                     {/* Existing pillar option */}
-                    <div
-                      className="rounded-xl border"
-                      style={{ borderColor: "var(--card-border)", background: "var(--card)" }}
-                    >
+                    <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl">
                       <button
                         onClick={() => setClusterUseExistingPillar(!clusterUseExistingPillar)}
-                        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium"
-                        style={{ color: "var(--foreground)" }}
+                        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-[var(--text-primary)]"
                       >
                         <span className="flex items-center gap-2">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
                             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
                           </svg>
                           Use Existing Pillar Page
-                          <span className="text-xs font-normal" style={{ color: "var(--muted)" }}>(optional)</span>
+                          <span className="text-xs font-normal text-[var(--text-tertiary)]">(optional)</span>
                         </span>
                         <div
-                          className="flex h-5 w-9 items-center rounded-full px-0.5 transition-colors"
-                          style={{ background: clusterUseExistingPillar ? "var(--accent)" : "var(--card-border)" }}
+                          className="flex h-5 w-9 items-center rounded-full px-0.5 transition-colors flex-shrink-0"
+                          style={{ background: clusterUseExistingPillar ? "var(--accent)" : "var(--border-default)" }}
                         >
                           <div
                             className="h-4 w-4 rounded-full bg-white shadow transition-transform"
@@ -3095,12 +2613,12 @@ export default function Home() {
                         </div>
                       </button>
                       {clusterUseExistingPillar && (
-                        <div className="space-y-3 border-t px-4 py-4" style={{ borderColor: "var(--card-border)" }}>
-                          <p className="text-xs" style={{ color: "var(--muted)" }}>
+                        <div className="space-y-3 border-t border-[var(--border-default)] px-4 py-4">
+                          <p className="text-xs text-[var(--text-secondary)]">
                             Already have a pillar page? Provide the URL and a brief summary. Cluster articles will link to this URL instead of generating a new pillar page.
                           </p>
                           <div>
-                            <label className="mb-1 block text-xs font-medium" style={{ color: "var(--muted)" }}>
+                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                               Pillar Page URL
                             </label>
                             <input
@@ -3108,33 +2626,19 @@ export default function Home() {
                               value={clusterExistingPillarUrl}
                               onChange={(e) => setClusterExistingPillarUrl(e.target.value)}
                               placeholder="https://yourblog.com/pillar-article-slug"
-                              className="w-full rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
-                              style={{
-                                background: "var(--background)",
-                                borderColor: "var(--card-border)",
-                                color: "var(--foreground)",
-                              }}
-                              onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--accent)"; }}
-                              onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--card-border)"; }}
+                              className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
                             />
                           </div>
                           <div>
-                            <label className="mb-1 block text-xs font-medium" style={{ color: "var(--muted)" }}>
-                              Summary of Pillar Content <span style={{ opacity: 0.6 }}>(optional, helps AI write better cluster articles)</span>
+                            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                              Summary of Pillar Content <span className="text-[var(--text-tertiary)] font-normal">(optional, helps AI write better cluster articles)</span>
                             </label>
                             <textarea
                               value={clusterExistingPillarSummary}
                               onChange={(e) => setClusterExistingPillarSummary(e.target.value)}
                               placeholder="Brief description of what your pillar page covers..."
                               rows={3}
-                              className="w-full resize-none rounded-lg border px-3 py-2 text-sm transition-colors focus:outline-none"
-                              style={{
-                                background: "var(--background)",
-                                borderColor: "var(--card-border)",
-                                color: "var(--foreground)",
-                              }}
-                              onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--accent)"; }}
-                              onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "var(--card-border)"; }}
+                              className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] w-full focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent resize-none"
                             />
                           </div>
                         </div>
@@ -3144,18 +2648,15 @@ export default function Home() {
                     {blogSelectorPanel}
 
                     {/* Generate AI Images Toggle */}
-                    <div
-                      className="flex items-center justify-between rounded-xl border p-4"
-                      style={{ borderColor: "var(--card-border)", background: "var(--card)" }}
-                    >
+                    <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 flex items-center justify-between">
                       <div>
-                        <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Generate AI Images</div>
-                        <div className="text-xs" style={{ color: "var(--muted)" }}>+1 credit per article &middot; 4 images each</div>
+                        <div className="text-sm font-medium text-[var(--text-primary)]">Generate AI Images</div>
+                        <div className="text-xs text-[var(--text-secondary)] mt-0.5">+1 credit per article &middot; 4 images each</div>
                       </div>
                       <button
                         onClick={() => setClusterGenerateImages(!clusterGenerateImages)}
-                        className="relative h-6 w-11 rounded-full transition-colors duration-200"
-                        style={{ background: clusterGenerateImages ? "var(--success)" : "var(--card-border)" }}
+                        className="relative h-6 w-11 rounded-full transition-colors duration-200 flex-shrink-0"
+                        style={{ background: clusterGenerateImages ? "var(--accent)" : "var(--border-default)" }}
                       >
                         <span
                           className="absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200"
@@ -3167,26 +2668,15 @@ export default function Home() {
                     {advancedSettingsPanel}
 
                     {!advancedSettings.domain.trim() && (
-                      <div
-                        className="rounded-xl border px-4 py-3 text-sm"
-                        style={{
-                          borderColor: "var(--accent)",
-                          background: "rgba(0, 122, 255, 0.06)",
-                          color: "var(--accent)",
-                        }}
-                      >
+                      <div className="bg-[var(--accent-light)] border border-[var(--accent)] rounded-lg px-4 py-3 text-sm text-[var(--accent)]">
                         Domain is required for topic clusters. Open Advanced Settings above to set your domain.
                       </div>
                     )}
 
                     {formError && (
                       <div
-                        className="rounded-xl border px-4 py-3 text-sm"
-                        style={{
-                          borderColor: "var(--error)",
-                          background: "rgba(239, 68, 68, 0.1)",
-                          color: "var(--error)",
-                        }}
+                        className="rounded-lg border px-4 py-3 text-sm"
+                        style={{ borderColor: "var(--error)", background: "rgba(239, 68, 68, 0.08)", color: "var(--error)" }}
                       >
                         {formError}
                       </div>
@@ -3195,20 +2685,12 @@ export default function Home() {
                     <button
                       onClick={handleStartCluster}
                       disabled={!clusterPillarTopic.trim() || !advancedSettings.domain.trim() || (clusterUseExistingPillar && !clusterExistingPillarUrl.trim())}
-                      className="w-full rounded-xl py-3.5 text-base font-semibold text-white transition-all duration-200 disabled:opacity-40"
-                      style={{ background: "var(--accent)" }}
-                      onMouseEnter={(e) => {
-                        if (clusterPillarTopic.trim() && advancedSettings.domain.trim())
-                          (e.currentTarget as HTMLButtonElement).style.background = "var(--accent-hover)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.background = "var(--accent)";
-                      }}
+                      className="bg-[var(--accent)] text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-[var(--accent-hover)] transition-colors w-full py-3 disabled:opacity-40"
                     >
                       Generate Topic Cluster ({clusterUseExistingPillar ? clusterCount : clusterCount + 1} Articles{clusterGenerateImages ? `, ${(clusterUseExistingPillar ? clusterCount : clusterCount + 1) * 2} credits` : ""})
                     </button>
 
-                    <p className="text-center text-xs" style={{ color: "var(--muted)" }}>
+                    <p className="text-center text-xs text-[var(--text-tertiary)]">
                       {clusterUseExistingPillar
                         ? `Generates ${clusterCount} cluster articles linked to your existing pillar page.`
                         : `Generates 1 pillar page + ${clusterCount} cluster articles.`
@@ -3253,20 +2735,13 @@ export default function Home() {
               />
             )}
 
-          </div>
-
       {/* Floating progress pill */}
       {activeCount > 0 && (
         <>
           {progressMinimized ? (
             <button
               onClick={() => setProgressMinimized(false)}
-              className="progress-fab fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95"
-              style={{
-                background: "#1d1d1f",
-                boxShadow:
-                  "0 4px 24px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.08)",
-              }}
+              className="progress-fab fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 bg-[var(--surface-raised)] border border-[var(--border-default)]"
               title="Show progress"
             >
               <svg
@@ -3275,29 +2750,20 @@ export default function Home() {
                 height="20"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="white"
+                stroke="var(--accent)"
                 strokeWidth="2.5"
                 strokeLinecap="round"
               >
                 <path d="M12 2a10 10 0 0 1 10 10" />
               </svg>
-              <span
-                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold"
-                style={{ background: "#fff", color: "#1d1d1f" }}
-              >
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold bg-[var(--accent)] text-white">
                 {activeCount}
               </span>
             </button>
           ) : (
             <div
-              className="progress-pill fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full shadow-2xl transition-all duration-300"
-              style={{
-                background: "#1d1d1f",
-                boxShadow:
-                  "0 4px 30px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.06)",
-                minWidth: "320px",
-                maxWidth: "420px",
-              }}
+              className="progress-pill fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full shadow-2xl transition-all duration-300 bg-[var(--surface-raised)] border border-[var(--border-default)]"
+              style={{ minWidth: "320px", maxWidth: "420px" }}
             >
               <div className="flex items-center gap-3 px-5 py-3">
                 {/* Spinner */}
@@ -3307,7 +2773,7 @@ export default function Home() {
                   height="16"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="white"
+                  stroke="var(--accent)"
                   strokeWidth="2.5"
                   strokeLinecap="round"
                 >
@@ -3317,30 +2783,21 @@ export default function Home() {
                 {/* Text */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-sm font-medium text-white">
+                    <span className="truncate text-sm font-medium text-[var(--text-primary)]">
                       {batchCountdown > 0
                         ? `Next batch in ${batchCountdown}s`
                         : `Generating ${loadingCount === 1 ? "article" : "articles"}`}
                     </span>
-                    <span
-                      className="flex-shrink-0 text-xs tabular-nums"
-                      style={{ color: "rgba(255,255,255,0.5)" }}
-                    >
+                    <span className="flex-shrink-0 text-xs tabular-nums text-[var(--text-tertiary)]">
                       {completedInBatch}/{totalInProgress}
                     </span>
                   </div>
 
                   {/* Progress bar */}
-                  <div
-                    className="mt-2 h-1 w-full overflow-hidden rounded-full"
-                    style={{ background: "rgba(255,255,255,0.15)" }}
-                  >
+                  <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[var(--border-default)]">
                     <div
-                      className="h-full rounded-full transition-all duration-700 ease-out"
-                      style={{
-                        width: `${Math.max(progressPercent, activeCount > 0 ? 3 : 0)}%`,
-                        background: "#fff",
-                      }}
+                      className="h-full rounded-full transition-all duration-700 ease-out bg-[var(--accent)]"
+                      style={{ width: `${Math.max(progressPercent, activeCount > 0 ? 3 : 0)}%` }}
                     />
                   </div>
                 </div>
@@ -3348,16 +2805,7 @@ export default function Home() {
                 {/* Minimize button */}
                 <button
                   onClick={() => setProgressMinimized(true)}
-                  className="flex-shrink-0 rounded-full p-1 transition-colors"
-                  style={{ color: "rgba(255,255,255,0.4)" }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.color =
-                      "rgba(255,255,255,0.8)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.color =
-                      "rgba(255,255,255,0.4)";
-                  }}
+                  className="flex-shrink-0 rounded-full p-1 transition-colors text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                   title="Minimize"
                 >
                   <svg

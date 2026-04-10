@@ -26,6 +26,23 @@ interface PlanInfo {
   currentPeriodEnd: string | null;
 }
 
+const PLANS = [
+  {
+    key: "free",
+    label: "Free",
+    price: "0",
+    period: "/mo",
+    features: ["5 articles / month", "Basic templates", "Email support"],
+  },
+  {
+    key: "pro",
+    label: "Pro",
+    price: "99",
+    period: "/mo",
+    features: ["Unlimited articles", "All integrations", "Priority support"],
+  },
+];
+
 function BillingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -117,12 +134,14 @@ function BillingContent() {
     ? Math.max(0, Math.ceil((new Date(planInfo.trialEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
 
+  const activePlan = planInfo?.plan ?? "free";
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Trial/subscription hero */}
       {isTrial && (
         <div className="relative overflow-hidden rounded-xl bg-[var(--accent)] px-6 py-8 text-white">
-          <div className="absolute right-4 top-4 flex items-center gap-2">
+          <div className="absolute right-4 top-4">
             <Button
               variant="outline"
               size="sm"
@@ -143,8 +162,10 @@ function BillingContent() {
               <h1 className="mt-2 text-4xl font-black">{trialDaysLeft} days left</h1>
               <p className="mt-2 text-sm text-white/80">
                 Your articles subscription trial ends on{" "}
-                {planInfo?.trialEnd ? new Date(planInfo.trialEnd).toLocaleDateString("en-GB").replace(/\//g, ".") : "soon"},
-                then your subscription automatically continues at $99.00/mo.
+                {planInfo?.trialEnd
+                  ? new Date(planInfo.trialEnd).toLocaleDateString("en-GB").replace(/\//g, ".")
+                  : "soon"}
+                , then your subscription automatically continues at $99.00/mo.
               </p>
             </>
           ) : (
@@ -170,13 +191,107 @@ function BillingContent() {
         </div>
       )}
 
+      {/* Plan cards */}
+      <div>
+        <h2 className="mb-4 text-base font-semibold text-[var(--text-primary)]">Plans</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {PLANS.map((plan) => {
+            const isCurrent = activePlan === plan.key || (plan.key === "pro" && activePlan === "trial");
+            return (
+              <div
+                key={plan.key}
+                className={`bg-[var(--surface-base)] border rounded-xl p-5 flex flex-col gap-4 transition-colors ${
+                  isCurrent
+                    ? "border-[var(--accent)]"
+                    : "border-[var(--border-default)]"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">{plan.label}</p>
+                    <div className="mt-1 flex items-baseline gap-0.5">
+                      <span className="text-3xl font-semibold text-[var(--text-primary)]">${plan.price}</span>
+                      <span className="text-sm text-[var(--text-tertiary)]">{plan.period}</span>
+                    </div>
+                  </div>
+                  {isCurrent && (
+                    <span className="inline-flex items-center rounded-full bg-[var(--accent-light)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--accent)]">
+                      Current
+                    </span>
+                  )}
+                </div>
+
+                <ul className="space-y-1.5">
+                  {plan.features.map((feat) => (
+                    <li key={feat} className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                      <svg viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]">
+                        <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd" />
+                      </svg>
+                      {feat}
+                    </li>
+                  ))}
+                </ul>
+
+                {isCurrent ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleManageSubscription}
+                    loading={portalLoading}
+                    className="mt-auto w-full"
+                  >
+                    Manage Subscription
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={handleManageSubscription}
+                    loading={portalLoading}
+                    className="mt-auto w-full bg-[var(--accent)] text-white hover:opacity-90"
+                  >
+                    {plan.key === "pro" ? "Upgrade to Pro" : "Downgrade"}
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Active subscription status (non-trial paid plans) */}
+      {!isTrial && planInfo && planInfo.currentPeriodEnd && (
+        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] px-5 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-[var(--text-secondary)]">
+              <span className="font-medium capitalize text-[var(--text-primary)]">{planInfo.plan} Plan</span>
+              {" — "}
+              {planInfo.cancelAtPeriodEnd ? "Cancels" : "Renews"} on{" "}
+              {new Date(planInfo.currentPeriodEnd).toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManageSubscription}
+              loading={portalLoading}
+              className="shrink-0"
+            >
+              Manage
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Invoices table */}
       <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)]">
         <div className="flex items-center justify-between border-b border-[var(--border-default)] px-5 py-4">
           <h2 className="text-base font-semibold text-[var(--text-primary)]">Invoices</h2>
           <button
             onClick={handleManageSubscription}
-            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+            className="text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
           >
             Manage Subscription →
           </button>
@@ -189,7 +304,9 @@ function BillingContent() {
         ) : invoices.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <p className="text-sm text-[var(--text-secondary)]">No invoices yet</p>
-            <p className="mt-1 text-xs text-[var(--text-tertiary)]">Your invoices will appear here once you start a subscription.</p>
+            <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+              Your invoices will appear here once you start a subscription.
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -197,7 +314,11 @@ function BillingContent() {
               <thead>
                 <tr className="border-b border-[var(--border-default)]">
                   {["Date", "Invoice Number", "Amount", "Status", "Actions"].map((col) => (
-                    <th key={col} className="px-5 py-3 text-left text-xs font-semibold text-[var(--text-tertiary)]">
+                    <th
+                      key={col}
+                      scope="col"
+                      className="px-5 py-3 text-left text-xs font-semibold text-[var(--text-tertiary)]"
+                    >
                       {col === "Date" ? (
                         <div className="flex items-center gap-1">
                           {col}
@@ -214,22 +335,28 @@ function BillingContent() {
                 {invoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-[var(--surface-sunken)]">
                     <td className="px-5 py-3 text-sm text-[var(--text-secondary)]">
-                      {new Date(inv.created * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {new Date(inv.created * 1000).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
                     </td>
-                    <td className="px-5 py-3 text-sm font-mono text-[var(--text-primary)]">
+                    <td className="px-5 py-3 font-mono text-sm text-[var(--text-primary)]">
                       {inv.number}
                     </td>
                     <td className="px-5 py-3 text-sm font-medium text-[var(--text-primary)]">
                       ${(inv.amount / 100).toFixed(2)}
                     </td>
                     <td className="px-5 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                        inv.status === "paid"
-                          ? "bg-green-100 text-green-700"
-                          : inv.status === "open"
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-[var(--surface-sunken)] text-[var(--text-tertiary)]"
-                      }`}>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          inv.status === "paid"
+                            ? "bg-green-100 text-green-700"
+                            : inv.status === "open"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-[var(--surface-sunken)] text-[var(--text-tertiary)]"
+                        }`}
+                      >
                         {inv.status}
                       </span>
                     </td>
@@ -240,7 +367,7 @@ function BillingContent() {
                             href={inv.hosted_invoice_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors"
+                            className="text-[var(--text-tertiary)] transition-colors hover:text-[var(--accent)]"
                             title="View invoice"
                           >
                             <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -254,7 +381,7 @@ function BillingContent() {
                             href={inv.invoice_pdf}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors"
+                            className="text-[var(--text-tertiary)] transition-colors hover:text-[var(--accent)]"
                             title="Download PDF"
                           >
                             <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -274,26 +401,6 @@ function BillingContent() {
           </div>
         )}
       </div>
-
-      {/* Plan info card */}
-      {!isTrial && planInfo && (
-        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-[var(--text-primary)] capitalize">{planInfo.plan} Plan</p>
-              {planInfo.currentPeriodEnd && (
-                <p className="text-xs text-[var(--text-secondary)]">
-                  {planInfo.cancelAtPeriodEnd ? "Cancels" : "Renews"} on{" "}
-                  {new Date(planInfo.currentPeriodEnd).toLocaleDateString()}
-                </p>
-              )}
-            </div>
-            <Button variant="outline" size="sm" onClick={handleManageSubscription} loading={portalLoading}>
-              Manage Subscription
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

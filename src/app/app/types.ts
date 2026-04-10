@@ -46,6 +46,8 @@ export interface BatchQueueItem {
   quality: "standard" | "premium";
   withImages: boolean;
   blogId?: string;
+  tone?: string;
+  targetAudience?: string;
 }
 
 export interface WpBlog {

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
-import { checkCredits } from "@/lib/credits";
+import { checkCredits, deductCredit } from "@/lib/credits";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
+import { analyzeSERP } from "@/lib/serp-analyzer";
 
 export const maxDuration = 60;
 
@@ -33,7 +35,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { topic, focusKeyword } = await req.json();
+    const { topic, focusKeyword, tone: rawTone, targetAudience: rawTargetAudience } = await req.json();
+
+    const tone =
+      typeof rawTone === "string" && rawTone.length <= 100
+        ? rawTone
+        : "Informative";
+    const targetAudience =
+      typeof rawTargetAudience === "string" && rawTargetAudience.length <= 100
+        ? rawTargetAudience
+        : "General audience";
+
+    // Deduct credit before making OpenAI calls
+    if (!creditCheck.isAdmin) {
+      const deduction = await deductCredit(supabase, user.id, undefined, "Research generation");
+      if (!deduction.success) {
+        return NextResponse.json(
+          { error: "Insufficient credits" },
+          { status: 402 }
+        );
+      }
+    }
 
     if (!topic) {
       return NextResponse.json(
@@ -64,8 +86,15 @@ export async function POST(req: NextRequest) {
 
     const openai = new OpenAI({ apiKey });
 
-    // Run context organization and research in parallel - they're independent
-    const [step1, step2] = await Promise.all([
+    // Run context organization, research, and SERP analysis in parallel - they're all independent
+    const serpPromise = focusKeyword
+      ? analyzeSERP(focusKeyword, 5).catch((err) => {
+          logger.error("SERP analysis failed (non-fatal)", err);
+          return null;
+        })
+      : Promise.resolve(null);
+
+    const [step1, step2, serpData] = await Promise.all([
       openai.chat.completions.create({
         model: MODEL,
         messages: [
@@ -77,6 +106,10 @@ export async function POST(req: NextRequest) {
           {
             role: "user",
             content: `Organize the context for a comprehensive, SEO-optimized article about: "${topic}"${focusKeyword ? `. The main focus keyword is: "${focusKeyword}"` : ""}.
+
+WRITING TONE: ${tone}
+TARGET AUDIENCE: ${targetAudience}
+Tailor the content strategy, depth, and angle to match the specified tone and audience sophistication level.
 
 Please provide:
 1. The main theme and angle of the article
@@ -104,6 +137,9 @@ Format your response clearly with labeled sections.`,
             role: "user",
             content: `Research and provide approximately 1000 words of factual context about: "${topic}"
 
+TARGET AUDIENCE: ${targetAudience}
+Adjust research depth and technical detail to match the audience sophistication level.
+
 Include:
 - Current statistics and data points
 - Expert opinions and quotes
@@ -116,24 +152,20 @@ Format each fact with its source URL. Make sure all information is accurate and 
         ],
         temperature: 0.5,
       }),
+      serpPromise,
     ]);
 
     const articleContext = step1.choices[0].message.content || "";
     const researchContext = step2.choices[0].message.content || "";
 
-    return NextResponse.json({ articleContext, researchContext });
+    const serpSection = serpData
+      ? `\n\n## SERP Intelligence (Top 5 Ranking Pages)\n- Recommended word count to outrank: ${serpData.recommendedWordCount} words\n- Topics competitors cover: ${serpData.commonTopics.join(", ")}\n- Questions to answer: ${serpData.questionsAnswered.join(" | ")}\n- Top competing domains: ${serpData.topDomains.join(", ")}`
+      : "";
+
+    return NextResponse.json({ articleContext, researchContext: researchContext + serpSection });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "An unexpected error occurred";
-
-    if (message.includes("API key") || message.includes("auth")) {
-      return NextResponse.json(
-        { error: "Invalid API key. Please check your OpenAI API key." },
-        { status: 401 }
-      );
-    }
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to generate research", error);
+    return NextResponse.json({ error: "Failed to generate research" }, { status: 500 });
   } finally {
     await releaseGenerationSlot(supabase, user.id);
   }

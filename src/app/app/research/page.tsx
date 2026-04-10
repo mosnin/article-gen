@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -826,6 +827,68 @@ function CompetitorAnalysisTab() {
   );
 }
 
+// ─── Tool Cards ──────────────────────────────────────────────────────────────
+
+const TOOL_CARDS = [
+  {
+    icon: "📋",
+    title: "Content Brief",
+    description: "Generate a structured content brief with outline, keywords, and target audience for any topic.",
+    href: "/app/research/brief",
+  },
+  {
+    icon: "🔍",
+    title: "SERP Analyzer",
+    description: "Analyse the top search results for a keyword and identify patterns, gaps, and opportunities.",
+    href: "/app/research/serp",
+  },
+  {
+    icon: "⚔️",
+    title: "Competitor Analysis",
+    description: "Uncover a competitor's top content themes, traffic estimates, and content gaps you can exploit.",
+    href: "/app/research/competitors",
+  },
+  {
+    icon: "📊",
+    title: "Keyword Difficulty",
+    description: "Score how hard it will be to rank for a keyword and surface easier wins in the same niche.",
+    href: "/app/research/serp",
+  },
+] as const;
+
+function ToolCards() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {TOOL_CARDS.map((tool) => (
+        <Card
+          key={tool.title}
+          className="group hover:border-[var(--accent)] transition-colors duration-150"
+        >
+          <CardContent className="pt-5 pb-5 flex flex-col gap-3 h-full">
+            <span className="text-2xl leading-none" aria-hidden="true">
+              {tool.icon}
+            </span>
+            <div className="flex-1 space-y-1">
+              <p className="font-semibold text-[var(--text-primary)] text-sm">
+                {tool.title}
+              </p>
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                {tool.description}
+              </p>
+            </div>
+            <Link
+              href={tool.href}
+              className="text-xs font-medium text-[var(--accent)] hover:underline"
+            >
+              Open →
+            </Link>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ResearchPage() {
@@ -834,9 +897,12 @@ export default function ResearchPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Keyword & Competitor Research"
-        description="Discover high-value keywords and uncover content gaps to outrank your competition."
+        title="Research Hub"
+        description="Discover high-value keywords, analyse SERPs, and uncover content gaps to outrank your competition."
       />
+
+      {/* Tool cards grid */}
+      <ToolCards />
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[var(--border-default)]">

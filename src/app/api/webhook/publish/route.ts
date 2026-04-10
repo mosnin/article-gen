@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { logPublishEvent } from "@/lib/publish-log";
 import { marked } from "marked";
+import { safeFetch, validatePublicUrl } from "@/lib/ssrf";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -37,6 +39,16 @@ export async function POST(req: NextRequest) {
     if (!webhook?.url) {
       return NextResponse.json(
         { error: "No webhook configured. Add one in Settings → Integrations." },
+        { status: 400 }
+      );
+    }
+
+    // Validate webhook URL to prevent SSRF
+    try {
+      validatePublicUrl(webhook.url);
+    } catch (e) {
+      return NextResponse.json(
+        { error: `Invalid webhook URL: ${(e as Error).message}` },
         { status: 400 }
       );
     }
@@ -96,11 +108,12 @@ export async function POST(req: NextRequest) {
       headers["X-ArticleGen-Signature"] = `sha256=${hex}`;
     }
 
-    // Send webhook
-    const res = await fetch(webhook.url, {
+    // Send webhook (safeFetch validates URL and enforces timeout)
+    const res = await safeFetch(webhook.url, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
+      timeoutMs: 15_000,
     });
 
     if (!res.ok) {
@@ -115,7 +128,8 @@ export async function POST(req: NextRequest) {
     await supabase
       .from("articles")
       .update({ posted: true, published_platform: "webhook", updated_at: new Date().toISOString() })
-      .eq("id", articleId);
+      .eq("id", articleId)
+      .eq("user_id", user.id);
 
     await logPublishEvent(supabase, {
       userId: user.id,
@@ -128,7 +142,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, webhookUrl: webhook.url, statusCode: res.status });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to deliver webhook", error);
+    return NextResponse.json({ error: "Failed to deliver webhook" }, { status: 500 });
   }
 }

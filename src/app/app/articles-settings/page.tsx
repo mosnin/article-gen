@@ -152,7 +152,7 @@ export default function ArticlesSettingsPage() {
       </div>
 
       {activeTab === "articles" && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="text-center">
             <h1 className="text-xl font-bold text-[var(--text-primary)]">Configure your article preferences</h1>
             <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -160,135 +160,128 @@ export default function ArticlesSettingsPage() {
             </p>
           </div>
 
-          {/* Content & SEO */}
-          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] overflow-hidden">
-            <div className="border-b border-[var(--border-default)] px-5 py-3">
-              <h2 className="text-sm font-semibold text-[var(--text-primary)]">Content & SEO</h2>
+          {/* Content & SEO section */}
+          <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 mb-4">
+            <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Content & SEO</h2>
+
+            {/* Auto-publish */}
+            <div className="flex items-center justify-between py-3 border-b border-[var(--border-default)]">
+              <div>
+                <p className="text-sm font-medium text-[var(--text-primary)]">Auto-publish</p>
+                <p className="text-xs text-[var(--text-secondary)]">Publish new articles automatically</p>
+              </div>
+              <Toggle
+                checked={articleSettings.autoPublish}
+                onChange={(v) => updateArticle("autoPublish", v)}
+              />
             </div>
-            <div className="divide-y divide-[var(--border-default)]">
-              {/* Auto-publish */}
-              <div className="flex items-center justify-between px-5 py-4">
-                <div>
-                  <p className="text-sm font-medium text-[var(--text-primary)]">Auto-publish</p>
-                  <p className="text-xs text-[var(--text-secondary)]">Publish new articles automatically</p>
-                </div>
-                <Toggle
-                  checked={articleSettings.autoPublish}
-                  onChange={(v) => updateArticle("autoPublish", v)}
-                />
+
+            {/* Auto keyword generation */}
+            <div className="flex items-center justify-between py-3 border-b border-[var(--border-default)]">
+              <div>
+                <p className="text-sm font-medium text-[var(--text-primary)]">Automatic Keyword Generation</p>
+                <p className="text-xs text-[var(--text-secondary)]">Automatically maintains 25–30 keywords in your content planner</p>
               </div>
+              <Toggle
+                checked={articleSettings.autoKeywordGeneration}
+                onChange={(v) => updateArticle("autoKeywordGeneration", v)}
+              />
+            </div>
 
-              {/* Auto keyword generation */}
-              <div className="flex items-center justify-between px-5 py-4">
-                <div>
-                  <p className="text-sm font-medium text-[var(--text-primary)]">Automatic Keyword Generation</p>
-                  <p className="text-xs text-[var(--text-secondary)]">Automatically maintains 25–30 keywords in your content planner</p>
-                </div>
-                <Toggle
-                  checked={articleSettings.autoKeywordGeneration}
-                  onChange={(v) => updateArticle("autoKeywordGeneration", v)}
-                />
-              </div>
-
-              {/* Article Style + Internal Links */}
-              <div className="grid grid-cols-2 gap-4 px-5 py-4">
-                <div>
-                  <div className="mb-1.5 flex items-center gap-1">
-                    <label className="text-xs font-medium text-[var(--text-secondary)]">Article Style</label>
-                    <button className="text-[var(--text-tertiary)]">
-                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
-                  <select
-                    value={articleSettings.articleStyle}
-                    onChange={(e) => updateArticle("articleStyle", e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
-                  >
-                    {["Informative", "Conversational", "Professional", "Educational", "Persuasive", "Storytelling"].map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <div className="mb-1.5 flex items-center gap-1">
-                    <label className="text-xs font-medium text-[var(--text-secondary)]">Internal Links</label>
-                    <button className="text-[var(--text-tertiary)]">
-                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
-                  <select
-                    value={articleSettings.internalLinks}
-                    onChange={(e) => updateArticle("internalLinks", e.target.value)}
-                    className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
-                  >
-                    {["No internal links", "1 link per article", "2 links per article", "3 links per article", "5 links per article", "Auto"].map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="px-5 py-3">
-                <button className="text-xs text-[var(--accent)] hover:underline">
-                  Finetune with your articles →
-                </button>
-              </div>
-
-              {/* Global Instructions */}
-              <div className="px-5 py-4">
-                <div className="mb-1.5 flex items-center gap-1">
-                  <label className="text-xs font-medium text-[var(--text-secondary)]">Global Article Instructions</label>
+            {/* Article Style + Internal Links */}
+            <div className="grid grid-cols-2 gap-4 py-3 border-b border-[var(--border-default)]">
+              <div>
+                <div className="flex items-center gap-1 mb-1">
+                  <label className="block text-sm font-medium text-[var(--text-secondary)]">Article Style</label>
                   <button className="text-[var(--text-tertiary)]">
                     <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                     </svg>
                   </button>
                 </div>
-                <textarea
-                  rows={4}
-                  value={articleSettings.globalInstructions}
-                  onChange={(e) => updateArticle("globalInstructions", e.target.value)}
-                  placeholder="Enter global instructions for all articles (e.g., 'Always include practical examples', 'Focus on actionable insights')..."
-                  className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] resize-none"
-                />
+                <select
+                  value={articleSettings.articleStyle}
+                  onChange={(e) => updateArticle("articleStyle", e.target.value)}
+                  className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                >
+                  {["Informative", "Conversational", "Professional", "Educational", "Persuasive", "Storytelling"].map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
               </div>
+
+              <div>
+                <div className="flex items-center gap-1 mb-1">
+                  <label className="block text-sm font-medium text-[var(--text-secondary)]">Internal Links</label>
+                  <button className="text-[var(--text-tertiary)]">
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+                <select
+                  value={articleSettings.internalLinks}
+                  onChange={(e) => updateArticle("internalLinks", e.target.value)}
+                  className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                >
+                  {["No internal links", "1 link per article", "2 links per article", "3 links per article", "5 links per article", "Auto"].map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="py-2 border-b border-[var(--border-default)]">
+              <button className="text-xs text-[var(--accent)] hover:underline">
+                Finetune with your articles →
+              </button>
+            </div>
+
+            {/* Global Instructions */}
+            <div className="pt-3">
+              <div className="flex items-center gap-1 mb-1">
+                <label className="block text-sm font-medium text-[var(--text-secondary)]">Global Article Instructions</label>
+                <button className="text-[var(--text-tertiary)]">
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+              <textarea
+                rows={4}
+                value={articleSettings.globalInstructions}
+                onChange={(e) => updateArticle("globalInstructions", e.target.value)}
+                placeholder="Enter global instructions for all articles (e.g., 'Always include practical examples', 'Focus on actionable insights')..."
+                className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] resize-none"
+              />
             </div>
           </div>
 
-          {/* Engagement */}
-          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] overflow-hidden">
-            <div className="border-b border-[var(--border-default)] px-5 py-3">
-              <h2 className="text-sm font-semibold text-[var(--text-primary)]">Engagement</h2>
-            </div>
-            <div className="px-5 py-4">
-              <label className="mb-2 block text-xs font-medium text-[var(--text-secondary)]">Brand Color</label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={articleSettings.brandColor}
-                  onChange={(e) => updateArticle("brandColor", e.target.value)}
-                  className="h-9 w-9 cursor-pointer rounded-lg border border-[var(--border-default)] p-0.5"
-                />
-                <input
-                  type="text"
-                  value={articleSettings.brandColor}
-                  onChange={(e) => updateArticle("brandColor", e.target.value)}
-                  className="w-40 rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
-                  placeholder="#000000"
-                />
-              </div>
+          {/* Engagement section */}
+          <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 mb-4">
+            <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Engagement</h2>
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Brand Color</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={articleSettings.brandColor}
+                onChange={(e) => updateArticle("brandColor", e.target.value)}
+                className="h-9 w-9 cursor-pointer rounded-lg border border-[var(--border-default)] p-0.5"
+              />
+              <input
+                type="text"
+                value={articleSettings.brandColor}
+                onChange={(e) => updateArticle("brandColor", e.target.value)}
+                className="w-40 border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] font-mono text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                placeholder="#000000"
+              />
             </div>
           </div>
         </div>
       )}
 
       {activeTab === "blog" && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="text-center">
             <h1 className="text-xl font-bold text-[var(--text-primary)]">Content details</h1>
             <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -296,73 +289,69 @@ export default function ArticlesSettingsPage() {
             </p>
           </div>
 
-          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] overflow-hidden">
-            <div className="divide-y divide-[var(--border-default)]">
-              {/* Sitemap URL */}
-              <div className="px-5 py-4">
-                <div className="mb-1.5 flex items-center gap-1">
-                  <label className="text-xs font-medium text-[var(--text-secondary)]">Sitemap URL</label>
-                  <button className="text-[var(--text-tertiary)]">
-                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-                <input
-                  type="url"
-                  value={blogSettings.sitemapUrl}
-                  onChange={(e) => updateBlog("sitemapUrl", e.target.value)}
-                  placeholder="https://yourdomain.com/sitemap.xml"
-                  className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
-                />
-              </div>
+          {/* Sitemap URL */}
+          <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 mb-4">
+            <div className="flex items-center gap-1 mb-1">
+              <label className="block text-sm font-medium text-[var(--text-secondary)]">Sitemap URL</label>
+              <button className="text-[var(--text-tertiary)]">
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+            <input
+              type="url"
+              value={blogSettings.sitemapUrl}
+              onChange={(e) => updateBlog("sitemapUrl", e.target.value)}
+              placeholder="https://yourdomain.com/sitemap.xml"
+              className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            />
+          </div>
 
-              {/* Main blog address */}
-              <div className="px-5 py-4">
-                <div className="mb-1.5 flex items-center gap-1">
-                  <label className="text-xs font-medium text-[var(--text-secondary)]">Main blog address</label>
-                  <button className="text-[var(--text-tertiary)]">
-                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-                <input
-                  type="url"
-                  value={blogSettings.blogUrl}
-                  onChange={(e) => updateBlog("blogUrl", e.target.value)}
-                  placeholder="https://yourblog.com/blog"
-                  className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
-                />
-              </div>
+          {/* Main blog address */}
+          <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 mb-4">
+            <div className="flex items-center gap-1 mb-1">
+              <label className="block text-sm font-medium text-[var(--text-secondary)]">Main blog address</label>
+              <button className="text-[var(--text-tertiary)]">
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+            <input
+              type="url"
+              value={blogSettings.blogUrl}
+              onChange={(e) => updateBlog("blogUrl", e.target.value)}
+              placeholder="https://yourblog.com/blog"
+              className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            />
+          </div>
 
-              {/* Example article URLs */}
-              <div className="px-5 py-4">
-                <div className="mb-1.5 flex items-center gap-1">
-                  <label className="text-xs font-medium text-[var(--text-secondary)]">Your best article examples URL</label>
-                  <button className="text-[var(--text-tertiary)]">
-                    <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {[
-                    { key: "exampleArticleUrl1" as const, placeholder: "Your top article URL #1" },
-                    { key: "exampleArticleUrl2" as const, placeholder: "Your top article URL #2" },
-                    { key: "exampleArticleUrl3" as const, placeholder: "Your top article URL #3" },
-                  ].map((field) => (
-                    <input
-                      key={field.key}
-                      type="url"
-                      value={blogSettings[field.key]}
-                      onChange={(e) => updateBlog(field.key, e.target.value)}
-                      placeholder={field.placeholder}
-                      className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
-                    />
-                  ))}
-                </div>
-              </div>
+          {/* Example article URLs */}
+          <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-5 mb-4">
+            <div className="flex items-center gap-1 mb-1">
+              <label className="block text-sm font-medium text-[var(--text-secondary)]">Your best article examples URL</label>
+              <button className="text-[var(--text-tertiary)]">
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-2">
+              {[
+                { key: "exampleArticleUrl1" as const, placeholder: "Your top article URL #1" },
+                { key: "exampleArticleUrl2" as const, placeholder: "Your top article URL #2" },
+                { key: "exampleArticleUrl3" as const, placeholder: "Your top article URL #3" },
+              ].map((field) => (
+                <input
+                  key={field.key}
+                  type="url"
+                  value={blogSettings[field.key]}
+                  onChange={(e) => updateBlog(field.key, e.target.value)}
+                  placeholder={field.placeholder}
+                  className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-[var(--surface-base)] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                />
+              ))}
             </div>
           </div>
         </div>

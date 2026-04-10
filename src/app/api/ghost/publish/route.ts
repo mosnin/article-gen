@@ -5,6 +5,8 @@ import { createGhostJwt } from "@/lib/publish-platforms";
 import type { GhostBlog } from "@/lib/publish-platforms";
 import { marked } from "marked";
 import { logPublishEvent } from "@/lib/publish-log";
+import { safeFetch, validatePublicUrl } from "@/lib/ssrf";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -63,6 +65,16 @@ export async function POST(req: NextRequest) {
     const adminApiKey = decryptCredential(blog.adminApiKey);
     const ghostUrl = blog.url.replace(/\/$/, "");
 
+    // Validate Ghost URL to prevent SSRF
+    try {
+      validatePublicUrl(ghostUrl);
+    } catch (e) {
+      return NextResponse.json(
+        { error: `Invalid Ghost blog URL: ${(e as Error).message}` },
+        { status: 400 }
+      );
+    }
+
     let jwt: string;
     try {
       jwt = createGhostJwt(adminApiKey);
@@ -98,13 +110,14 @@ export async function POST(req: NextRequest) {
       postPayload.feature_image_alt = featuredImage.altText;
     }
 
-    const res = await fetch(`${ghostUrl}/ghost/api/admin/posts/`, {
+    const res = await safeFetch(`${ghostUrl}/ghost/api/admin/posts/`, {
       method: "POST",
       headers: {
         Authorization: `Ghost ${jwt}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ posts: [postPayload] }),
+      timeoutMs: 20_000,
     });
 
     if (!res.ok) {
@@ -130,7 +143,8 @@ export async function POST(req: NextRequest) {
     await supabase
       .from("articles")
       .update({ posted: true, published_platform: "ghost", updated_at: new Date().toISOString() })
-      .eq("id", articleId);
+      .eq("id", articleId)
+      .eq("user_id", user.id);
 
     await logPublishEvent(supabase, {
       userId: user.id,
@@ -144,7 +158,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, postId: post.id, postUrl: post.url, editUrl });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to publish to Ghost", error);
+    return NextResponse.json({ error: "Failed to publish to Ghost" }, { status: 500 });
   }
 }

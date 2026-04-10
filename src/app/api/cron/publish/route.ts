@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { getAdminClient } from "@/lib/supabase-admin";
 import { decryptCredential } from "@/lib/wp-crypto";
 import { marked } from "marked";
@@ -228,10 +229,22 @@ async function publishShopify(
   return { success: true };
 }
 
-export async function GET(req: NextRequest) {
-  // Verify cron secret
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+function timingSafeEqual(a: string, b: string): boolean {
+  const aBytes = Buffer.from(a);
+  const bBytes = Buffer.from(b);
+  if (aBytes.length !== bBytes.length) {
+    // Still do a comparison to avoid timing leaks on length
+    crypto.timingSafeEqual(aBytes, aBytes);
+    return false;
+  }
+  return crypto.timingSafeEqual(aBytes, bBytes);
+}
+
+async function handleCron(req: NextRequest): Promise<Response> {
+  // Verify cron secret with timing-safe comparison
+  const authHeader = req.headers.get("authorization") ?? "";
+  const expected = `Bearer ${process.env.CRON_SECRET ?? ""}`;
+  if (!timingSafeEqual(authHeader, expected)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -329,4 +342,12 @@ export async function GET(req: NextRequest) {
     processed: results.length,
     results,
   });
+}
+
+export async function GET(req: NextRequest) {
+  return handleCron(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handleCron(req);
 }

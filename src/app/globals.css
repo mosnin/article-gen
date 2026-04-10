@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -46,11 +48,25 @@
   --card: #f9fafb;
   --card-border: #e5e7eb;
   --muted: #6b7280;
-  --sidebar-bg: #f9fafb;
+  --sidebar-bg: var(--surface-base);
+  --sidebar-border: var(--border-default);
 
   /* Layout */
   --sidebar-width: 240px;
   --topbar-height: 56px;
+
+  /* Marketing public site tokens */
+  --marketing-bg: #ffffff;
+  --marketing-surface: #F8F9FA;
+  --marketing-surface-alt: #F1F3F5;
+  --marketing-accent-bg: #F0F4FF;
+  --marketing-border: #E5E7EB;
+  --marketing-text: #111827;
+  --marketing-text-secondary: #6B7280;
+  --marketing-text-tertiary: #9CA3AF;
+  --marketing-primary: #2563EB;
+  --marketing-primary-hover: #1D4ED8;
+  --marketing-primary-light: #EFF6FF;
 }
 
 .dark {
@@ -80,7 +96,29 @@
   --card: #1f2937;
   --card-border: #374151;
   --muted: #9ca3af;
-  --sidebar-bg: #111827;
+  --sidebar-bg: var(--surface-base);
+  --sidebar-border: var(--border-default);
+
+  /* Marketing public site tokens — dark */
+  --marketing-bg: #0f172a;
+  --marketing-surface: #111827;
+  --marketing-surface-alt: #1f2937;
+  --marketing-accent-bg: #1e3a5f;
+  --marketing-border: #374151;
+  --marketing-text: #f9fafb;
+  --marketing-text-secondary: #9ca3af;
+  --marketing-text-tertiary: #6b7280;
+  --marketing-primary: #3b82f6;
+  --marketing-primary-hover: #60a5fa;
+  --marketing-primary-light: #1e3a5f;
+  --background: #0f1117;
+  --bg-card: #1a1d27;
+  --bg-hover: #22263a;
+  --text-primary: #f0f4ff;
+  --text-secondary: #a0aabf;
+  --text-tertiary: #606880;
+  --border: #2a2f45;
+  --border-light: #1e2235;
 }
 
 /* ============================================================
@@ -93,7 +131,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Display", "Segoe UI", Arial, sans-serif;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
@@ -248,7 +286,7 @@ body {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
-.marquee-track { animation: marquee 28s linear infinite; }
+.marquee-track { animation: marquee 30s linear infinite; }
 .marquee-track:hover { animation-play-state: paused; }
 
 @keyframes accordion-down {
@@ -277,3 +315,87 @@ body {
   100% { transform: scale(1); opacity: 1; }
 }
 .step-complete { animation: step-complete 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* ============================================================
+   Marketing Site Tokens
+   ============================================================ */
+@keyframes marquee-reverse {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+.animate-marquee { animation: marquee 30s linear infinite; }
+.animate-marquee-reverse { animation: marquee-reverse 30s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee, .animate-marquee-reverse { animation-play-state: paused; }
+}
+
+@layer base {
+  .theme {
+    --animate-marquee: marquee var(--duration) infinite linear;
+    --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+    --animate-shimmer-slide: shimmer-slide var(--speed) ease-in-out infinite alternate;
+    --animate-spin-around: spin-around calc(var(--speed) * 2) infinite linear;
+    --animate-gradient: gradient 8s linear infinite;
+    --animate-orbit: orbit calc(var(--duration)*1s) linear infinite;
+    --animate-shiny-text: shiny-text 8s infinite;
+  }
+}
+
+@theme inline {
+  @keyframes marquee {
+  from {
+    transform: translateX(0);
+    }
+  to {
+    transform: translateX(calc(-100% - var(--gap)));
+    }
+  }
+  @keyframes marquee-vertical {
+  from {
+    transform: translateY(0);
+    }
+  to {
+    transform: translateY(calc(-100% - var(--gap)));
+    }
+  }
+  @keyframes shimmer-slide {
+  to {
+    transform: translate(calc(100cqw - 100%), 0);
+    }
+  }
+  @keyframes spin-around {
+  0% {
+    transform: translateZ(0) rotate(0);
+    }
+  15%, 35% {
+    transform: translateZ(0) rotate(90deg);
+    }
+  65%, 85% {
+    transform: translateZ(0) rotate(270deg);
+    }
+  100% {
+    transform: translateZ(0) rotate(360deg);
+    }
+  }
+  @keyframes gradient {
+  to {
+    background-position: var(--bg-size, 300%) 0;
+    }
+  }
+  @keyframes orbit {
+  0% {
+    transform: rotate(calc(var(--angle) * 1deg)) translateY(calc(var(--radius) * 1px)) rotate(calc(var(--angle) * -1deg));
+    }
+  100% {
+    transform: rotate(calc(var(--angle) * 1deg + 360deg)) translateY(calc(var(--radius) * 1px)) rotate(calc((var(--angle) * -1deg) - 360deg));
+    }
+  }
+  @keyframes shiny-text {
+  0%, 90%, 100% {
+    background-position: calc(-100% - var(--shiny-width)) 0;
+    }
+  30%, 60% {
+    background-position: calc(100% + var(--shiny-width)) 0;
+    }
+  }
+}

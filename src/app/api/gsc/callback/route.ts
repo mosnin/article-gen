@@ -7,15 +7,26 @@ export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
   const code = searchParams.get("code");
   const error = searchParams.get("error");
+  const stateParam = searchParams.get("state");
+
+  // Read returnTo cookie (set by /api/gsc/auth) — default to /app/settings
+  const returnTo = req.cookies.get("gsc_return_to")?.value ?? "/app/settings";
+  const baseReturn = `${origin}${returnTo}`;
+
+  // Validate CSRF state
+  const storedState = req.cookies.get("gsc_oauth_state")?.value;
+  if (!storedState || !stateParam || storedState !== stateParam) {
+    return NextResponse.redirect(`${baseReturn}?gsc_error=invalid_state`);
+  }
 
   if (error || !code) {
-    return NextResponse.redirect(`${origin}/app/settings?gsc_error=${error || "no_code"}`);
+    return NextResponse.redirect(`${baseReturn}?gsc_error=${error || "no_code"}`);
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
-    return NextResponse.redirect(`${origin}/app/settings?gsc_error=not_configured`);
+    return NextResponse.redirect(`${baseReturn}?gsc_error=not_configured`);
   }
 
   const redirectUri = `${origin}/api/gsc/callback`;
@@ -34,17 +45,17 @@ export async function GET(req: NextRequest) {
   });
 
   if (!tokenRes.ok) {
-    return NextResponse.redirect(`${origin}/app/settings?gsc_error=token_exchange_failed`);
+    return NextResponse.redirect(`${baseReturn}?gsc_error=token_exchange_failed`);
   }
 
   const tokens = await tokenRes.json() as { refresh_token?: string; access_token?: string };
   if (!tokens.refresh_token) {
-    return NextResponse.redirect(`${origin}/app/settings?gsc_error=no_refresh_token`);
+    return NextResponse.redirect(`${baseReturn}?gsc_error=no_refresh_token`);
   }
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.redirect(`${origin}/app/settings?gsc_error=unauthorized`);
+  if (!user) return NextResponse.redirect(`${baseReturn}?gsc_error=unauthorized`);
 
   const encryptedToken = encryptCredential(tokens.refresh_token);
 
@@ -58,5 +69,8 @@ export async function GET(req: NextRequest) {
     await supabase.from("user_settings").insert({ user_id: user.id, ...patch });
   }
 
-  return NextResponse.redirect(`${origin}/app/settings?gsc_connected=1`);
+  const successResponse = NextResponse.redirect(`${baseReturn}?gsc_connected=1`);
+  successResponse.cookies.delete("gsc_oauth_state");
+  successResponse.cookies.delete("gsc_return_to");
+  return successResponse;
 }

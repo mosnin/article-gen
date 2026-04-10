@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import type { KeywordDifficulty } from "@/lib/keyword-difficulty";
 
 interface AutopilotSlot {
   id: string;
@@ -19,6 +20,9 @@ interface AutopilotSlot {
   contentType: string;
   status: "pending" | "approved" | "rejected" | "generating" | "done" | "failed";
   articleId: string | null;
+  uniquenessScore?: number;
+  cannibalizesTitle?: string | null;
+  cannibalizesKeyword?: string | null;
 }
 
 const STATUS_CONFIG: Record<AutopilotSlot["status"], { label: string; variant: "default" | "success" | "warning" | "error" | "neutral" }> = {
@@ -40,13 +44,28 @@ const CONTENT_TYPE_EMOJI: Record<string, string> = {
   "Ultimate Guide": "🏆",
 };
 
-function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId }: {
+const DIFFICULTY_STYLES: Record<KeywordDifficulty["label"], string> = {
+  "Easy": "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+  "Medium": "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+  "Hard": "bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400",
+  "Very Hard": "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
+};
+
+function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId, isDragging, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd, difficulty, difficultyLoading }: {
   slot: AutopilotSlot;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onEdit: (slot: AutopilotSlot) => void;
   onGenerate: (slot: AutopilotSlot) => void;
   generatingId: string | null;
+  isDragging: boolean;
+  isDragOver: boolean;
+  onDragStart: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDrop: () => void;
+  onDragEnd: () => void;
+  difficulty?: KeywordDifficulty;
+  difficultyLoading?: boolean;
 }) {
   const config = STATUS_CONFIG[slot.status];
   const emoji = CONTENT_TYPE_EMOJI[slot.contentType] ?? "📝";
@@ -54,19 +73,26 @@ function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId 
 
   return (
     <div
+      draggable={true}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
       className={cn(
-        "flex flex-col gap-2 p-4 rounded-xl border transition-all duration-200",
-        slot.status === "approved" && "border-blue-200 bg-blue-50/50",
-        slot.status === "done" && "border-green-200 bg-green-50/50",
-        slot.status === "rejected" && "border-red-100 bg-red-50/30 opacity-60",
-        slot.status === "generating" && "border-amber-200 bg-amber-50/50",
-        slot.status === "pending" && "border-[var(--border-default)] bg-[var(--surface-base)]",
-        slot.status === "failed" && "border-red-200 bg-red-50/40",
+        "flex flex-col gap-2 p-4 rounded-xl border transition-all duration-200 cursor-grab active:cursor-grabbing bg-[var(--surface-base)] border-[var(--border-default)]",
+        slot.status === "approved" && "border-[var(--accent)] bg-[var(--accent-light)]",
+        slot.status === "done" && "border-emerald-200 bg-emerald-50/30 dark:border-emerald-800 dark:bg-emerald-950/20",
+        slot.status === "rejected" && "opacity-50",
+        slot.status === "generating" && "border-amber-200 bg-amber-50/30 dark:border-amber-800 dark:bg-amber-950/20",
+        slot.status === "failed" && "border-red-200 bg-red-50/30 dark:border-red-800 dark:bg-red-950/20",
+        isDragging && "opacity-50 scale-95",
+        isDragOver && "ring-2 ring-[var(--accent)]",
       )}
     >
       {/* Header row */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm text-[var(--text-tertiary)] select-none" title="Drag to reorder">⠿</span>
           <span className="text-sm">{emoji}</span>
           <div className="min-w-0">
             <p className="text-xs text-[var(--text-secondary)]">Day {slot.day} · {slot.date}</p>
@@ -83,6 +109,35 @@ function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId 
           {slot.keyword}
         </span>
         <span className="text-[11px] text-[var(--text-tertiary)]">{slot.contentType}</span>
+        {/* Difficulty badge */}
+        {difficultyLoading && (
+          <span className="inline-block h-4 w-14 rounded-full bg-[var(--surface-sunken)] animate-pulse" />
+        )}
+        {!difficultyLoading && difficulty && (
+          <span
+            className={cn(
+              "inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full",
+              DIFFICULTY_STYLES[difficulty.label]
+            )}
+            title={`Difficulty score: ${difficulty.difficulty}/100`}
+          >
+            {difficulty.label}
+          </span>
+        )}
+        {/* Uniqueness indicator */}
+        {slot.uniquenessScore !== undefined && slot.uniquenessScore < 0.9 && (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border",
+              slot.uniquenessScore < 0.7
+                ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800"
+                : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800"
+            )}
+            title={slot.cannibalizesTitle ? `Similar to: "${slot.cannibalizesTitle}"` : undefined}
+          >
+            {slot.uniquenessScore < 0.7 ? "⛔ May cannibalize" : "⚠ Similar content"}
+          </span>
+        )}
       </div>
 
       {/* Actions */}
@@ -94,7 +149,7 @@ function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId 
           <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => onEdit(slot)}>
             Edit
           </Button>
-          <Button size="sm" variant="ghost" className="h-7 text-xs px-2 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => onReject(slot.id)}>
+          <Button size="sm" variant="ghost" className="h-7 text-xs px-2 text-[var(--text-tertiary)] hover:text-red-500 hover:bg-[var(--surface-sunken)]" onClick={() => onReject(slot.id)}>
             ✕
           </Button>
         </div>
@@ -110,16 +165,14 @@ function SlotCard({ slot, onApprove, onReject, onEdit, onGenerate, generatingId 
           >
             {isThisGenerating ? "Generating…" : "Generate Now"}
           </Button>
-          <Button size="sm" variant="ghost" className="h-7 text-xs px-2 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => onReject(slot.id)}>
+          <Button size="sm" variant="ghost" className="h-7 text-xs px-2 text-[var(--text-tertiary)] hover:text-red-500 hover:bg-[var(--surface-sunken)]" onClick={() => onReject(slot.id)}>
             ✕
           </Button>
         </div>
       )}
 
       {slot.status === "done" && slot.articleId && (
-        <Button size="sm" variant="outline" className="h-7 text-xs mt-1" asChild>
-          <a href={`/app/articles?id=${slot.articleId}`}>View Article →</a>
-        </Button>
+        <a href={`/app/articles?id=${slot.articleId}`} className="inline-flex h-7 items-center rounded-md border border-[var(--border-default)] px-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] transition-colors mt-1">View Article →</a>
       )}
 
       {slot.status === "failed" && (
@@ -189,6 +242,10 @@ function EditSlotModal({ slot, onSave, onClose }: {
 
 export default function AutopilotPage() {
   const router = useRouter();
+  const searchParams = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search)
+    : new URLSearchParams();
+  const isNewUser = searchParams.has("setup") || searchParams.get("new") === "1";
   const [slots, setSlots] = useState<AutopilotSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -199,14 +256,29 @@ export default function AutopilotPage() {
   const [planCount, setPlanCount] = useState(30);
   const [filter, setFilter] = useState<"all" | AutopilotSlot["status"]>("all");
   const [autopilotEnabled, setAutopilotEnabled] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [difficultyMap, setDifficultyMap] = useState<Record<string, KeywordDifficulty>>({});
+  const [difficultyLoadingIds, setDifficultyLoadingIds] = useState<Set<string>>(new Set());
 
   const loadPlan = useCallback(async () => {
     try {
       const res = await fetch("/api/autopilot/queue");
       const data = await res.json();
       setSlots(data.slots ?? []);
-      setNiche(data.niche ?? "");
       setAutopilotEnabled(data.enabled ?? false);
+
+      // Pre-fill niche: general settings (site_name/niche) always wins over stale autopilot_niche
+      try {
+        const sRes = await fetch("/api/settings");
+        const sData = await sRes.json();
+        const s = sData.settings;
+        // Pre-fill niche from explicit niche field or site_about — NOT site_name (that's the brand name)
+        const preferred = s?.niche || s?.site_about || "";
+        setNiche(preferred || data.niche || "");
+      } catch {
+        setNiche(data.niche || "");
+      }
     } catch {
       toast.error("Failed to load plan");
     } finally {
@@ -215,6 +287,81 @@ export default function AutopilotPage() {
   }, []);
 
   useEffect(() => { loadPlan(); }, [loadPlan]);
+
+  // Lazily fetch keyword difficulty for the first 10 slots (batches of 5)
+  useEffect(() => {
+    if (slots.length === 0) return;
+    const slotsToFetch = slots.slice(0, 10);
+    const unfetched = slotsToFetch.filter((s) => !difficultyMap[s.id] && !difficultyLoadingIds.has(s.id));
+    if (unfetched.length === 0) return;
+
+    const ids = unfetched.map((s) => s.id);
+    setDifficultyLoadingIds((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.add(id));
+      return next;
+    });
+
+    const fetchBatch = async (batch: AutopilotSlot[]) => {
+      const results = await Promise.allSettled(
+        batch.map((s) =>
+          fetch("/api/serp/difficulty", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ keyword: s.keyword }),
+          }).then((r) => r.json() as Promise<KeywordDifficulty>).then((d) => ({ id: s.id, data: d }))
+        )
+      );
+      setDifficultyMap((prev) => {
+        const next = { ...prev };
+        results.forEach((r) => {
+          if (r.status === "fulfilled") next[r.value.id] = r.value.data;
+        });
+        return next;
+      });
+      setDifficultyLoadingIds((prev) => {
+        const next = new Set(prev);
+        batch.forEach((s) => next.delete(s.id));
+        return next;
+      });
+    };
+
+    const BATCH_SIZE = 5;
+    const BATCH_DELAY_MS = 300;
+
+    const run = async () => {
+      for (let i = 0; i < unfetched.length; i += BATCH_SIZE) {
+        const batch = unfetched.slice(i, i + BATCH_SIZE);
+        await fetchBatch(batch);
+        if (i + BATCH_SIZE < unfetched.length) {
+          await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
+        }
+      }
+    };
+    run();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slots]);
+
+  // For new users arriving from onboarding, poll until the background plan generation completes
+  useEffect(() => {
+    if (!isNewUser) return;
+    let attempts = 0;
+    const interval = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch("/api/autopilot/queue");
+        const data = await res.json();
+        if (data.slots?.length > 0) {
+          setSlots(data.slots);
+          setNiche(data.niche ?? "");
+          clearInterval(interval);
+        }
+      } catch { /* ignore */ }
+      if (attempts >= 20) clearInterval(interval); // stop after ~60s
+    }, 3000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleGeneratePlan = async () => {
     if (!niche.trim()) {
@@ -319,6 +466,41 @@ export default function AutopilotPage() {
     toast.success(next ? "Autopilot enabled — articles will auto-generate as scheduled" : "Autopilot paused");
   };
 
+  const handleDrop = async (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    const reordered = [...slots];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+
+    // Recalculate day numbers and dates sequentially
+    const baseDate = reordered[0]?.date
+      ? new Date(reordered[0].date)
+      : new Date();
+    const renumbered = reordered.map((s, i) => {
+      const d = new Date(baseDate);
+      d.setDate(baseDate.getDate() + i);
+      return {
+        ...s,
+        day: i + 1,
+        date: d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      };
+    });
+
+    setSlots(renumbered);
+    setDragIndex(null);
+    setDragOverIndex(null);
+
+    try {
+      await fetch("/api/autopilot/queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update_plan", slots: renumbered }),
+      });
+    } catch {
+      toast.error("Failed to save reordered plan");
+    }
+  };
+
   const filtered = filter === "all" ? slots : slots.filter((s) => s.status === filter);
 
   const stats = {
@@ -332,9 +514,44 @@ export default function AutopilotPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-8 w-56" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
+        {/* Page header skeleton */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-6 w-48 rounded skeleton" />
+            <div className="h-3.5 w-80 rounded skeleton" />
+          </div>
+          <div className="h-8 w-28 rounded-lg skeleton shrink-0" />
+        </div>
+
+        {/* Slot grid skeleton — 3-column, 6 cards */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex flex-col gap-3 p-4 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)]"
+            >
+              {/* Header row: date bar + status badge */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="h-3 w-24 rounded skeleton" />
+                <div className="h-5 w-16 rounded-full skeleton" />
+              </div>
+              {/* Title bar — wide */}
+              <div className={cn("h-4 rounded skeleton", [i % 3 === 0 ? "w-[60%]" : i % 3 === 1 ? "w-[72%]" : "w-[84%]"])} />
+              {/* Second title line (shorter) */}
+              <div className="h-4 w-3/5 rounded skeleton" />
+              {/* Keyword chip row */}
+              <div className="flex gap-2">
+                <div className="h-5 w-28 rounded skeleton" />
+                <div className="h-5 w-16 rounded skeleton" />
+              </div>
+              {/* Action buttons row */}
+              <div className="flex gap-1.5 mt-1">
+                <div className="h-7 flex-1 rounded-md skeleton" />
+                <div className="h-7 w-12 rounded-md skeleton" />
+                <div className="h-7 w-8 rounded-md skeleton" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -351,12 +568,18 @@ export default function AutopilotPage() {
               <span className="text-sm text-[var(--text-secondary)]">Auto-publish</span>
               <button
                 onClick={toggleAutopilot}
-                className="relative inline-flex h-6 w-11 rounded-full border-2 border-transparent transition-colors"
-                style={{ background: autopilotEnabled ? "var(--accent)" : "var(--border-strong)" }}
+                className={cn(
+                  "relative inline-flex h-6 w-11 rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2",
+                  autopilotEnabled ? "bg-[var(--accent)]" : "bg-[var(--border-default)]"
+                )}
+                aria-checked={autopilotEnabled}
+                role="switch"
               >
                 <span
-                  className="inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200"
-                  style={{ transform: autopilotEnabled ? "translateX(20px)" : "translateX(0)" }}
+                  className={cn(
+                    "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform duration-200",
+                    autopilotEnabled ? "translate-x-5" : "translate-x-0"
+                  )}
                 />
               </button>
             </div>
@@ -416,13 +639,13 @@ export default function AutopilotPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: "Total", value: stats.total, color: "text-[var(--text-primary)]" },
-              { label: "Approved", value: stats.approved, color: "text-blue-600" },
-              { label: "Published", value: stats.done, color: "text-green-600" },
+              { label: "Approved", value: stats.approved, color: "text-[var(--accent)]" },
+              { label: "Published", value: stats.done, color: "text-[var(--accent)]" },
               { label: "Pending", value: stats.pending, color: "text-[var(--text-secondary)]" },
             ].map((s) => (
-              <div key={s.label} className="bg-[var(--surface-raised)] border border-[var(--border-default)] rounded-xl p-4 text-center">
-                <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-                <p className="text-xs text-[var(--text-secondary)] mt-0.5">{s.label}</p>
+              <div key={s.label} className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-4 text-center">
+                <p className={cn("text-2xl font-bold tabular-nums", s.color)}>{s.value}</p>
+                <p className="text-xs text-[var(--text-tertiary)] mt-0.5">{s.label}</p>
               </div>
             ))}
           </div>
@@ -459,17 +682,28 @@ export default function AutopilotPage() {
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((slot) => (
-                <SlotCard
-                  key={slot.id}
-                  slot={slot}
-                  onApprove={(id) => updateSlotStatus(id, "approve")}
-                  onReject={(id) => updateSlotStatus(id, "reject")}
-                  onEdit={setEditSlot}
-                  onGenerate={handleGenerateSlot}
-                  generatingId={generatingSlotId}
-                />
-              ))}
+              {filtered.map((slot) => {
+                const globalIndex = slots.indexOf(slot);
+                return (
+                  <SlotCard
+                    key={slot.id}
+                    slot={slot}
+                    onApprove={(id) => updateSlotStatus(id, "approve")}
+                    onReject={(id) => updateSlotStatus(id, "reject")}
+                    onEdit={setEditSlot}
+                    onGenerate={handleGenerateSlot}
+                    generatingId={generatingSlotId}
+                    isDragging={dragIndex === globalIndex}
+                    isDragOver={dragOverIndex === globalIndex}
+                    onDragStart={() => setDragIndex(globalIndex)}
+                    onDragOver={(e) => { e.preventDefault(); setDragOverIndex(globalIndex); }}
+                    onDrop={() => { if (dragIndex !== null) handleDrop(dragIndex, globalIndex); }}
+                    onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
+                    difficulty={difficultyMap[slot.id]}
+                    difficultyLoading={difficultyLoadingIds.has(slot.id)}
+                  />
+                );
+              })}
             </div>
           )}
         </>
@@ -479,13 +713,24 @@ export default function AutopilotPage() {
       {slots.length === 0 && !generating && (
         <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
           <div className="w-16 h-16 rounded-2xl bg-[var(--surface-sunken)] flex items-center justify-center">
-            <svg className="w-8 h-8 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+            {isNewUser ? (
+              <svg className="w-8 h-8 text-[var(--accent)] animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <svg className="w-8 h-8 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            )}
           </div>
-          <p className="font-medium text-[var(--text-primary)]">No content plan yet</p>
+          <p className="font-medium text-[var(--text-primary)]">
+            {isNewUser ? "Building your 30-day content plan…" : "No content plan yet"}
+          </p>
           <p className="text-sm text-[var(--text-secondary)] max-w-xs">
-            Enter your niche above and generate a 30-day keyword-targeted content calendar.
+            {isNewUser
+              ? "We're generating 30 keyword-targeted article ideas based on your business. This takes about 20 seconds."
+              : "Enter your niche above and generate a 30-day keyword-targeted content calendar."}
           </p>
         </div>
       )}

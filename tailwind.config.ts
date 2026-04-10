@@ -62,6 +62,13 @@ const config: Config = {
           "sans-serif",
         ],
         mono: ["SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", "monospace"],
+        serif: [
+          "Instrument Serif",
+          "Georgia",
+          "Cambria",
+          "Times New Roman",
+          "serif",
+        ],
       },
       spacing: {
         sidebar: "240px",
@@ -71,6 +78,7 @@ const config: Config = {
         "fade-in-up": "fade-in-up 0.25s ease-out both",
         shimmer: "shimmer 1.5s infinite",
         "spin-slow": "spin 2s linear infinite",
+        "star-btn": "star-btn calc(var(--duration, 3) * 1s) linear infinite",
       },
       keyframes: {
         "fade-in-up": {
@@ -80,6 +88,10 @@ const config: Config = {
         shimmer: {
           "0%": { backgroundPosition: "-400px 0" },
           "100%": { backgroundPosition: "400px 0" },
+        },
+        "star-btn": {
+          "0%": { offsetDistance: "0%" },
+          "100%": { offsetDistance: "100%" },
         },
       },
       boxShadow: {

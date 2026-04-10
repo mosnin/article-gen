@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
+import { checkCredits, deductCredit } from "@/lib/credits";
+import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
@@ -24,7 +26,24 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { pillarTopic, pillarKeyword, count } = await req.json();
+    const creditCheck = await checkCredits(supabase, user.id);
+    if (!creditCheck.allowed) {
+      return NextResponse.json(
+        { error: "Insufficient credits. Please upgrade your plan or wait for your monthly reset." },
+        { status: 403 }
+      );
+    }
+
+    const { pillarTopic, pillarKeyword, count, tone: rawTone, targetAudience: rawTargetAudience } = await req.json();
+
+    const tone =
+      typeof rawTone === "string" && rawTone.length <= 100
+        ? rawTone
+        : "Informative";
+    const targetAudience =
+      typeof rawTargetAudience === "string" && rawTargetAudience.length <= 100
+        ? rawTargetAudience
+        : "General audience";
 
     if (!pillarTopic) {
       return NextResponse.json(
@@ -35,6 +54,14 @@ export async function POST(req: NextRequest) {
 
     if (typeof pillarTopic !== "string" || pillarTopic.length > 300) {
       return NextResponse.json({ error: "Pillar topic must be 300 characters or fewer" }, { status: 400 });
+    }
+
+    // Deduct credit before making OpenAI calls
+    if (!creditCheck.isAdmin) {
+      const deduction = await deductCredit(supabase, user.id, undefined, "Cluster generation");
+      if (!deduction.success) {
+        return NextResponse.json({ error: "Insufficient credits" }, { status: 402 });
+      }
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
@@ -61,6 +88,10 @@ export async function POST(req: NextRequest) {
           content: `Generate exactly ${articleCount} cluster (supporting) article ideas for a topic cluster.
 
 PILLAR PAGE TOPIC: "${pillarTopic}"
+
+WRITING TONE: ${tone}
+TARGET AUDIENCE: ${targetAudience}
+Generate cluster article ideas that match the specified tone and appeal to the target audience.
 ${pillarKeyword ? `PILLAR FOCUS KEYWORD: "${pillarKeyword}"` : ""}
 
 A topic cluster consists of:
@@ -102,9 +133,8 @@ Generate exactly ${articleCount} cluster article ideas.`,
       clusterArticles: parsed.clusterArticles || [],
     });
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "An unexpected error occurred";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Failed to generate cluster", error);
+    return NextResponse.json({ error: "Failed to generate cluster" }, { status: 500 });
   } finally {
     await releaseGenerationSlot(supabase, user.id);
   }

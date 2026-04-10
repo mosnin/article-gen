@@ -1,0 +1,27 @@
+name: Cron Publish
+
+on:
+  schedule:
+    - cron: '* * * * *'
+  workflow_dispatch:
+
+# Least-privilege permissions — this workflow only calls an HTTP endpoint
+permissions:
+  contents: read
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call publish cron endpoint
+        run: |
+          HTTP_STATUS=$(curl -s -o /tmp/cron_response.json -w "%{http_code}" \
+            -X POST "${{ secrets.NEXT_PUBLIC_APP_URL }}/api/cron/publish" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          echo "HTTP status: $HTTP_STATUS"
+          cat /tmp/cron_response.json
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "Cron endpoint returned non-200 status: $HTTP_STATUS"
+            exit 1
+          fi

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -19,7 +20,8 @@ export async function GET() {
       .single();
 
     if (error && error.code !== "PGRST116") {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      logger.error("Failed to fetch onboarding status", error, { userId: user.id, errorCode: error.code });
+      return NextResponse.json({ error: "Failed to load onboarding status" }, { status: 500 });
     }
 
     // If profile doesn't exist yet, treat as onboarding not complete
@@ -31,7 +33,7 @@ export async function GET() {
       onboarding_complete: profile.onboarding_complete ?? false,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Unexpected error in onboarding/status", error);
+    return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -62,6 +63,20 @@ function TrialPageContent() {
     const check = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // Check if user already has a subscription before sending to checkout
+        try {
+          const res = await fetch("/api/credits");
+          const data = await res.json();
+          if (data.plan && data.plan !== "free") {
+            // Already subscribed — check onboarding status
+            const onbRes = await fetch("/api/onboarding/status");
+            const onbData = await onbRes.json();
+            router.replace(onbData.complete ? "/app" : "/app/onboarding");
+            return;
+          }
+        } catch {
+          // If check fails, proceed to trial checkout
+        }
         router.replace("/app/trial-checkout");
         return;
       }
@@ -89,10 +104,11 @@ function TrialPageContent() {
     setLoading(true);
     setError("");
 
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/app/trial-checkout`,
+        emailRedirectTo: `${siteUrl}/auth/callback?next=/app/trial-checkout`,
       },
     });
 
@@ -106,10 +122,11 @@ function TrialPageContent() {
 
   const handleGoogle = async () => {
     setOauthLoading(true);
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/app/trial-checkout`,
+        redirectTo: `${siteUrl}/auth/callback?next=/app/trial-checkout`,
       },
     });
   };
@@ -272,7 +289,7 @@ function TrialPageContent() {
           {/* Login link */}
           <p className="mt-3 text-center text-sm text-gray-500">
             Already have an account?{" "}
-            <a href="/?auth=login" className="font-medium text-purple-600 hover:underline">
+            <a href="/trial" className="font-medium text-purple-600 hover:underline">
               Sign in
             </a>
           </p>

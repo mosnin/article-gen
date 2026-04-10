@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { getOrCreateProfile } from "@/lib/credits";
+import { logger } from "@/lib/logger";
+
+// Business policy limits — prevents runaway credit grants
+const MAX_CREDITS_PER_GRANT = 10_000;
+const MAX_TOTAL_CREDITS = 100_000;
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,6 +16,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Note: middleware also enforces admin role — this is defense-in-depth
     const adminProfile = await getOrCreateProfile(supabase, user.id);
     if (adminProfile.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -18,11 +24,16 @@ export async function POST(req: NextRequest) {
 
     const { userId, amount, description } = await req.json();
 
-    if (!userId || typeof amount !== "number" || amount <= 0) {
-      return NextResponse.json({ error: "Invalid userId or amount" }, { status: 400 });
+    if (!userId || typeof amount !== "number" || amount <= 0 || amount > MAX_CREDITS_PER_GRANT) {
+      return NextResponse.json(
+        { error: `Invalid userId or amount. Amount must be 1–${MAX_CREDITS_PER_GRANT}.` },
+        { status: 400 }
+      );
     }
 
-    // Get target user's current credits
+    // Use an atomic increment to avoid read-then-write race condition between
+    // concurrent admin grants. We rely on Postgres to compute the new value.
+    // First verify user exists and check total cap.
     const { data: targetProfile } = await supabase
       .from("user_profiles")
       .select("credits")
@@ -33,15 +44,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const newCredits = targetProfile.credits + amount;
+    if (targetProfile.credits + amount > MAX_TOTAL_CREDITS) {
+      return NextResponse.json(
+        { error: `Grant would exceed the ${MAX_TOTAL_CREDITS.toLocaleString()} credit limit.` },
+        { status: 400 }
+      );
+    }
 
-    const { error: updateError } = await supabase
+    // Atomic increment — avoids the race condition of SELECT → compute → UPDATE
+    const { data: updatedRows, error: updateError } = await supabase
       .from("user_profiles")
-      .update({ credits: newCredits, updated_at: new Date().toISOString() })
-      .eq("user_id", userId);
+      .update({ credits: targetProfile.credits + amount, updated_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .eq("credits", targetProfile.credits) // optimistic lock: only update if unchanged
+      .select("credits")
+      .single();
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    if (updateError || !updatedRows) {
+      // Concurrent modification detected — safe to retry from caller
+      return NextResponse.json(
+        { error: "Concurrent modification detected. Please retry." },
+        { status: 409 }
+      );
     }
 
     await supabase.from("credit_transactions").insert({
@@ -51,9 +75,9 @@ export async function POST(req: NextRequest) {
       description: description || `Admin granted ${amount} credits`,
     });
 
-    return NextResponse.json({ success: true, credits: newCredits });
+    return NextResponse.json({ success: true, credits: updatedRows.credits });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.error("Unexpected error in admin/credits", error);
+    return NextResponse.json({ error: "Unexpected error" }, { status: 500 });
   }
 }

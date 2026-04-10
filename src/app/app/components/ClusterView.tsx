@@ -1,6 +1,7 @@
 "use client";
 
 import { marked } from "marked";
+import DOMPurify from "isomorphic-dompurify";
 import type { TopicCluster, ArticleSession } from "../types";
 import { CopyButton } from "./CopyButton";
 import { OutputCard } from "./OutputCard";
@@ -368,7 +369,7 @@ export function ClusterView({
                   <div
                     className="article-preview rounded-xl border p-6 sm:p-8"
                     style={{ background: "#fff", borderColor: "var(--card-border)" }}
-                    dangerouslySetInnerHTML={{ __html: marked.parse(activeClusterArticle.result.article) as string }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(activeClusterArticle.result.article) as string) }}
                   />
                 </div>
               )}

@@ -24,10 +24,13 @@ export function Topbar({ title, onMenuClick, actions }: TopbarProps) {
       </button>
 
       {title && (
-        <h1 className={cn(
-          "text-base font-semibold text-[var(--text-primary)] truncate",
-          "lg:hidden" // Hide on desktop (shown in page header)
-        )}>
+        <h1
+          id="page-title"
+          className={cn(
+            "text-base font-semibold text-[var(--text-primary)] truncate",
+            "lg:hidden" // Hide on desktop (shown in page header)
+          )}
+        >
           {title}
         </h1>
       )}
