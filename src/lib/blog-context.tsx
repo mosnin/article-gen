@@ -15,67 +15,69 @@ export interface Blog {
 interface BlogContextValue {
   blogs: Blog[];
   selectedBlog: Blog | null;
-  setBlogs: (blogs: Blog[]) => void;
   setSelectedBlog: (blog: Blog | null) => void;
+  setBlogs: (blogs: Blog[]) => void;
 }
 
 export const BlogContext = createContext<BlogContextValue>({
   blogs: [],
   selectedBlog: null,
-  setBlogs: () => {},
   setSelectedBlog: () => {},
+  setBlogs: () => {},
 });
 
 export function useBlog() {
   return useContext(BlogContext);
 }
 
-interface BlogProviderProps {
+const STORAGE_KEY = "article-gen:selectedBlogId";
+
+export function BlogProvider({
+  children,
+  initialBlogs = [],
+}: {
   children: React.ReactNode;
   initialBlogs?: Blog[];
-}
-
-export function BlogProvider({ children, initialBlogs = [] }: BlogProviderProps) {
+}) {
   const [blogs, setBlogs] = useState<Blog[]>(initialBlogs);
   const [selectedBlog, setSelectedBlogState] = useState<Blog | null>(null);
 
-  // Hydrate blogs when initialBlogs changes (layout fetches them async)
+  // On mount: restore from localStorage
   useEffect(() => {
-    if (initialBlogs.length > 0) {
-      setBlogs(initialBlogs);
+    if (typeof window === "undefined") return;
+    const storedId = localStorage.getItem(STORAGE_KEY);
+    if (storedId && initialBlogs.length > 0) {
+      const found = initialBlogs.find((b) => b.id === storedId);
+      setSelectedBlogState(found ?? initialBlogs[0] ?? null);
+    } else if (initialBlogs.length > 0) {
+      setSelectedBlogState(initialBlogs[0]);
     }
   }, [initialBlogs]);
 
-  // Restore selected blog from localStorage
+  // When blogs list changes externally, sync selection
   useEffect(() => {
-    if (blogs.length === 0) return;
-    const savedId = typeof window !== "undefined"
-      ? localStorage.getItem("selectedBlogId")
-      : null;
-    if (savedId) {
-      const found = blogs.find((b) => b.id === savedId);
-      if (found) {
-        setSelectedBlogState(found);
-        return;
-      }
+    setBlogs(initialBlogs);
+    if (initialBlogs.length > 0 && !selectedBlog) {
+      const storedId = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+      const found = storedId ? initialBlogs.find((b) => b.id === storedId) : null;
+      setSelectedBlogState(found ?? initialBlogs[0]);
     }
-    // Default to first blog
-    setSelectedBlogState(blogs[0]);
-  }, [blogs]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(initialBlogs)]);
 
   const setSelectedBlog = useCallback((blog: Blog | null) => {
     setSelectedBlogState(blog);
     if (typeof window !== "undefined") {
       if (blog) {
-        localStorage.setItem("selectedBlogId", blog.id);
+        localStorage.setItem(STORAGE_KEY, blog.id);
       } else {
-        localStorage.removeItem("selectedBlogId");
+        localStorage.removeItem(STORAGE_KEY);
       }
     }
   }, []);
 
   return (
-    <BlogContext.Provider value={{ blogs, selectedBlog, setBlogs, setSelectedBlog }}>
+    <BlogContext.Provider value={{ blogs, selectedBlog, setSelectedBlog, setBlogs }}>
       {children}
     </BlogContext.Provider>
   );
