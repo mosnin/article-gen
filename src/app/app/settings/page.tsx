@@ -970,7 +970,7 @@ export default function SettingsPage() {
                         <pre style={{ fontFamily: "monospace", fontSize: 12, padding: "14px 16px", borderRadius: 8, background: "var(--background)", border: "1px solid var(--card-border)", overflow: "auto", margin: 0 }}>{`{
   "mcpServers": {
     "article-gen": {
-      "url": "${typeof window !== "undefined" ? window.location.origin : "https://YOUR_DOMAIN"}/api/mcp",
+      "url": "${typeof window !== "undefined" ? window.location.origin.replace(/^http:/, "https:") : "https://YOUR_DOMAIN"}/api/mcp",
       "headers": {
         "Authorization": "Bearer YOUR_TOKEN"
       }
@@ -979,7 +979,7 @@ export default function SettingsPage() {
 }`}</pre>
                         <button
                           type="button"
-                          onClick={() => navigator.clipboard.writeText(`{\n  "mcpServers": {\n    "article-gen": {\n      "url": "${typeof window !== "undefined" ? window.location.origin : "https://YOUR_DOMAIN"}/api/mcp",\n      "headers": {\n        "Authorization": "Bearer ${mcpApiKey}"\n      }\n    }\n  }\n}`)}
+                          onClick={() => navigator.clipboard.writeText(`{\n  "mcpServers": {\n    "article-gen": {\n      "url": "${typeof window !== "undefined" ? window.location.origin.replace(/^http:/, "https:") : "https://YOUR_DOMAIN"}/api/mcp",\n      "headers": {\n        "Authorization": "Bearer ${mcpApiKey}"\n      }\n    }\n  }\n}`)}
                           style={{ position: "absolute", top: 8, right: 8, padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: "var(--card)", border: "1px solid var(--card-border)", cursor: "pointer" }}>
                           Copy
                         </button>
