@@ -95,7 +95,7 @@ function OutputBlock({ label, text }: { label: string; text: string }) {
         readOnly
         value={text}
         rows={Math.min(Math.max(text.split("\n").length + 1, 3), 12)}
-        className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-3 py-2.5 text-sm text-[var(--text-primary)] font-mono resize-y focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+        className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-3 py-2.5 text-sm text-[var(--text-primary)] font-mono resize-y focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
       />
     </div>
   );
@@ -186,8 +186,8 @@ function SocialTab({ articleId, articleContent }: { articleId: string; articleCo
               disabled={generating}
               className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 generating && activePlatform === key
-                  ? "border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]"
-                  : "border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-secondary)] hover:border-[var(--brand)] hover:text-[var(--brand)] hover:bg-[var(--brand)]/5"
+                  ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]"
+                  : "border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-light)]"
               }`}
             >
               {generating && activePlatform === key ? (
@@ -213,7 +213,7 @@ function SocialTab({ articleId, articleContent }: { articleId: string; articleCo
 
       {/* Results */}
       {result && !generating && (
-        <div className="space-y-5 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] p-5">
+        <div className="space-y-5 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] p-5">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">
               {SOCIAL_PLATFORMS.find(p => p.key === activePlatform)?.label} — Generated Output
@@ -239,7 +239,7 @@ function SocialTab({ articleId, articleContent }: { articleId: string; articleCo
                   readOnly
                   value={result.twitter.singleTweet}
                   rows={4}
-                  className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-3 py-2.5 text-sm text-[var(--text-primary)] font-mono resize-y focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                  className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-3 py-2.5 text-sm text-[var(--text-primary)] font-mono resize-y focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 />
               </div>
               {result.twitter.thread.length > 0 && (
@@ -328,7 +328,7 @@ function NewsletterTab({ articleId }: { articleId: string }) {
             placeholder="e.g. Jane Smith"
             value={authorName}
             onChange={(e) => setAuthorName(e.target.value)}
-            className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+            className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           />
         </div>
         <div className="space-y-1.5">
@@ -340,7 +340,7 @@ function NewsletterTab({ articleId }: { articleId: string }) {
             placeholder="e.g. Read the full article"
             value={ctaText}
             onChange={(e) => setCtaText(e.target.value)}
-            className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+            className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           />
         </div>
         <div className="space-y-1.5">
@@ -352,7 +352,7 @@ function NewsletterTab({ articleId }: { articleId: string }) {
             placeholder="https://yourblog.com/article"
             value={ctaUrl}
             onChange={(e) => setCtaUrl(e.target.value)}
-            className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+            className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           />
         </div>
       </div>
@@ -362,7 +362,7 @@ function NewsletterTab({ articleId }: { articleId: string }) {
         <button
           onClick={generate}
           disabled={generating}
-          className="inline-flex items-center gap-2 rounded-lg bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {generating ? (
             <>
@@ -393,7 +393,7 @@ function NewsletterTab({ articleId }: { articleId: string }) {
 
       {/* Results */}
       {result && !generating && (
-        <div className="space-y-5 rounded-xl border border-[var(--border-default)] bg-[var(--surface-base)] p-5">
+        <div className="space-y-5 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] p-5">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">Newsletter — Generated Output</h3>
             <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-700">
@@ -491,7 +491,7 @@ export default function RepurposePage() {
       />
 
       {/* Article selector */}
-      <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5">
+      <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] p-5">
         <label className="block text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] mb-2">
           Select Article
         </label>
@@ -500,7 +500,7 @@ export default function RepurposePage() {
         ) : articles.length === 0 ? (
           <p className="text-sm text-[var(--text-tertiary)]">
             No articles found.{" "}
-            <a href="/app/generate" className="font-medium text-[var(--brand)] hover:underline">
+            <a href="/app/generate" className="font-medium text-[var(--accent)] hover:underline">
               Generate your first article
             </a>{" "}
             to get started.
@@ -510,7 +510,7 @@ export default function RepurposePage() {
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
             aria-label="Select article to repurpose"
-            className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+            className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           >
             {articles.map((a) => (
               <option key={a.id} value={a.id}>
@@ -523,7 +523,7 @@ export default function RepurposePage() {
 
       {/* Tabs + content */}
       {selectedArticle && (
-        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] overflow-hidden">
+        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] overflow-hidden">
           {/* Tab bar */}
           <div className="flex border-b border-[var(--border-default)]">
             {TABS.map(({ key, label }) => (
@@ -532,7 +532,7 @@ export default function RepurposePage() {
                 onClick={() => setTab(key)}
                 className={`px-5 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
                   tab === key
-                    ? "border-[var(--brand)] text-[var(--brand)] bg-[var(--brand)]/5"
+                    ? "border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-light)]"
                     : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-sunken)]"
                 }`}
               >
