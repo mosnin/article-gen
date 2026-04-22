@@ -44,8 +44,6 @@ catalog, dedup semantics) lives in
      SUPABASE_URL=https://<project>.supabase.co \
      SUPABASE_SERVICE_ROLE_KEY=<service-role-key> \
      EXA_API_KEY=<exa-key> \
-     UPSTASH_VECTOR_REST_URL=https://<index>.upstash.io \
-     UPSTASH_VECTOR_REST_TOKEN=<upstash-vector-token> \
      AGENT_WEBHOOK_SECRET=<64-char-hex> \
      AGENT_INTERNAL_SECRET=<64-char-hex> \
      MODAL_AGENT_TOKEN=<64-char-hex> \

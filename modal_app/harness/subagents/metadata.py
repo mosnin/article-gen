@@ -10,10 +10,17 @@ the orchestrator extracts it from the surrounding brief flow.
 from __future__ import annotations
 
 from agents import Agent, function_tool
+from pydantic import BaseModel, ConfigDict
 
 from modal_app import config
 from modal_app.harness.models import FinalArticle, Metadata
 from modal_app.harness.tools import openai_tools
+
+
+class MetadataWithSchema(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    metadata: Metadata
+    schemaJson: str | None = None
 
 
 @function_tool
@@ -48,10 +55,9 @@ publication-ready metadata:
 Call `generate_metadata_json(topic, keyword, article_md, tone)` to draft
 these, then return the Metadata JSON as your final_output.
 
-If the brief also requests JSON-LD schema, additionally call
-`generate_schema_json(article)` and include the returned string as a
-"schemaJson" note, and the orchestrator will extract it separately. The
-output_type of your final_output is still Metadata.
+Return a MetadataWithSchema JSON containing `metadata` (the Metadata
+object) and `schemaJson` (the string from generate_schema_json, or null
+if not requested).
 """.strip()
 
 
@@ -61,5 +67,5 @@ def build_agent() -> Agent:
         instructions=INSTRUCTIONS,
         model=config.MODEL_SUBAGENT,
         tools=[generate_metadata_json, generate_schema_json],
-        output_type=Metadata,
+        output_type=MetadataWithSchema,
     )

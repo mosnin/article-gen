@@ -233,6 +233,8 @@ def build_orchestrator(ctx: _RunCtx) -> Agent:
 # --- Public entrypoint called from modal_app/modal_app.py ---
 async def run(payload_dict: dict) -> dict:
     payload = TriggerPayload.model_validate(payload_dict)
+    from modal_app.harness.tools.http import set_run_id
+    set_run_id(payload.runId)
     run_session = RunSession(run_id=payload.runId, user_id=payload.userId)
     pool = SubAgentPool(run_id=payload.runId)
     ctx = _RunCtx(payload=payload, run_session=run_session, pool=pool)

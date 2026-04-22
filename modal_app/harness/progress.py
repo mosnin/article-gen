@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 import httpx
 from tenacity import (
     retry,
-    retry_if_exception_type,
+    retry_if_exception,
     stop_after_attempt,
     wait_exponential,
 )
@@ -90,10 +90,18 @@ def _now_iso() -> str:
 # ---------------------------------------------------------------------------
 
 
+def _is_retryable(exc: BaseException) -> bool:
+    if isinstance(exc, httpx.TransportError):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code >= 500
+    return False
+
+
 @retry(
     stop=stop_after_attempt(config.WEBHOOK_RETRY_ATTEMPTS),
     wait=wait_exponential(multiplier=0.2, min=0.2, max=2.0),
-    retry=retry_if_exception_type((httpx.TransportError, httpx.HTTPStatusError)),
+    retry=retry_if_exception(_is_retryable),
     reraise=True,
 )
 async def _post_with_retry(raw: bytes, headers: dict) -> None:

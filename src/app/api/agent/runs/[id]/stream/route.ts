@@ -62,7 +62,10 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
           }
         }
       };
-      poll();
+      poll().catch((e) => {
+        try { controller.error(e); } catch {}
+        closed = true;
+      });
     },
     cancel() { closed = true; },
   });
