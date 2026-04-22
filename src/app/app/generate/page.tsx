@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import type { User } from "@supabase/supabase-js";
 import type {
@@ -21,6 +21,7 @@ import { IdeasModal } from "../components/IdeasModal";
 import { ClusterView } from "../components/ClusterView";
 import { ArticleResultPanel } from "../components/ArticleResultPanel";
 import OutlineEditor, { type OutlineItem } from "../components/OutlineEditor";
+import { AgentForm } from "./components/AgentForm";
 
 const STEPS = [
   "Organizing context & researching facts...",
@@ -162,7 +163,7 @@ export default function Home() {
   const isAdmin = userRole === "admin";
 
   // Mode & batch state
-  const [mode, setMode] = useState<"single" | "batch" | "cluster">("single");
+  const [mode, setMode] = useState<"single" | "batch" | "cluster" | "agent">("single");
   const [batchQuality, setBatchQuality] = useState<"standard" | "premium">(
     "premium"
   );
@@ -2176,6 +2177,15 @@ export default function Home() {
                     className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors border-l border-[var(--border-default)] ${mode === "cluster" ? "bg-[var(--accent)] text-white" : "bg-[var(--surface-base)] text-[var(--text-primary)]"}`}
                   >
                     Cluster
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMode("agent");
+                      setFormError("");
+                    }}
+                    className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors border-l border-[var(--border-default)] ${mode === "agent" ? "bg-[var(--accent)] text-white" : "bg-[var(--surface-base)] text-[var(--text-primary)]"}`}
+                  >
+                    Agent
                   </button>
                 </div>
 

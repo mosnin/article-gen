@@ -1,0 +1,172 @@
+"use client";
+
+import { useState } from "react";
+import { cn } from "@/lib/utils";
+
+type Schedule = {
+  id?: string;
+  name: string;
+  cadence: "daily" | "weekly" | "monthly";
+  niche: string;
+  tone?: string;
+  targetAudience?: string;
+  platforms?: Array<{ kind: string; id: string }>;
+  status: "active" | "paused";
+  nextRunAt?: string;
+};
+
+export function ScheduleModal({
+  initial,
+  onSave,
+  onClose,
+}: {
+  initial: Schedule | null;
+  onSave: (s: Partial<Schedule>) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [form, setForm] = useState<Schedule>({
+    id: initial?.id,
+    name: initial?.name ?? "",
+    cadence: initial?.cadence ?? "weekly",
+    niche: initial?.niche ?? "",
+    tone: initial?.tone ?? "professional",
+    targetAudience: initial?.targetAudience ?? "",
+    platforms: initial?.platforms ?? [],
+    status: initial?.status ?? "active",
+    nextRunAt: initial?.nextRunAt ?? new Date().toISOString(),
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(form);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function update<K extends keyof Schedule>(k: K, v: Schedule[K]) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div
+        className="w-full max-w-lg rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+          {initial ? "Edit schedule" : "New schedule"}
+        </h2>
+        <form onSubmit={onSubmit} className="mt-4 space-y-3">
+          <Field label="Name" required>
+            <input
+              value={form.name}
+              onChange={(e) => update("name", e.target.value)}
+              required
+              placeholder="e.g. SaaS growth weekly"
+              className="w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-sm"
+            />
+          </Field>
+          <Field label="Niche / topic seed" required>
+            <input
+              value={form.niche}
+              onChange={(e) => update("niche", e.target.value)}
+              required
+              className="w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-sm"
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Cadence">
+              <select
+                value={form.cadence}
+                onChange={(e) => update("cadence", e.target.value as Schedule["cadence"])}
+                className="w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-sm"
+              >
+                <option value="daily">daily</option>
+                <option value="weekly">weekly</option>
+                <option value="monthly">monthly</option>
+              </select>
+            </Field>
+            <Field label="Tone">
+              <input
+                value={form.tone ?? ""}
+                onChange={(e) => update("tone", e.target.value)}
+                className="w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-sm"
+              />
+            </Field>
+          </div>
+          <Field label="Target audience">
+            <input
+              value={form.targetAudience ?? ""}
+              onChange={(e) => update("targetAudience", e.target.value)}
+              className="w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-sm"
+            />
+          </Field>
+          <Field label="Platforms JSON (optional)">
+            <textarea
+              value={JSON.stringify(form.platforms ?? [])}
+              onChange={(e) => {
+                try { update("platforms", JSON.parse(e.target.value)); } catch { /* ignore */ }
+              }}
+              rows={2}
+              placeholder='[{"kind":"wordpress","id":"<blog-id>"}]'
+              className="w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 font-mono text-xs"
+            />
+          </Field>
+
+          {error && (
+            <div className="rounded border border-[var(--danger)] bg-[var(--danger-light)] px-3 py-2 text-xs text-[var(--danger)]">
+              {error}
+            </div>
+          )}
+
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded border border-[var(--border-default)] px-3 py-1.5 text-xs hover:bg-[var(--surface-sunken)]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className={cn(
+                "rounded bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white",
+                "hover:opacity-90 disabled:opacity-50",
+              )}
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  children,
+  required,
+}: {
+  label: string;
+  children: React.ReactNode;
+  required?: boolean;
+}) {
+  return (
+    <label className="block">
+      <span className="block text-xs font-medium text-[var(--text-secondary)]">
+        {label}{required && <span className="text-[var(--danger)]"> *</span>}
+      </span>
+      <span className="mt-1 block">{children}</span>
+    </label>
+  );
+}
