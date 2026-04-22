@@ -23,9 +23,28 @@ interface ScheduledArticle {
   title: string | null;
   topic: string;
   posted: boolean;
-  scheduled_at: string | null;
+  publish_at: string | null;
   created_at: string;
 }
+
+interface AgentRunRow {
+  id: string;
+  topic: string;
+  status: string;
+  created_at: string;
+}
+
+interface AutopilotPlanSlot {
+  id: string;
+  date: string;           // "YYYY-MM-DD"
+  topic: string;
+  status: string;
+}
+
+type CalendarEvent =
+  | { kind: "scheduled-publish"; id: string; date: string; title: string; articleId: string; posted: boolean }
+  | { kind: "agent-run"; id: string; date: string; topic: string; status: string }
+  | { kind: "autopilot-slot"; id: string; date: string; topic: string; slotStatus: string };
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -33,7 +52,7 @@ type ArticleStatus = "published" | "missed" | "scheduled";
 
 function getStatus(article: ScheduledArticle): ArticleStatus {
   if (article.posted) return "published";
-  if (article.scheduled_at && new Date(article.scheduled_at) < new Date()) return "missed";
+  if (article.publish_at && new Date(article.publish_at) < new Date()) return "missed";
   return "scheduled";
 }
 
@@ -43,17 +62,14 @@ const STATUS_CLASSES: Record<ArticleStatus, string> = {
   scheduled: "border-l-[var(--accent)]  bg-[var(--accent-light)]                        text-[var(--text-primary)]",
 };
 
-const STATUS_DOT: Record<ArticleStatus, string> = {
-  published: "bg-[var(--success)]",
-  missed:    "bg-[var(--error)]",
-  scheduled: "bg-[var(--accent)]",
-};
+// Blue pill for agent runs, purple pill for autopilot slots.
+const AGENT_RUN_CLASSES =
+  "border-l-[var(--accent)] bg-[var(--accent-light)] text-[var(--text-primary)]";
+const AUTOPILOT_SLOT_CLASSES =
+  "border-l-[var(--warning)] bg-[var(--warning-light,var(--surface-sunken))] text-[var(--text-primary)]";
 
-const STATUS_LABEL: Record<ArticleStatus, string> = {
-  published: "Published",
-  missed:    "Missed",
-  scheduled: "Scheduled",
-};
+const DATA_ARTICLE_ID = "application/x-article-id";
+const DATA_PUBLISH_AT = "application/x-publish-at";
 
 export default function CalendarPage() {
   const router = useRouter();
@@ -61,9 +77,12 @@ export default function CalendarPage() {
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [articles, setArticles] = useState<ScheduledArticle[]>([]);
+  const [agentRuns, setAgentRuns] = useState<AgentRunRow[]>([]);
+  const [autopilotSlots, setAutopilotSlots] = useState<AutopilotPlanSlot[]>([]);
   const [unscheduled, setUnscheduled] = useState<ScheduledArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [dragOverDay, setDragOverDay] = useState<string | null>(null);
 
   // Schedule modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -88,31 +107,59 @@ export default function CalendarPage() {
     setLoading(true);
     setError("");
     try {
-      const start = startOfMonth(currentMonth).toISOString();
-      const end = endOfMonth(currentMonth).toISOString();
+      const monthStartIso = startOfMonth(currentMonth).toISOString();
+      const monthEndIso = endOfMonth(currentMonth).toISOString();
 
       const { data: scheduled, error: e1 } = await supabase
         .from("articles")
-        .select("id, title, topic, posted, scheduled_at, created_at")
+        .select("id, title, topic, posted, publish_at, created_at")
         .eq("user_id", userId)
-        .not("scheduled_at", "is", null)
-        .gte("scheduled_at", start)
-        .lte("scheduled_at", end)
-        .order("scheduled_at");
+        .not("publish_at", "is", null)
+        .gte("publish_at", monthStartIso)
+        .lte("publish_at", monthEndIso)
+        .order("publish_at");
 
       if (e1) throw e1;
       setArticles(scheduled ?? []);
 
       const { data: unsched } = await supabase
         .from("articles")
-        .select("id, title, topic, posted, scheduled_at, created_at")
+        .select("id, title, topic, posted, publish_at, created_at")
         .eq("user_id", userId)
         .eq("posted", false)
-        .is("scheduled_at", null)
+        .is("publish_at", null)
         .order("created_at", { ascending: false })
         .limit(20);
 
       setUnscheduled(unsched ?? []);
+
+      const { data: runs } = await supabase
+        .from("agent_runs")
+        .select("id, topic, status, created_at")
+        .eq("user_id", userId)
+        .gte("created_at", monthStartIso)
+        .lt("created_at", monthEndIso)
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      setAgentRuns((runs as AgentRunRow[] | null) ?? []);
+
+      const { data: settings } = await supabase
+        .from("user_settings")
+        .select("autopilot_plan")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const plan = (settings?.autopilot_plan as AutopilotPlanSlot[] | null) ?? [];
+      const monthStartMs = startOfMonth(currentMonth).getTime();
+      const monthEndMs = endOfMonth(currentMonth).getTime();
+      const slotsInMonth = plan.filter((s) => {
+        if (!s?.date) return false;
+        // Parse as local-date; the `date` field is "YYYY-MM-DD".
+        const t = new Date(`${s.date}T12:00:00`).getTime();
+        return t >= monthStartMs && t <= monthEndMs;
+      });
+      setAutopilotSlots(slotsInMonth);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load calendar");
     } finally {
@@ -126,17 +173,108 @@ export default function CalendarPage() {
     return eachDayOfInterval({ start, end });
   })();
 
-  const articlesOnDay = (day: Date) =>
-    articles.filter((a) => a.scheduled_at && isSameDay(parseISO(a.scheduled_at), day));
+  const eventsOnDay = (day: Date): CalendarEvent[] => {
+    const events: CalendarEvent[] = [];
+    for (const a of articles) {
+      if (a.publish_at && isSameDay(parseISO(a.publish_at), day)) {
+        events.push({
+          kind: "scheduled-publish",
+          id: `art-${a.id}`,
+          date: a.publish_at,
+          title: a.title ?? a.topic,
+          articleId: a.id,
+          posted: a.posted,
+        });
+      }
+    }
+    for (const r of agentRuns) {
+      if (isSameDay(parseISO(r.created_at), day)) {
+        events.push({
+          kind: "agent-run",
+          id: `run-${r.id}`,
+          date: r.created_at,
+          topic: r.topic,
+          status: r.status,
+        });
+      }
+    }
+    for (const s of autopilotSlots) {
+      // Compare on the local "YYYY-MM-DD" side — slot dates are date-only strings.
+      if (s.date && isSameDay(new Date(`${s.date}T12:00:00`), day)) {
+        events.push({
+          kind: "autopilot-slot",
+          id: `slot-${s.id}`,
+          date: s.date,
+          topic: s.topic,
+          slotStatus: s.status,
+        });
+      }
+    }
+    return events;
+  };
 
   const openScheduleModal = (day: Date, existingArticle?: ScheduledArticle) => {
     setModalDate(day);
     setModalArticle(existingArticle ?? null);
     setSelectedArticleId(existingArticle?.id ?? (unscheduled[0]?.id ?? ""));
-    setScheduleTime(existingArticle?.scheduled_at
-      ? format(parseISO(existingArticle.scheduled_at), "HH:mm")
+    setScheduleTime(existingArticle?.publish_at
+      ? format(parseISO(existingArticle.publish_at), "HH:mm")
       : "09:00");
     setModalOpen(true);
+  };
+
+  // ── Drag-to-reschedule ────────────────────────────────────────────────────
+  const handleEventDragStart = (e: React.DragEvent<HTMLButtonElement>, ev: CalendarEvent) => {
+    if (ev.kind !== "scheduled-publish") return;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData(DATA_ARTICLE_ID, ev.articleId);
+    e.dataTransfer.setData(DATA_PUBLISH_AT, ev.date);
+  };
+
+  const handleDayDragOver = (e: React.DragEvent<HTMLDivElement>, dayKey: string) => {
+    if (!e.dataTransfer.types.includes(DATA_ARTICLE_ID)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverDay !== dayKey) setDragOverDay(dayKey);
+  };
+
+  const handleDayDragLeave = (dayKey: string) => {
+    if (dragOverDay === dayKey) setDragOverDay(null);
+  };
+
+  const handleDayDrop = async (e: React.DragEvent<HTMLDivElement>, targetDay: Date) => {
+    e.preventDefault();
+    setDragOverDay(null);
+    const articleId = e.dataTransfer.getData(DATA_ARTICLE_ID);
+    const originalIso = e.dataTransfer.getData(DATA_PUBLISH_AT);
+    if (!articleId || !originalIso) return;
+
+    // Preserve original HH:MM from the source publish_at.
+    const original = new Date(originalIso);
+    if (isSameDay(original, targetDay)) return; // no-op
+
+    const next = new Date(targetDay);
+    next.setHours(original.getHours(), original.getMinutes(), 0, 0);
+
+    try {
+      const res = await fetch("/api/articles/schedule", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          articleId,
+          publishAt: next.toISOString(),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Failed to reschedule");
+      }
+      toast.success("Article rescheduled");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) await loadArticles(user.id);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to reschedule");
+    }
   };
 
   const handleSchedule = async () => {
@@ -144,15 +282,15 @@ export default function CalendarPage() {
     setScheduling(true);
     try {
       const [h, m] = scheduleTime.split(":").map(Number);
-      const scheduledAt = new Date(modalDate);
-      scheduledAt.setHours(h, m, 0, 0);
+      const publishAt = new Date(modalDate);
+      publishAt.setHours(h, m, 0, 0);
 
       const res = await fetch("/api/articles/schedule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           articleId: selectedArticleId,
-          scheduledAt: scheduledAt.toISOString(),
+          publishAt: publishAt.toISOString(),
           platform,
         }),
       });
@@ -273,19 +411,25 @@ export default function CalendarPage() {
               ) : (
                 <div className="grid grid-cols-7">
                   {calendarDays.map((day) => {
-                    const dayArticles = articlesOnDay(day);
+                    const dayKey = day.toISOString();
+                    const events = eventsOnDay(day);
                     const inMonth = isSameMonth(day, currentMonth);
                     const today = isToday(day);
+                    const isDragTarget = dragOverDay === dayKey;
                     return (
                       <div
-                        key={day.toISOString()}
+                        key={dayKey}
                         onClick={() => inMonth && openScheduleModal(day)}
+                        onDragOver={(e) => handleDayDragOver(e, dayKey)}
+                        onDragLeave={() => handleDayDragLeave(dayKey)}
+                        onDrop={(e) => handleDayDrop(e, day)}
                         className={cn(
                           "min-h-[96px] border-b border-r border-[var(--border-default)] p-2 transition-colors",
                           inMonth
                             ? "bg-[var(--surface-base)] cursor-pointer hover:bg-[var(--surface-sunken)]"
                             : "bg-[var(--surface-sunken)] cursor-default opacity-40",
-                          today && "ring-2 ring-inset ring-[var(--accent)]"
+                          today && "ring-2 ring-inset ring-[var(--accent)]",
+                          isDragTarget && "ring-2 ring-inset ring-[var(--accent)] bg-[var(--accent-light)]"
                         )}
                       >
                         {/* Day number badge */}
@@ -302,25 +446,64 @@ export default function CalendarPage() {
 
                         {/* Event pills */}
                         <div className="space-y-0.5">
-                          {dayArticles.slice(0, 3).map((a) => {
-                            const status = getStatus(a);
+                          {events.slice(0, 3).map((ev) => {
+                            if (ev.kind === "scheduled-publish") {
+                              const article = articles.find((a) => a.id === ev.articleId);
+                              const status: ArticleStatus = article
+                                ? getStatus(article)
+                                : (ev.posted ? "published" : "scheduled");
+                              return (
+                                <button
+                                  key={ev.id}
+                                  draggable={true}
+                                  onDragStart={(e) => handleEventDragStart(e, ev)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (article) openScheduleModal(day, article);
+                                  }}
+                                  title={ev.title}
+                                  className={cn(
+                                    "w-full truncate rounded border-l-2 px-1.5 py-0.5 text-left text-[10px] font-medium leading-tight transition-opacity hover:opacity-80 cursor-grab active:cursor-grabbing",
+                                    STATUS_CLASSES[status]
+                                  )}
+                                >
+                                  {ev.title}
+                                </button>
+                              );
+                            }
+                            if (ev.kind === "agent-run") {
+                              return (
+                                <button
+                                  key={ev.id}
+                                  onClick={(e) => { e.stopPropagation(); }}
+                                  title={`Agent run: ${ev.topic} (${ev.status})`}
+                                  className={cn(
+                                    "w-full truncate rounded border-l-2 px-1.5 py-0.5 text-left text-[10px] font-medium leading-tight",
+                                    AGENT_RUN_CLASSES
+                                  )}
+                                >
+                                  {ev.topic}
+                                </button>
+                              );
+                            }
+                            // autopilot-slot
                             return (
                               <button
-                                key={a.id}
-                                onClick={(e) => { e.stopPropagation(); openScheduleModal(day, a); }}
-                                title={a.title ?? a.topic}
+                                key={ev.id}
+                                onClick={(e) => { e.stopPropagation(); }}
+                                title={`Autopilot: ${ev.topic} (${ev.slotStatus})`}
                                 className={cn(
-                                  "w-full truncate rounded border-l-2 px-1.5 py-0.5 text-left text-[10px] font-medium leading-tight transition-opacity hover:opacity-80",
-                                  STATUS_CLASSES[status]
+                                  "w-full truncate rounded border-l-2 px-1.5 py-0.5 text-left text-[10px] font-medium leading-tight",
+                                  AUTOPILOT_SLOT_CLASSES
                                 )}
                               >
-                                {a.title ?? a.topic}
+                                {ev.topic}
                               </button>
                             );
                           })}
-                          {dayArticles.length > 3 && (
+                          {events.length > 3 && (
                             <span className="block pl-1 text-[10px] text-[var(--text-tertiary)]">
-                              +{dayArticles.length - 3} more
+                              +{events.length - 3} more
                             </span>
                           )}
                         </div>
@@ -333,13 +516,23 @@ export default function CalendarPage() {
           </Card>
 
           {/* Legend */}
-          <div className="mt-3 flex items-center gap-5 text-xs text-[var(--text-secondary)]">
-            {(["scheduled", "published", "missed"] as ArticleStatus[]).map((s) => (
-              <span key={s} className="flex items-center gap-1.5">
-                <span className={cn("h-2 w-2 rounded-full", STATUS_DOT[s])} />
-                {STATUS_LABEL[s]}
-              </span>
-            ))}
+          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--text-secondary)]">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-[var(--success)]" />
+              Scheduled publish (published)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
+              Scheduled publish / Agent run
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-[var(--error)]" />
+              Missed
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-[var(--warning)]" />
+              Autopilot slot
+            </span>
           </div>
         </div>
 
@@ -389,20 +582,28 @@ export default function CalendarPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-[var(--text-secondary)]">Scheduled</span>
+                <span className="text-[var(--text-secondary)]">Scheduled publishes</span>
                 <span className="font-medium text-[var(--text-primary)]">
-                  {articles.filter((a) => !a.posted).length}
+                  {articles.length}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-[var(--text-secondary)]">Published</span>
-                <span className="font-medium text-[var(--success)]">
-                  {articles.filter((a) => a.posted).length}
+                <span className="text-[var(--text-secondary)]">Agent runs</span>
+                <span className="font-medium text-[var(--accent)]">
+                  {agentRuns.length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-[var(--text-secondary)]">Autopilot slots</span>
+                <span className="font-medium text-[var(--warning)]">
+                  {autopilotSlots.length}
                 </span>
               </div>
               <div className="flex items-center justify-between border-t border-[var(--border-default)] pt-3 text-sm">
-                <span className="text-[var(--text-secondary)]">Total</span>
-                <span className="font-semibold text-[var(--text-primary)]">{articles.length}</span>
+                <span className="text-[var(--text-secondary)]">Total events</span>
+                <span className="font-semibold text-[var(--text-primary)]">
+                  {articles.length + agentRuns.length + autopilotSlots.length}
+                </span>
               </div>
             </CardContent>
           </Card>
