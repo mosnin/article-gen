@@ -15,14 +15,17 @@ export default function AgentRunsPage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<StatusFilter>("all");
   const [kind, setKind] = useState<KindFilter>("all");
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const resp = await fetch("/api/agent/runs?limit=100", { cache: "no-store" });
+      const resp = await fetch("/api/agent/runs?limit=50", { cache: "no-store" });
       if (!resp.ok) throw new Error(`load failed: ${resp.status}`);
-      const data = (await resp.json()) as { runs: AgentRun[] };
+      const data = (await resp.json()) as { runs: AgentRun[]; nextCursor: string | null };
       setRuns(data.runs ?? []);
+      setNextCursor(data.nextCursor ?? null);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -30,6 +33,26 @@ export default function AgentRunsPage() {
       setLoading(false);
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      const resp = await fetch(
+        `/api/agent/runs?limit=50&beforeCreatedAt=${encodeURIComponent(nextCursor)}`,
+        { cache: "no-store" },
+      );
+      if (!resp.ok) throw new Error(`load failed: ${resp.status}`);
+      const data = (await resp.json()) as { runs: AgentRun[]; nextCursor: string | null };
+      setRuns((prev) => [...prev, ...(data.runs ?? [])]);
+      setNextCursor(data.nextCursor ?? null);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [nextCursor, isLoadingMore]);
 
   useEffect(() => {
     void refresh();
@@ -119,6 +142,17 @@ export default function AgentRunsPage() {
           </tbody>
         </table>
       </div>
+
+      {nextCursor !== null && !isLoadingMore && (
+        <div className="mt-4 flex justify-center">
+          <button
+            onClick={() => void loadMore()}
+            className="rounded border border-[var(--border-default)] px-3 py-1.5 text-xs hover:bg-[var(--surface-sunken)]"
+          >
+            Load more
+          </button>
+        </div>
+      )}
     </div>
   );
 }

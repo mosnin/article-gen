@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAgentRun } from "@/hooks/useAgentRun";
 import { StepEvent } from "./StepEvent";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ export function AgentStream({
   onComplete?: (articleId: string | null) => void;
 }) {
   const { run, events, isLoading, error, status, transport, cancel } = useAgentRun(runId);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     if (!run) return;
@@ -53,10 +54,15 @@ export function AgentStream({
           </span>
           {status === "running" && (
             <button
-              onClick={() => { void cancel(); }}
-              className="rounded border border-[var(--border-strong)] px-2 py-0.5 text-xs hover:bg-[var(--surface-sunken)]"
+              onClick={async () => {
+                if (isCancelling) return;
+                setIsCancelling(true);
+                try { await cancel(); } finally { setIsCancelling(false); }
+              }}
+              disabled={isCancelling}
+              className="rounded border border-[var(--border-strong)] px-2 py-0.5 text-xs hover:bg-[var(--surface-sunken)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Cancel
+              {isCancelling ? "Cancelling..." : "Cancel"}
             </button>
           )}
         </div>

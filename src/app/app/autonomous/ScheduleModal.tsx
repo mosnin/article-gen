@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type Schedule = {
@@ -37,6 +37,13 @@ export function ScheduleModal({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [platformsText, setPlatformsText] = useState<string>(() => JSON.stringify(initial?.platforms ?? [], null, 2));
+  const [platformsError, setPlatformsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPlatformsText(JSON.stringify(initial?.platforms ?? [], null, 2));
+    setPlatformsError(null);
+  }, [initial?.id, initial?.platforms]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -111,14 +118,25 @@ export function ScheduleModal({
           </Field>
           <Field label="Platforms JSON (optional)">
             <textarea
-              value={JSON.stringify(form.platforms ?? [])}
+              value={platformsText}
               onChange={(e) => {
-                try { update("platforms", JSON.parse(e.target.value)); } catch { /* ignore */ }
+                setPlatformsText(e.target.value);
+                try {
+                  const parsed = JSON.parse(e.target.value);
+                  if (!Array.isArray(parsed)) throw new Error("must be an array");
+                  update("platforms", parsed);
+                  setPlatformsError(null);
+                } catch (err) {
+                  setPlatformsError(err instanceof Error ? err.message : "invalid JSON");
+                }
               }}
-              rows={2}
+              rows={6}
               placeholder='[{"kind":"wordpress","id":"<blog-id>"}]'
               className="w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 font-mono text-xs"
             />
+            {platformsError && (
+              <span className="text-[var(--error)] text-xs mt-1">{platformsError}</span>
+            )}
           </Field>
 
           {error && (

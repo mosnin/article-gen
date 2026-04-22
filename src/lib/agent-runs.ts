@@ -76,12 +76,16 @@ export async function getAgentRun(runId: string): Promise<AgentRun | null> {
   return (data as AgentRun | null) ?? null;
 }
 
-export async function listAgentRuns(userId: string, limit = 50): Promise<AgentRun[]> {
+export async function listAgentRuns(userId: string, limit = 50, beforeCreatedAt?: string): Promise<AgentRun[]> {
   const sb = getAdminClient();
-  const { data, error } = await sb.from("agent_runs")
+  let query = sb.from("agent_runs")
     .select("*").eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(limit);
+  if (beforeCreatedAt) {
+    query = query.lt("created_at", beforeCreatedAt);
+  }
+  const { data, error } = await query;
   if (error) throw error;
   return (data as AgentRun[]) ?? [];
 }
