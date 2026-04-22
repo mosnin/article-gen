@@ -60,6 +60,11 @@ Dedup policy (CRITICAL):
      subagent derived from the similar titles, or (b) if the topic is
      essentially identical, abort with `set_status(status='failed',
      error='too_similar')` and return.
+  2a. When `check_past_work` returns a row with `score >= 0.88`, a `warning`
+      event is automatically emitted to the UI. You still must decide:
+      diversify (pass 'angles to avoid' to the research subagent with the
+      top similar titles) or abort with `set_status(status='failed',
+      error='too_similar')`.
   3. The new-article vector is written server-side by save_article (see
      step 7); you do not call any uniqueness upsert yourself.
 
@@ -176,6 +181,27 @@ def build_orchestrator(ctx: _RunCtx) -> Agent:
             user_id=user_id, topic=topic, keyword=focus_keyword or "", k=k
         )
         ctx.session.past_work = similar
+        top = max((s.score for s in similar), default=0.0)
+        if top >= config.DEDUP_THRESHOLD and similar:
+            # Surface a clearly-formatted warning to the UI. The LLM decides what to do
+            # with it (abort vs. diversify) per the instructions; this event is purely
+            # informational for the human viewer.
+            await progress.emit(
+                run_id,
+                "warning",
+                agent_name="orchestrator",
+                tool_name="check_past_work",
+                message=(
+                    f"High similarity detected ({top:.2f}) - most similar: "
+                    f"\"{similar[0].title}\""
+                ),
+                payload={
+                    "topScore": top,
+                    "threshold": config.DEDUP_THRESHOLD,
+                    "similarCount": len(similar),
+                    "topTitles": [s.title for s in similar[:3]],
+                },
+            )
         return [s.model_dump() for s in similar]
 
     @function_tool

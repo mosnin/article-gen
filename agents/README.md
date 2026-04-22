@@ -103,15 +103,19 @@ When a run ends in `status='failed'`, grab its `id` from the
 `/app/agent-runs` UI (or from the `agent_runs` table) and replay it
 locally:
 
-```bash
-python -m modal_app.harness.replay <runId>
-```
+### Replaying a past run
 
-(The replay harness will be implemented later; the intent is: pull the
-original `agent_runs.input` payload + seed via service role, rebuild
-the same orchestrator with a fresh run id suffixed `-replay`, and step
-through with verbose logging. Until it ships, re-trigger through the
-regular `/api/agent/generate` endpoint.)
+Useful for reproducing a flaky failure in isolation:
+
+    python -m modal_app.harness.replay <runId>
+
+This reads the original trigger payload from Supabase (via the service-role
+key), generates a fresh runId, and calls modal.Function.lookup().spawn() on
+`run_article_agent`. Pass `--dry-run` to inspect the payload without invoking
+Modal. Tail logs with `modal app logs article-sauce-agents --follow`.
+
+Required env for the CLI: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+and a logged-in Modal token (`modal token new`).
 
 ## Troubleshooting
 
