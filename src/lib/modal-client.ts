@@ -1,0 +1,51 @@
+import { signBody } from "@/lib/agent-auth";
+
+export type ModalTriggerPayload = {
+  runId: string;
+  userId: string;
+  kind: "article" | "autopilot" | "cluster" | "research_only";
+  topic: string;
+  focusKeyword?: string;
+  tone?: string;
+  targetAudience?: string;
+  quality?: "standard" | "premium";
+  options?: Record<string, unknown>;
+  autopilotSlotId?: string;
+  webhookUrl?: string;       // filled server-side if omitted
+  internalApiBase?: string;  // filled server-side if omitted
+};
+
+export type ModalTriggerResult = {
+  modalCallId: string;
+  runId: string;
+};
+
+export async function triggerAgentRun(payload: ModalTriggerPayload): Promise<ModalTriggerResult> {
+  const url = process.env.MODAL_AGENT_TRIGGER_URL;
+  const token = process.env.MODAL_AGENT_TOKEN;
+  if (!url) throw new Error("MODAL_AGENT_TRIGGER_URL not configured");
+  if (!token) throw new Error("MODAL_AGENT_TOKEN not configured");
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+  const body = JSON.stringify({
+    ...payload,
+    webhookUrl: payload.webhookUrl || (appUrl ? `${appUrl}/api/agent/webhook` : undefined),
+    internalApiBase: payload.internalApiBase || (appUrl ? `${appUrl}/api/internal` : undefined),
+  });
+  const sig = signBody(body, token);
+
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-signature": sig,
+    },
+    body,
+    cache: "no-store",
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Modal trigger failed (${resp.status}): ${text}`);
+  }
+  return (await resp.json()) as ModalTriggerResult;
+}
