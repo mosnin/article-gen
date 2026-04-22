@@ -164,7 +164,7 @@ export default function Home() {
   const isAdmin = userRole === "admin";
 
   // Mode & batch state
-  const [mode, setMode] = useState<"single" | "batch" | "cluster" | "agent">("single");
+  const [mode, setMode] = useState<"single" | "batch" | "cluster" | "agent">("agent");
   useEffect(() => {
     const m = searchParams.get("mode");
     if (m === "agent" || m === "batch" || m === "cluster" || m === "single") {
@@ -2152,7 +2152,7 @@ export default function Home() {
                   </h2>
                   <p className="text-lg text-[var(--text-secondary)]">
                     Create SEO-optimized articles with metadata and image
-                    prompts.
+                    prompts. The default Agent pipeline streams progress live.
                   </p>
                 </div>
 
@@ -2160,10 +2160,22 @@ export default function Home() {
                 <div className="mb-8 flex overflow-hidden rounded-lg border border-[var(--border-default)]">
                   <button
                     onClick={() => {
+                      setMode("agent");
+                      setFormError("");
+                    }}
+                    className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors inline-flex items-center justify-center gap-2 ${mode === "agent" ? "bg-[var(--accent)] text-white" : "bg-[var(--surface-base)] text-[var(--text-primary)]"}`}
+                  >
+                    Agent
+                    <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
+                      NEW
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
                       setMode("single");
                       setFormError("");
                     }}
-                    className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${mode === "single" ? "bg-[var(--accent)] text-white" : "bg-[var(--surface-base)] text-[var(--text-primary)]"}`}
+                    className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors border-l border-[var(--border-default)] ${mode === "single" ? "bg-[var(--accent)] text-white" : "bg-[var(--surface-base)] text-[var(--text-primary)]"}`}
                   >
                     Single
                   </button>
@@ -2184,15 +2196,6 @@ export default function Home() {
                     className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors border-l border-[var(--border-default)] ${mode === "cluster" ? "bg-[var(--accent)] text-white" : "bg-[var(--surface-base)] text-[var(--text-primary)]"}`}
                   >
                     Cluster
-                  </button>
-                  <button
-                    onClick={() => {
-                      setMode("agent");
-                      setFormError("");
-                    }}
-                    className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors border-l border-[var(--border-default)] ${mode === "agent" ? "bg-[var(--accent)] text-white" : "bg-[var(--surface-base)] text-[var(--text-primary)]"}`}
-                  >
-                    Agent
                   </button>
                 </div>
 

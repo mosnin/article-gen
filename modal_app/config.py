@@ -44,6 +44,26 @@ def _required(name: str) -> str:
         raise RuntimeError(f"missing env {name}") from e
 
 
+def _optional(name: str, default: str = "") -> str:
+    return os.environ.get(name, default)
+
+
+@functools.cache
+def tracing_disabled() -> bool:
+    """True if OPENAI_AGENTS_DISABLE_TRACING is '1' or 'true' (case-insensitive)."""
+    return _optional("OPENAI_AGENTS_DISABLE_TRACING", "0").strip().lower() in {"1", "true", "yes"}
+
+
+@functools.cache
+def tracing_include_sensitive() -> bool:
+    """True if OPENAI_AGENTS_TRACE_INCLUDE_SENSITIVE_DATA is '1' or 'true'."""
+    return _optional("OPENAI_AGENTS_TRACE_INCLUDE_SENSITIVE_DATA", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+
+
 @functools.cache
 def openai_api_key() -> str:
     return _required("OPENAI_API_KEY")

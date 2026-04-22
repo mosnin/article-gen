@@ -144,3 +144,21 @@ and a logged-in Modal token (`modal token new`).
   `spawn()` call. Check `modal app logs article-sauce-agents`; the
   most common cause is a missing key in the secret bundle (the app
   raises `KeyError` before registering handlers).
+
+## Tracing
+
+The OpenAI Agents SDK automatically sends run traces to
+platform.openai.com/traces under the account associated with OPENAI_API_KEY.
+
+Toggle via Modal secret bundle keys (set to "1" to enable, anything else to disable):
+
+    OPENAI_AGENTS_DISABLE_TRACING          # disables all tracing
+    OPENAI_AGENTS_TRACE_INCLUDE_SENSITIVE_DATA  # include tool inputs/outputs
+
+During initial rollout we recommend leaving tracing enabled and sensitive
+data DISABLED (the default). The harness emits a `message` event with the
+current tracing state at the start of every run.
+
+To update:
+
+    modal secret update article-sauce-agents OPENAI_AGENTS_DISABLE_TRACING=1

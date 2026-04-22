@@ -119,6 +119,23 @@ async def run_article_agent(payload: dict) -> dict:
         status_update={"status": "running", "progressPct": 0, "currentStep": "boot"},
     )
 
+    if config.tracing_disabled():
+        await _safe_emit(
+            progress,
+            run_id=run_id,
+            kind="message",
+            agent_name="modal",
+            message="tracing: disabled",
+        )
+    elif config.tracing_include_sensitive():
+        await _safe_emit(
+            progress,
+            run_id=run_id,
+            kind="warning",
+            agent_name="modal",
+            message="tracing: enabled with SENSITIVE data included",
+        )
+
     try:
         result = await asyncio.wait_for(
             orchestrator.run(payload),
