@@ -1,33 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
-import { decryptCredential } from "@/lib/wp-crypto";
-import { createGhostJwt } from "@/lib/publish-platforms";
-import type { GhostBlog } from "@/lib/publish-platforms";
-import { marked } from "marked";
-import { logPublishEvent } from "@/lib/publish-log";
-import { safeFetch, validatePublicUrl } from "@/lib/ssrf";
+import { getAdminClient } from "@/lib/supabase-admin";
+import { publishToGhost } from "@/lib/publish";
 import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
 
-interface StoredImage {
-  type: string;
-  altText: string;
-  storagePath: string;
-  publicUrl: string;
-  success: boolean;
-}
-
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { articleId, blogId, tags, status } = await req.json() as {
+    const { articleId, blogId, tags, status } = (await req.json()) as {
       articleId: string;
       blogId?: string;
       tags?: string[];
@@ -35,130 +25,41 @@ export async function POST(req: NextRequest) {
     };
 
     if (!articleId) {
-      return NextResponse.json({ error: "Article ID is required" }, { status: 400 });
-    }
-
-    const { data: settings } = await supabase
-      .from("user_settings")
-      .select("ghost_blogs")
-      .eq("user_id", user.id)
-      .single();
-
-    const blogs = (settings?.ghost_blogs as GhostBlog[]) ?? [];
-    const blog = blogId ? blogs.find((b) => b.id === blogId) : blogs[0];
-
-    if (!blog?.url || !blog?.adminApiKey) {
-      return NextResponse.json({ error: "No Ghost blog connected. Add one in Settings." }, { status: 400 });
-    }
-
-    const { data: article } = await supabase
-      .from("articles")
-      .select("*")
-      .eq("id", articleId)
-      .eq("user_id", user.id)
-      .single();
-
-    if (!article) {
-      return NextResponse.json({ error: "Article not found" }, { status: 404 });
-    }
-
-    const adminApiKey = decryptCredential(blog.adminApiKey);
-    const ghostUrl = blog.url.replace(/\/$/, "");
-
-    // Validate Ghost URL to prevent SSRF
-    try {
-      validatePublicUrl(ghostUrl);
-    } catch (e) {
       return NextResponse.json(
-        { error: `Invalid Ghost blog URL: ${(e as Error).message}` },
-        { status: 400 }
+        { error: "Article ID is required" },
+        { status: 400 },
       );
     }
 
-    let jwt: string;
-    try {
-      jwt = createGhostJwt(adminApiKey);
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid Ghost Admin API key format. It should be 'id:secret' from Ghost Admin > Integrations." },
-        { status: 400 }
-      );
+    const admin = getAdminClient();
+    const result = await publishToGhost(
+      { admin, userId: user.id, articleId, platformAccountId: blogId ?? "" },
+      { tags, status },
+    );
+
+    if (!result.success) {
+      const msg = result.error ?? "Failed to publish to Ghost";
+      const status = /authentication failed/i.test(msg)
+        ? 401
+        : /not found/i.test(msg)
+          ? 404
+          : /No Ghost blog connected|Invalid Ghost|Invalid Ghost Admin API key/i.test(msg)
+            ? 400
+            : 500;
+      return NextResponse.json({ error: msg }, { status });
     }
 
-    // Convert markdown to HTML for Ghost
-    const html = await marked(article.article_markdown || "");
-
-    // Featured image from stored images
-    const storedImages = (article.generated_images as StoredImage[]) ?? [];
-    const featuredImage = storedImages.find((i) => i.success && i.publicUrl && i.type === "Featured Image");
-
-    const postPayload: Record<string, unknown> = {
-      title: article.title || article.topic,
-      html,
-      status: status ?? "draft",
-      meta_description: article.meta_description || "",
-      custom_excerpt: article.meta_description || "",
-      slug: article.slug || undefined,
-    };
-
-    if (tags && tags.length > 0) {
-      postPayload.tags = tags.map((t) => ({ name: t }));
-    }
-
-    if (featuredImage) {
-      postPayload.feature_image = featuredImage.publicUrl;
-      postPayload.feature_image_alt = featuredImage.altText;
-    }
-
-    const res = await safeFetch(`${ghostUrl}/ghost/api/admin/posts/`, {
-      method: "POST",
-      headers: {
-        Authorization: `Ghost ${jwt}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ posts: [postPayload] }),
-      timeoutMs: 20_000,
+    return NextResponse.json({
+      success: true,
+      postId: result.postId,
+      postUrl: result.postUrl,
+      editUrl: result.editUrl,
     });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      if (res.status === 401 || res.status === 403) {
-        return NextResponse.json(
-          { error: `Ghost authentication failed (${res.status}). Check your Admin API key in Settings.` },
-          { status: 401 }
-        );
-      }
-      const errMsg =
-        data.errors?.[0]?.message ||
-        data.errors?.[0]?.context ||
-        `Ghost error (${res.status})`;
-      return NextResponse.json({ error: errMsg }, { status: res.status });
-    }
-
-    const result = await res.json();
-    const post = result.posts?.[0];
-
-    const editUrl = `${ghostUrl}/ghost/#/editor/post/${post.id}`;
-
-    await supabase
-      .from("articles")
-      .update({ posted: true, published_platform: "ghost", updated_at: new Date().toISOString() })
-      .eq("id", articleId)
-      .eq("user_id", user.id);
-
-    await logPublishEvent(supabase, {
-      userId: user.id,
-      articleId,
-      platform: "ghost",
-      accountName: blog.name || blog.url,
-      postId: post.id,
-      postUrl: post.url,
-      editUrl,
-    });
-
-    return NextResponse.json({ success: true, postId: post.id, postUrl: post.url, editUrl });
   } catch (error: unknown) {
     logger.error("Failed to publish to Ghost", error);
-    return NextResponse.json({ error: "Failed to publish to Ghost" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to publish to Ghost" },
+      { status: 500 },
+    );
   }
 }

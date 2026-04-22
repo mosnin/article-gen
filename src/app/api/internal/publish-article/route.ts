@@ -1,40 +1,20 @@
 import { requireInternalAuth } from "@/lib/agent-auth";
+import { getAdminClient } from "@/lib/supabase-admin";
+import {
+  publishToDevto,
+  publishToGhost,
+  publishToMedium,
+  publishToShopify,
+  publishToWordpress,
+  type PublishPlatform,
+  type PublishResult,
+} from "@/lib/publish";
 
 export const runtime = "nodejs";
 
-// TODO(agent-publish): All existing per-platform publish routes
-// (src/app/api/{wordpress,ghost,medium,shopify,devto}/publish/route.ts) gate
-// on `supabase.auth.getUser()` via a user session cookie. They cannot be
-// invoked server-to-server under the HMAC internal-auth (agent) context.
-//
-// Until their core publish logic is factored out into pure helpers under
-// `src/lib/publish/{wordpress,ghost,medium,shopify,devto}.ts` (accepting an
-// admin SupabaseClient + userId directly), this endpoint cannot publish on
-// behalf of the user. Each platform currently returns:
-//   { success: false, error: "platform_requires_session_refactor" }
-//
-// Tracking: the helper-extraction refactor is intentionally out of scope for
-// the phase-2 wave-2 agent routes; a follow-up PR should land the
-// `src/lib/publish/*.ts` helpers and update this dispatcher to call them.
+type PlatformTarget = { kind: PublishPlatform; id: string };
 
-type PlatformKind = "wordpress" | "ghost" | "medium" | "shopify" | "devto";
-type PlatformTarget = { kind: PlatformKind; id: string };
-
-type PlatformResult = {
-  platform: string;
-  accountId: string;
-  success: boolean;
-  postUrl?: string;
-  error?: string;
-};
-
-const SESSION_REFACTOR_BLOCKED: ReadonlySet<PlatformKind> = new Set([
-  "wordpress",
-  "ghost",
-  "medium",
-  "shopify",
-  "devto",
-]);
+type DispatchResult = PublishResult & { accountId: string };
 
 export async function POST(req: Request) {
   const auth = await requireInternalAuth(req);
@@ -46,31 +26,63 @@ export async function POST(req: Request) {
   } catch {
     return Response.json({ error: "invalid_json" }, { status: 400 });
   }
-  if (
-    !body.userId ||
-    !body.articleId ||
-    !Array.isArray(body.platforms)
-  ) {
+  if (!body.userId || !body.articleId || !Array.isArray(body.platforms)) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
 
-  const results: PlatformResult[] = body.platforms.map((p) => {
-    // Every platform is currently session-gated — see TODO above.
-    if (SESSION_REFACTOR_BLOCKED.has(p.kind)) {
-      return {
-        platform: p.kind,
-        accountId: p.id,
-        success: false,
-        error: "platform_requires_session_refactor",
+  const admin = getAdminClient();
+  const { userId, articleId } = body;
+
+  const results: DispatchResult[] = await Promise.all(
+    body.platforms.map(async (p): Promise<DispatchResult> => {
+      const args = {
+        admin,
+        userId,
+        articleId,
+        platformAccountId: p.id,
       };
-    }
-    return {
-      platform: p.kind,
-      accountId: p.id,
-      success: false,
-      error: "unsupported_platform",
-    };
-  });
+      try {
+        switch (p.kind) {
+          case "wordpress": {
+            const r = await publishToWordpress(args);
+            return { ...r, accountId: p.id };
+          }
+          case "ghost": {
+            const r = await publishToGhost(args);
+            return { ...r, accountId: p.id };
+          }
+          case "medium": {
+            const r = await publishToMedium(args);
+            return { ...r, accountId: p.id };
+          }
+          case "shopify": {
+            const r = await publishToShopify(args);
+            return { ...r, accountId: p.id };
+          }
+          case "devto": {
+            const r = await publishToDevto(args);
+            return { ...r, accountId: p.id };
+          }
+          default: {
+            const kind: string = p.kind;
+            return {
+              success: false,
+              platform: kind as PublishPlatform,
+              accountId: p.id,
+              error: "unsupported_platform",
+            };
+          }
+        }
+      } catch (err) {
+        return {
+          success: false,
+          platform: p.kind,
+          accountId: p.id,
+          error: err instanceof Error ? err.message : "publish_failed",
+        };
+      }
+    }),
+  );
 
   return Response.json({ results });
 }
