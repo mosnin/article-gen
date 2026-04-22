@@ -60,9 +60,8 @@ Dedup policy (CRITICAL):
      subagent derived from the similar titles, or (b) if the topic is
      essentially identical, abort with `set_status(status='failed',
      error='too_similar')` and return.
-  3. After a successful save_article, you will call
-     `upsert_uniqueness` (available indirectly via save_article) to record
-     the new vector.
+  3. The new-article vector is written server-side by save_article (see
+     step 7); you do not call any uniqueness upsert yourself.
 
 Workflow (happy path):
   1. check_past_work -> possibly diversify or abort
@@ -73,7 +72,10 @@ Workflow (happy path):
      and invoke_subagent('images', ...)
   6. invoke_subagent('qa', ...) -> QualityScore; if overall < 0.6, loop
      back to writer with corrective brief (max 1 retry).
-  7. save_article(...) -> get articleId
+  7. save_article(...) -> get articleId. The payload MUST include
+     `outlineHeadings` (the list of H2 headings produced by the outline
+     subagent) so the save-article route can populate the dedup memory
+     vector correctly in a single server-side call.
   8. If options.autoPublish: invoke_subagent('publish', ...).
   9. Return FinalArticle JSON as final_output.
 
@@ -180,31 +182,17 @@ def build_orchestrator(ctx: _RunCtx) -> Agent:
     async def save_article(payload: dict) -> dict:
         """Persist the finished article to Supabase. Returns {articleId, slug}.
 
-        Also upserts the semantic-memory vector for future dedup.
+        The ``payload`` dict must include ``outlineHeadings`` (the list of H2
+        headings from the outline subagent). The consolidated
+        ``/api/internal/save-article`` route uses that list to upsert the
+        Upstash dedup vector server-side, so no separate uniqueness call is
+        needed from Python.
         """
         save = _lazy_tool("db", "save_article")
-        upsert = _lazy_tool("uniqueness", "upsert_uniqueness_vector")
         model = ArticleSavePayload.model_validate(
             {**payload, "userId": user_id, "runId": run_id}
         )
         ref: SavedArticleRef = await save(model)
-        # best-effort vector upsert - don't fail the run if Upstash is flaky
-        try:
-            await upsert(
-                user_id=user_id,
-                article_id=ref.articleId,
-                title=model.title,
-                keyword=model.focusKeyword,
-                topic=model.topic,
-                outline=[],  # writer may provide headings via metadata; orchestrator can re-call
-            )
-        except Exception as e:
-            await progress.emit(
-                run_id,
-                "warning",
-                agent_name="orchestrator",
-                message=f"uniqueness upsert failed: {e!s}",
-            )
         return ref.model_dump()
 
     @function_tool

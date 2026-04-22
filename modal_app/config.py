@@ -28,7 +28,6 @@ DEDUP_THRESHOLD = 0.88
 DEFAULT_IMAGE_COUNT = 4
 RUN_TIMEOUT_SECONDS = 1800
 SUBAGENT_CONCURRENCY = 4
-UPSTASH_INDEX_NAMESPACE_PREFIX = "user:"
 WEBHOOK_RETRY_ATTEMPTS = 3
 
 
@@ -63,16 +62,6 @@ def supabase_service_role_key() -> str:
 @functools.cache
 def exa_api_key() -> str:
     return _required("EXA_API_KEY")
-
-
-@functools.cache
-def upstash_vector_rest_url() -> str:
-    return _required("UPSTASH_VECTOR_REST_URL")
-
-
-@functools.cache
-def upstash_vector_rest_token() -> str:
-    return _required("UPSTASH_VECTOR_REST_TOKEN")
 
 
 @functools.cache

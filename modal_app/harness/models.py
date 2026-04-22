@@ -140,6 +140,26 @@ class GeneratedImage(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Subagent result wrappers
+# ---------------------------------------------------------------------------
+
+
+class ResearchOutput(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    serp: SerpAnalysis
+    gaps: list[str] = Field(default_factory=list)
+    tooSimilar: bool = False
+
+
+class ImagesResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    prompts: list[ImagePrompt] = Field(default_factory=list)
+    images: list[GeneratedImage] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
 # Persistence
 # ---------------------------------------------------------------------------
 
@@ -162,6 +182,7 @@ class ArticleSavePayload(BaseModel):
     schemaJson: str | None = None
     imagePrompts: list[ImagePrompt] = Field(default_factory=list)
     generatedImages: list[GeneratedImage] = Field(default_factory=list)
+    outlineHeadings: list[str] = Field(default_factory=list)
 
 
 class SavedArticleRef(BaseModel):
