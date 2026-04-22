@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
+import { AgentHealthWidget } from "@/components/admin/AgentHealthWidget";
 
 interface Transaction {
   id: string;
@@ -153,6 +154,11 @@ export default function AdminDashboard() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Admin Dashboard</h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">Manage users, credits, and subscriptions</p>
+        </div>
+
+        {/* Agent health overview */}
+        <div className="mb-8">
+          <AgentHealthWidget />
         </div>
 
         {/* Stats overview */}
