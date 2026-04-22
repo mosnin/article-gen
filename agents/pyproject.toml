@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "article-sauce-agents"
+version = "0.1.0"
+description = "Agentic article-generation subsystem (Modal + OpenAI Agents SDK)."
+requires-python = ">=3.11"
+# Runtime dependencies are declared in agents/requirements.txt.
+
+[tool.hatch.build.targets.wheel]
+packages = ["agents"]
+
+[tool.ruff]
+line-length = 100
