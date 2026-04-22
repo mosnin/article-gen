@@ -274,15 +274,20 @@ async def run(payload_dict: dict) -> dict:
 
     final = result.final_output
     if isinstance(final, FinalArticle):
-        return final.model_dump()
-    if isinstance(final, dict):
-        return final
-    # last-resort shape - orchestrator returned prose
-    return {
-        "articleId": None,
-        "title": payload.topic,
-        "articleMarkdown": str(final),
-    }
+        out_dict: dict = final.model_dump()
+    elif isinstance(final, dict):
+        out_dict = final
+    else:
+        # last-resort shape - orchestrator returned prose
+        out_dict = {
+            "articleId": None,
+            "title": payload.topic,
+            "articleMarkdown": str(final),
+        }
+    # Attach raw responses so the Modal entrypoint can aggregate token usage
+    # for cost telemetry. Popped off before the dict reaches the webhook.
+    out_dict["_rawResponses"] = getattr(result, "raw_responses", []) or []
+    return out_dict
 
 
 def _compose_initial_brief(payload: TriggerPayload) -> str:

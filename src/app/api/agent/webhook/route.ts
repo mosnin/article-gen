@@ -25,6 +25,9 @@ type WebhookBody = {
     error?: string;
     articleId?: string;
     output?: Record<string, unknown>;
+    tokensIn?: number;
+    tokensOut?: number;
+    costUsd?: number;
   };
   at?: string;
 };
@@ -99,6 +102,9 @@ export async function POST(req: Request) {
         error: body.statusUpdate.error,
         articleId: body.statusUpdate.articleId,
         output: body.statusUpdate.output,
+        tokensIn: body.statusUpdate.tokensIn,
+        tokensOut: body.statusUpdate.tokensOut,
+        costUsd: body.statusUpdate.costUsd,
       });
     } catch (error: unknown) {
       logger.error("Failed to update agent run status", error);
@@ -119,6 +125,49 @@ export async function POST(req: Request) {
         }
       } catch (error: unknown) {
         logger.error("Failed to release generation slot on terminal status", error);
+      }
+    }
+
+    // Autopilot slot-done bookkeeping (audit G-1): when a run linked to an
+    // autopilot slot succeeds, mark that slot as `done` in the user's
+    // `autopilot_plan`. Best-effort — failures are logged but do not fail the
+    // webhook.
+    if (body.statusUpdate.status === "succeeded") {
+      try {
+        const admin = getAdminClient();
+        const { data: run } = await admin
+          .from("agent_runs")
+          .select("autopilot_slot_id, article_id, user_id")
+          .eq("id", body.runId)
+          .single();
+        if (run?.autopilot_slot_id && run.user_id) {
+          const { data: settings } = await admin
+            .from("user_settings")
+            .select("autopilot_plan")
+            .eq("user_id", run.user_id)
+            .single();
+          const rawPlan = (settings as { autopilot_plan?: unknown } | null)?.autopilot_plan;
+          const plan: Array<Record<string, unknown>> = Array.isArray(rawPlan)
+            ? (rawPlan as Array<Record<string, unknown>>)
+            : [];
+          const nextPlan = plan.map((slot) =>
+            slot && slot.id === run.autopilot_slot_id
+              ? {
+                  ...slot,
+                  status: "done",
+                  articleId: run.article_id,
+                  completedAt: new Date().toISOString(),
+                }
+              : slot,
+          );
+          await admin
+            .from("user_settings")
+            .update({ autopilot_plan: nextPlan })
+            .eq("user_id", run.user_id);
+        }
+      } catch (e) {
+        logger.error("[webhook] slot-done bookkeeping failed", e);
+        // best-effort: do not fail the webhook
       }
     }
   }

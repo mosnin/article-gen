@@ -68,7 +68,7 @@ export default function AgentRunDetailPage({
                 </code>
               </p>
             )}
-            <div className="mt-3 flex items-center gap-3">
+            <div className="mt-3 flex items-center gap-3 flex-wrap">
               <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", statusColor)}>
                 {status ?? "loading"}
               </span>
@@ -81,6 +81,19 @@ export default function AgentRunDetailPage({
                 <span className="text-xs text-[var(--text-tertiary)]">
                   · {run.current_agent}
                 </span>
+              )}
+              {typeof run?.cost_usd === "number" && run.cost_usd > 0 && (
+                <>
+                  <span className="rounded-full border border-[var(--border-default)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[10px] text-[var(--text-secondary)]">
+                    Tokens in: {run.tokens_in.toLocaleString()}
+                  </span>
+                  <span className="rounded-full border border-[var(--border-default)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[10px] text-[var(--text-secondary)]">
+                    Tokens out: {run.tokens_out.toLocaleString()}
+                  </span>
+                  <span className="rounded-full border border-[var(--border-default)] bg-[var(--surface-sunken)] px-2 py-0.5 text-[10px] text-[var(--text-secondary)]">
+                    Cost: ${run.cost_usd.toFixed(4)}
+                  </span>
+                </>
               )}
             </div>
           </div>

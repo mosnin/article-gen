@@ -21,6 +21,9 @@ export type AgentRun = {
   article_id: string | null;
   autopilot_slot_id: string | null;
   credits_charged: number;
+  tokens_in: number;
+  tokens_out: number;
+  cost_usd: number;
   created_at: string;
   started_at: string | null;
   completed_at: string | null;
@@ -134,6 +137,9 @@ export async function updateAgentRunStatus(params: {
   articleId?: string;
   output?: Record<string, unknown>;
   modalCallId?: string;
+  tokensIn?: number;
+  tokensOut?: number;
+  costUsd?: number;
 }): Promise<void> {
   const sb = getAdminClient();
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -155,6 +161,9 @@ export async function updateAgentRunStatus(params: {
   if (params.articleId !== undefined) patch.article_id = params.articleId;
   if (params.output !== undefined) patch.output = params.output;
   if (params.modalCallId !== undefined) patch.modal_call_id = params.modalCallId;
+  if (params.tokensIn !== undefined) patch.tokens_in = Math.max(0, Math.round(params.tokensIn));
+  if (params.tokensOut !== undefined) patch.tokens_out = Math.max(0, Math.round(params.tokensOut));
+  if (params.costUsd !== undefined) patch.cost_usd = Math.max(0, params.costUsd);
   const { error } = await sb.from("agent_runs").update(patch).eq("id", params.runId);
   if (error) throw error;
 }

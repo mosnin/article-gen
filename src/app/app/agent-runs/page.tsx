@@ -116,19 +116,20 @@ export default function AgentRunsPage() {
               <th className="px-4 py-2 text-left">Kind</th>
               <th className="px-4 py-2 text-left">Created</th>
               <th className="px-4 py-2 text-left">Duration</th>
+              <th className="px-4 py-2 text-left">Cost</th>
               <th className="px-4 py-2 text-left">Credits</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border-default)]">
             {isLoading && runs.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-[var(--text-tertiary)]">
+                <td colSpan={8} className="px-4 py-12 text-center text-[var(--text-tertiary)]">
                   Loading runs...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-[var(--text-tertiary)]">
+                <td colSpan={8} className="px-4 py-12 text-center text-[var(--text-tertiary)]">
                   No agent runs yet.{" "}
                   <Link href="/app/generate?mode=agent" className="text-[var(--accent)] hover:underline">
                     Start one from Generate

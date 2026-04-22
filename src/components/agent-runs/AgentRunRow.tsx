@@ -46,9 +46,16 @@ export function AgentRunRow({ run }: { run: AgentRun }) {
       <td className="px-4 py-3 text-xs text-[var(--text-secondary)]">{run.kind}</td>
       <td className="px-4 py-3 text-xs text-[var(--text-secondary)]">{created}</td>
       <td className="px-4 py-3 text-xs text-[var(--text-secondary)]">{duration}</td>
+      <td className="px-4 py-3 text-xs text-[var(--text-secondary)]">{formatCost(run.cost_usd)}</td>
       <td className="px-4 py-3 text-xs text-[var(--text-secondary)]">{run.credits_charged}</td>
     </tr>
   );
+}
+
+function formatCost(value: number | null | undefined): string {
+  const n = typeof value === "number" ? value : Number(value ?? 0);
+  if (!Number.isFinite(n) || n === 0) return "–";
+  return `$${n.toFixed(4)}`;
 }
 
 function computeDuration(run: AgentRun): string {

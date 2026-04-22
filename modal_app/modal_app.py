@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+import sys
 import traceback
 
 import modal
@@ -123,16 +124,31 @@ async def run_article_agent(payload: dict) -> dict:
             orchestrator.run(payload),
             timeout=config.RUN_TIMEOUT_SECONDS - 30,
         )
+        # Extract the raw Agents SDK responses before they reach the webhook
+        # (they contain non-JSON-serialisable ModelResponse objects).
+        raw_responses = result.pop("_rawResponses", [])
+        usage: dict = {}
+        try:
+            from modal_app.harness.usage import aggregate_usage
+
+            usage = aggregate_usage(raw_responses)
+        except Exception as e:
+            print(f"usage aggregation failed: {e}", file=sys.stderr)
+        status_update: dict = {
+            "status": "succeeded",
+            "progressPct": 100,
+            "articleId": result.get("articleId"),
+            "output": {**result, "usage": usage} if usage else result,
+        }
+        if usage:
+            status_update["tokensIn"] = usage["tokensIn"]
+            status_update["tokensOut"] = usage["tokensOut"]
+            status_update["costUsd"] = usage["costUsd"]
         await _safe_emit(
             progress,
             run_id=run_id,
             kind="run_completed",
-            status_update={
-                "status": "succeeded",
-                "progressPct": 100,
-                "articleId": result.get("articleId"),
-                "output": result,
-            },
+            status_update=status_update,
         )
         return result
     except asyncio.TimeoutError:
