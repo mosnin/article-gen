@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { CreditForecast } from "./components/CreditForecast";
+import { RecentAgentRuns } from "@/components/dashboard/RecentAgentRuns";
 
 interface Article {
   id: string;
@@ -343,6 +344,9 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
+
+      {/* Recent Agent Runs */}
+      <RecentAgentRuns />
 
       {/* Recent Articles */}
       <div>

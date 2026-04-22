@@ -87,6 +87,7 @@ async function safeFetch(
 
 export default function Home() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -164,6 +165,12 @@ export default function Home() {
 
   // Mode & batch state
   const [mode, setMode] = useState<"single" | "batch" | "cluster" | "agent">("single");
+  useEffect(() => {
+    const m = searchParams.get("mode");
+    if (m === "agent" || m === "batch" || m === "cluster" || m === "single") {
+      setMode(m);
+    }
+  }, [searchParams]);
   const [batchQuality, setBatchQuality] = useState<"standard" | "premium">(
     "premium"
   );
@@ -2708,6 +2715,13 @@ export default function Home() {
                       {" "}Articles generate 2 at a time with 60-second intervals.
                       {!clusterUseExistingPillar && " The pillar page is regenerated at the end with links to all cluster articles."}
                     </p>
+                  </div>
+                )}
+
+                {/* Agent mode form */}
+                {mode === "agent" && (
+                  <div className="mt-4">
+                    <AgentForm />
                   </div>
                 )}
               </div>

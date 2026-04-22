@@ -170,6 +170,17 @@ export function Sidebar({
         </svg>
       ),
     },
+    {
+      label: "Agents",
+      href: "/app/agent-runs",
+      badge: "new",
+      badgeVariant: "new",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path d="M7 3a1 1 0 012 0v1h2V3a1 1 0 112 0v1h1a2 2 0 012 2v2a1 1 0 01-1 1h-1v4h1a1 1 0 011 1v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2a1 1 0 011-1h1V9H3a1 1 0 01-1-1V6a2 2 0 012-2h1V3a1 1 0 112 0v1h0V3zm0 6a1 1 0 100 2h.01a1 1 0 100-2H7zm5 0a1 1 0 100 2h.01a1 1 0 100-2H12z" />
+        </svg>
+      ),
+    },
   ];
 
   const researchSubNav: NavItem[] = [
@@ -209,6 +220,15 @@ export function Sidebar({
       icon: (
         <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
           <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+    {
+      label: "Autonomous",
+      href: "/app/autonomous",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path d="M10 2a1 1 0 01.894.553l1.382 2.764 3.053.444a1 1 0 01.554 1.706l-2.208 2.152.521 3.038a1 1 0 01-1.451 1.054L10 12.347l-2.745 1.444a1 1 0 01-1.451-1.054l.521-3.038L4.117 7.547a1 1 0 01.554-1.706l3.053-.444L9.106 2.553A1 1 0 0110 2zM3 15a1 1 0 011-1h2a1 1 0 110 2H4a1 1 0 01-1-1zm11 0a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1zm-5 3a1 1 0 011-1h0a1 1 0 110 2h0a1 1 0 01-1-1z" />
         </svg>
       ),
     },
