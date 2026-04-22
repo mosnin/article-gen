@@ -82,8 +82,9 @@ Return the complete refreshed article in markdown format. Include ALL original c
     await supabase
       .from("articles")
       .update({
-        content: refreshedContent,
+        article_markdown: refreshedContent,
         updated_at: new Date().toISOString(),
+        last_refreshed_at: new Date().toISOString(),
         word_count: newWordCount,
       })
       .eq("id", articleId)
