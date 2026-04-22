@@ -3,6 +3,20 @@ import { getAdminClient } from "@/lib/supabase-admin";
 
 const STUCK_AFTER_MINUTES = 10;
 
+async function postSlack(text: string, blocks?: unknown[]): Promise<void> {
+  const url = process.env.SLACK_ALERTS_WEBHOOK_URL;
+  if (!url) return;
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text, blocks }),
+    });
+  } catch (err) {
+    console.error("[slack-alert]", err);
+  }
+}
+
 export const agentRunsStuckAlert = inngest.createFunction(
   { id: "agent-runs-stuck-alert", name: "Agent runs stuck alert", retries: 0 },
   { cron: "*/15 * * * *" }, // every 15 min
@@ -51,6 +65,20 @@ export const agentRunsStuckAlert = inngest.createFunction(
           `stuck since ${run.updated_at}`
       );
     }
+
+    if (stuckRuns.length > 0) {
+      const lines = stuckRuns.slice(0, 10).map((r) =>
+        `• <${process.env.NEXT_PUBLIC_APP_URL}/app/agent-runs/${r.id}|${r.topic}> ` +
+        `(agent: ${r.current_agent ?? "?"}, step: ${r.current_step ?? "?"}, ` +
+        `since ${r.updated_at})`
+      );
+      const extra = stuckRuns.length > 10 ? `\n…and ${stuckRuns.length - 10} more.` : "";
+      await postSlack(
+        `:warning: *${stuckRuns.length} agent run${stuckRuns.length === 1 ? "" : "s"} ` +
+        `stuck* (no update in ${STUCK_AFTER_MINUTES}min)\n${lines.join("\n")}${extra}`
+      );
+    }
+
     return { stuck: stuckRuns.length, warned };
   }
 );
