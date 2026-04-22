@@ -2,8 +2,9 @@ import { serve } from "inngest/next";
 import { inngest } from "@/lib/inngest";
 import { autopilotCron } from "@/inngest/autopilot-cron";
 import { generateAutopilotArticle } from "@/inngest/generate-autopilot-article";
+import { agentArticleGenerate } from "@/inngest/agent-article-generate";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [autopilotCron, generateAutopilotArticle],
+  functions: [autopilotCron, generateAutopilotArticle, agentArticleGenerate],
 });

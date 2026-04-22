@@ -32,4 +32,18 @@ export type Events = {
       contentType: string;
     };
   };
+  "agent/article.generate": {
+    data: {
+      runId?: string;
+      userId: string;
+      kind?: "article" | "autopilot" | "cluster" | "research_only";
+      topic: string;
+      focusKeyword?: string;
+      tone?: string;
+      targetAudience?: string;
+      quality?: "standard" | "premium";
+      options?: Record<string, unknown>;
+      autopilotSlotId?: string;
+    };
+  };
 };
