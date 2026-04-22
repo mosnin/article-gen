@@ -13,8 +13,8 @@ fi
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-echo "==> modal serve agents/modal_app.py (live reload)"
-echo "    Edits to any Python file under agents/ will reload automatically."
+echo "==> modal serve modal_app/modal_app.py (live reload)"
+echo "    Edits to any Python file under modal_app/ will reload automatically."
 echo "    Press Ctrl+C to stop."
 echo ""
-modal serve agents/modal_app.py
+modal serve modal_app/modal_app.py

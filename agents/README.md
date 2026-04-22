@@ -68,8 +68,8 @@ catalog, dedup semantics) lives in
 ./scripts/dev-agents.sh
 ```
 
-This runs `modal serve agents/modal_app.py` in live-reload mode: edits
-to any Python file under `agents/` hot-reload the running app without
+This runs `modal serve modal_app/modal_app.py` in live-reload mode: edits
+to any Python file under `modal_app/` hot-reload the running app without
 redeploying. The command prints a temporary `*.modal.run` trigger URL
 that you can point a local Next.js dev server at via
 `MODAL_AGENT_TRIGGER_URL` in your local `.env.local`.
@@ -80,7 +80,7 @@ that you can point a local Next.js dev server at via
 ./scripts/deploy-agents.sh
 ```
 
-The script runs `modal deploy agents/modal_app.py` and reminds you to
+The script runs `modal deploy modal_app/modal_app.py` and reminds you to
 capture the printed public trigger URL. Paste that URL into Vercel's
 environment settings as:
 
@@ -106,7 +106,7 @@ When a run ends in `status='failed'`, grab its `id` from the
 locally:
 
 ```bash
-python -m agents.harness.replay <runId>
+python -m modal_app.harness.replay <runId>
 ```
 
 (The replay harness will be implemented later; the intent is: pull the

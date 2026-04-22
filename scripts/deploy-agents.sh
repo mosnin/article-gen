@@ -13,8 +13,8 @@ fi
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-echo "==> Deploying agents/modal_app.py to Modal..."
-modal deploy agents/modal_app.py
+echo "==> Deploying modal_app/modal_app.py to Modal..."
+modal deploy modal_app/modal_app.py
 
 echo ""
 echo "==> Deploy complete."

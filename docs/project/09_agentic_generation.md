@@ -48,11 +48,10 @@ Branch: `claude/agentic-article-generation-u1G85`
 ## 3. Repository layout
 
 ```
-agents/                              # new Python package (Modal app)
-  pyproject.toml
+modal_app/                           # new Python package (Modal app)
+  __init__.py
   modal_app.py                       # Modal App + web endpoint + entrypoint
   config.py                          # env vars, model ids, limits
-  requirements.txt
   harness/
     __init__.py
     orchestrator.py                  # top-level Agent + run_article_agent()
@@ -77,10 +76,14 @@ agents/                              # new Python package (Modal app)
       dalle.py                       # DALL-E-3 calls
       storage.py                     # Supabase storage upload
       http.py                        # signed internal /api/internal/* calls
-      embeddings.py                  # OpenAI embeddings + Upstash upsert/query
+      embeddings.py                  # OpenAI embeddings (no Upstash — Next.js owns that)
       publish.py                     # wraps /api/internal/publish
-      uniqueness.py                  # Upstash vector dedup
+      uniqueness.py                  # calls /api/internal/{check,upsert}-uniqueness
+
+agents/                              # docs/config-only folder (no Python package)
   README.md                          # deploy + local dev
+  requirements.txt                   # shared dep list for the Modal image
+  pyproject.toml                     # ruff / mypy config for modal_app/
 
 src/
   app/api/agent/
@@ -264,6 +267,11 @@ generate_image_prompts(title: str, keyword: str, article_md: str, count: int = 4
 generate_image(user_id: str, article_id: str, prompt: str, alt_text: str) -> GeneratedImage
 
 # persistence & flow
+# ArticleSavePayload includes: userId, runId, title, slug, metaDescription,
+# focusKeyword, keywords, topic, tone?, targetAudience?, quality, articleMarkdown,
+# schemaJson?, imagePrompts[], generatedImages[], outlineHeadings: list[str]
+# (the H2 headings — when present the save-article route also upserts the
+# dedup vector server-side; see §7.5)
 save_article(payload: ArticleSavePayload) -> SavedArticleRef
 update_article(article_id: str, patch: dict) -> None
 check_credits(user_id: str, amount: int = 1) -> CreditsStatus
@@ -375,7 +383,7 @@ X-Signature: sha256=<hex HMAC over raw body with AGENT_INTERNAL_SECRET>
 
 | Endpoint | Purpose |
 |---|---|
-| `POST /api/internal/save-article` | Insert row in `articles` (uses service role) |
+| `POST /api/internal/save-article` | Insert row in `articles` (uses service role). When `outlineHeadings` is present in the payload, this route additionally performs the Upstash vector upsert (namespace `user:{userId}`, id `article:{articleId}`), so callers do not need to invoke `/api/internal/upsert-uniqueness` separately. |
 | `POST /api/internal/update-article` | Patch by id |
 | `POST /api/internal/upload-image` | `{userId, articleId, filename, base64Png}` → `{storagePath, publicUrl}` |
 | `POST /api/internal/check-credits` | `{userId, amount}` → `{ok, credits}` |
@@ -521,12 +529,12 @@ Modal secret bundle (`modal secret create article-sauce-agents`):
 | SUPABASE_URL | NEXT_PUBLIC_SUPABASE_URL |
 | SUPABASE_SERVICE_ROLE_KEY | same |
 | EXA_API_KEY | same |
-| UPSTASH_VECTOR_REST_URL | same |
-| UPSTASH_VECTOR_REST_TOKEN | same |
 | AGENT_WEBHOOK_SECRET | same |
 | AGENT_INTERNAL_SECRET | same |
 | MODAL_AGENT_TOKEN | same |
 | APP_URL | NEXT_PUBLIC_APP_URL |
+
+*Upstash Vector is accessed only via `/api/internal/{check,upsert}-uniqueness` on the Next.js side — the token does not ship to Modal. See §9.*
 
 ## 12. HMAC sign / verify reference
 
@@ -544,14 +552,14 @@ signature = "sha256=" + hex(HMAC_SHA256(secret, raw_utf8_body))
 
 ```bash
 # one-time
-cd agents && pip install -r requirements.txt
+pip install -r agents/requirements.txt
 modal secret create article-sauce-agents <...>
 
 # local dev (hot reload)
-./scripts/dev-agents.sh        # modal serve agents/modal_app.py
+./scripts/dev-agents.sh        # modal serve modal_app/modal_app.py
 
 # production
-./scripts/deploy-agents.sh     # modal deploy agents/modal_app.py
+./scripts/deploy-agents.sh     # modal deploy modal_app/modal_app.py
 ```
 
 ## 14. Non-goals (this pass)
