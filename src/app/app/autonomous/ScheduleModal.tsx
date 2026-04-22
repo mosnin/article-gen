@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type Schedule = {
@@ -13,7 +13,42 @@ type Schedule = {
   platforms?: Array<{ kind: string; id: string }>;
   status: "active" | "paused";
   nextRunAt?: string;
+  // v2 fields
+  timezone?: string;
+  timeOfDayLocal?: string;
+  weekdayMask?: number[];
+  requiresApproval?: boolean;
 };
+
+const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"] as const;
+const WEEKDAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
+const DEFAULT_WEEKDAY_MASK: number[] = [1, 2, 3, 4, 5];
+
+function browserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
+function supportedTimezones(): string[] {
+  try {
+    // Intl.supportedValuesOf is Node ≥18 / modern browsers; fall back to a minimal set.
+    const intlWithValues = Intl as unknown as {
+      supportedValuesOf?: (key: string) => string[];
+    };
+    if (typeof intlWithValues.supportedValuesOf === "function") {
+      const list = intlWithValues.supportedValuesOf("timeZone");
+      if (Array.isArray(list) && list.length > 0) return list;
+    }
+  } catch {
+    // fall through
+  }
+  const browser = browserTimezone();
+  const fallback = ["UTC"];
+  return browser && browser !== "UTC" ? [browser, ...fallback] : fallback;
+}
 
 export function ScheduleModal({
   initial,
@@ -24,6 +59,8 @@ export function ScheduleModal({
   onSave: (s: Partial<Schedule>) => Promise<void>;
   onClose: () => void;
 }) {
+  const timezoneOptions = useMemo(() => supportedTimezones(), []);
+
   const [form, setForm] = useState<Schedule>({
     id: initial?.id,
     name: initial?.name ?? "",
@@ -34,6 +71,10 @@ export function ScheduleModal({
     platforms: initial?.platforms ?? [],
     status: initial?.status ?? "active",
     nextRunAt: initial?.nextRunAt ?? new Date().toISOString(),
+    timezone: initial?.timezone ?? browserTimezone(),
+    timeOfDayLocal: initial?.timeOfDayLocal ?? "09:00",
+    weekdayMask: initial?.weekdayMask ?? DEFAULT_WEEKDAY_MASK,
+    requiresApproval: initial?.requiresApproval ?? false,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,10 +103,22 @@ export function ScheduleModal({
     setForm((f) => ({ ...f, [k]: v }));
   }
 
+  function toggleWeekday(day: number) {
+    setForm((f) => {
+      const current = f.weekdayMask ?? DEFAULT_WEEKDAY_MASK;
+      const next = current.includes(day)
+        ? current.filter((d) => d !== day)
+        : [...current, day].sort((a, b) => a - b);
+      return { ...f, weekdayMask: next };
+    });
+  }
+
+  const activeMask = form.weekdayMask ?? DEFAULT_WEEKDAY_MASK;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div
-        className="w-full max-w-lg rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] p-6 shadow-xl"
+        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-semibold text-[var(--text-primary)]">
@@ -116,6 +169,56 @@ export function ScheduleModal({
               className="w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-sm"
             />
           </Field>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Timezone">
+              <select
+                value={form.timezone ?? "UTC"}
+                onChange={(e) => update("timezone", e.target.value)}
+                className="w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-sm"
+              >
+                {timezoneOptions.map((tz) => (
+                  <option key={tz} value={tz}>{tz}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Time of day (local)">
+              <input
+                type="time"
+                value={form.timeOfDayLocal ?? "09:00"}
+                onChange={(e) => update("timeOfDayLocal", e.target.value)}
+                className="w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-sm"
+              />
+            </Field>
+          </div>
+
+          {form.cadence === "weekly" && (
+            <Field label="Weekdays">
+              <div className="flex items-center gap-1">
+                {WEEKDAY_LABELS.map((label, i) => {
+                  const on = activeMask.includes(i);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      aria-label={WEEKDAY_FULL[i]}
+                      aria-pressed={on}
+                      onClick={() => toggleWeekday(i)}
+                      className={cn(
+                        "h-8 w-8 rounded border text-xs font-medium",
+                        on
+                          ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                          : "border-[var(--border-default)] bg-[var(--surface-raised)] text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)]",
+                      )}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+          )}
+
           <Field label="Platforms JSON (optional)">
             <textarea
               value={platformsText}
@@ -138,6 +241,18 @@ export function ScheduleModal({
               <span className="text-[var(--error)] text-xs mt-1">{platformsError}</span>
             )}
           </Field>
+
+          <label className="flex items-start gap-2 rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-xs">
+            <input
+              type="checkbox"
+              checked={!!form.requiresApproval}
+              onChange={(e) => update("requiresApproval", e.target.checked)}
+              className="mt-0.5"
+            />
+            <span className="text-[var(--text-secondary)]">
+              Requires human approval before dispatch
+            </span>
+          </label>
 
           {error && (
             <div className="rounded border border-[var(--error)] bg-[var(--error-light)] px-3 py-2 text-xs text-[var(--error)]">

@@ -1,5 +1,8 @@
 import { inngest } from "@/lib/inngest";
 import { getAdminClient } from "@/lib/supabase-admin";
+import { computeNextRunAt } from "@/lib/schedule-next-run";
+
+type AutonomousSchedulePlatform = { kind: string; id: string };
 
 type AutonomousSchedule = {
   id?: string;
@@ -9,12 +12,44 @@ type AutonomousSchedule = {
   niche?: string;
   tone?: string;
   targetAudience?: string;
-  platforms?: string[];
+  platforms?: AutonomousSchedulePlatform[] | string[];
   status?: "active" | "paused" | string;
   nextRunAt?: string;
   updatedAt?: string;
+  timezone?: string;
+  timeOfDayLocal?: string;
+  weekdayMask?: number[];
+  requiresApproval?: boolean;
   [key: string]: unknown;
 };
+
+function advanceNextRunAt(s: AutonomousSchedule): string {
+  // Try the v2 helper first.
+  try {
+    const cadence = (s.cadence === "daily" || s.cadence === "weekly" || s.cadence === "monthly")
+      ? s.cadence
+      : "weekly";
+    const iso = computeNextRunAt({
+      timezone: s.timezone ?? "UTC",
+      timeOfDayLocal: s.timeOfDayLocal ?? "09:00",
+      cadence,
+      weekdayMask: s.weekdayMask,
+      // from = now + 1 minute so we don't re-dispatch immediately if the helper
+      // would otherwise return "today at HH:MM" that's still marginally in the future.
+      from: new Date(Date.now() + 60_000),
+    });
+    if (iso && !Number.isNaN(new Date(iso).getTime())) return iso;
+  } catch {
+    // fall through to legacy path
+  }
+
+  // Legacy fallback: bump by cadence in UTC.
+  const next = new Date();
+  if (s.cadence === "daily") next.setUTCDate(next.getUTCDate() + 1);
+  else if (s.cadence === "weekly") next.setUTCDate(next.getUTCDate() + 7);
+  else if (s.cadence === "monthly") next.setUTCMonth(next.getUTCMonth() + 1);
+  return next.toISOString();
+}
 
 export const autopilotCron = inngest.createFunction(
   { id: "autopilot-cron", name: "Autopilot Publishing Cron", triggers: [{ cron: "0 * * * *" }] },
@@ -65,8 +100,10 @@ export const autopilotCron = inngest.createFunction(
 
     // ── Pass 2: autonomous_schedules (spec §10) ──────────────────────────────
     // Enumerate every user's `user_settings.autonomous_schedules`; for each
-    // active schedule whose `nextRunAt <= now`, dispatch `agent/article.generate`
-    // and advance `nextRunAt` by the configured cadence.
+    // active schedule whose `nextRunAt <= now`, either dispatch the run or
+    // queue a pending approval (if `requiresApproval` is set). Then advance
+    // `nextRunAt` using the v2 helper (timezone/time-of-day/weekday-mask
+    // aware) with a legacy-UTC fallback.
     const dispatched = await step.run("process-autonomous-schedules", async () => {
       const { data: userRows } = await supabase
         .from("user_settings")
@@ -75,6 +112,7 @@ export const autopilotCron = inngest.createFunction(
 
       const nowIso = new Date().toISOString();
       let count = 0;
+      let approvalsQueued = 0;
 
       for (const row of userRows ?? []) {
         const schedules = Array.isArray(row.autonomous_schedules)
@@ -87,33 +125,45 @@ export const autopilotCron = inngest.createFunction(
           if (s.status !== "active") continue;
           if (!s.nextRunAt || s.nextRunAt > nowIso) continue;
 
-          await inngest.send({
-            name: "agent/article.generate",
-            data: {
-              userId: row.user_id,
-              kind: "autopilot",
-              topic: `${s.niche} — upcoming post`,
-              focusKeyword: s.niche,
-              tone: s.tone,
-              targetAudience: s.targetAudience,
-              quality: "standard",
-              options: {
-                autoPublish: (s.platforms?.length ?? 0) > 0,
-                platforms: s.platforms ?? [],
+          if (s.requiresApproval) {
+            // Queue an approval row instead of dispatching.
+            await supabase.from("autonomous_pending_approvals").insert({
+              user_id: row.user_id,
+              schedule_id: s.id,
+              topic_suggestion: `${s.niche} - upcoming post`,
+              focus_keyword: s.niche,
+              niche: s.niche,
+              tone: s.tone ?? null,
+              target_audience: s.targetAudience ?? null,
+              platforms: s.platforms ?? [],
+              proposed_run_at: nowIso,
+              status: "pending",
+            });
+            approvalsQueued++;
+          } else {
+            await inngest.send({
+              name: "agent/article.generate",
+              data: {
+                userId: row.user_id,
+                kind: "autopilot",
+                topic: `${s.niche} — upcoming post`,
+                focusKeyword: s.niche,
+                tone: s.tone,
+                targetAudience: s.targetAudience,
+                quality: "standard",
+                options: {
+                  autoPublish: Array.isArray(s.platforms) ? s.platforms.length > 0 : false,
+                  platforms: s.platforms ?? [],
+                },
               },
-            },
-          });
+            });
+            count++;
+          }
 
-          // bump nextRunAt by cadence (daily / weekly / monthly)
-          const next = new Date();
-          if (s.cadence === "daily") next.setUTCDate(next.getUTCDate() + 1);
-          else if (s.cadence === "weekly") next.setUTCDate(next.getUTCDate() + 7);
-          else if (s.cadence === "monthly") next.setUTCMonth(next.getUTCMonth() + 1);
-          s.nextRunAt = next.toISOString();
+          // Advance nextRunAt via v2 helper (with legacy fallback).
+          s.nextRunAt = advanceNextRunAt(s);
           s.updatedAt = new Date().toISOString();
-
           mutated = true;
-          count++;
         }
 
         if (mutated) {
@@ -124,7 +174,7 @@ export const autopilotCron = inngest.createFunction(
         }
       }
 
-      return { dispatched: count };
+      return { dispatched: count, approvalsQueued };
     });
 
     return { ...result, ...dispatched };

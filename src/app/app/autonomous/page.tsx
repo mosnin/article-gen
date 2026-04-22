@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { ScheduleModal } from "./ScheduleModal";
 import { cn } from "@/lib/utils";
 
@@ -14,8 +15,13 @@ type Schedule = {
   platforms?: Array<{ kind: string; id: string }>;
   status: "active" | "paused";
   nextRunAt: string;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  // v2 fields (optional for back-compat)
+  timezone?: string;                // IANA tz id, e.g. "America/New_York"
+  timeOfDayLocal?: string;          // "HH:MM" 24-hour, in the user's timezone
+  weekdayMask?: number[];           // 0=Sun..6=Sat; only meaningful when cadence='weekly'
+  requiresApproval?: boolean;
 };
 
 export default function AutonomousPage() {
@@ -24,6 +30,7 @@ export default function AutonomousPage() {
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Schedule | null>(null);
+  const [pendingCount, setPendingCount] = useState<number>(0);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -40,6 +47,21 @@ export default function AutonomousPage() {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await fetch("/api/agent/autonomous/approvals", { cache: "no-store" });
+        if (!resp.ok) return;
+        const data = (await resp.json()) as { approvals?: unknown[] };
+        if (!cancelled) setPendingCount(Array.isArray(data.approvals) ? data.approvals.length : 0);
+      } catch {
+        // non-fatal
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const onSave = useCallback(async (s: Partial<Schedule>) => {
     const resp = await fetch("/api/agent/autonomous", {
@@ -84,12 +106,25 @@ export default function AutonomousPage() {
             Agent runs that dispatch themselves on a cadence.
           </p>
         </div>
-        <button
-          onClick={() => { setEditing(null); setModalOpen(true); }}
-          className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          New schedule
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/app/autonomous/approvals"
+            className="inline-flex items-center gap-2 rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm font-medium text-[var(--text-primary)] hover:bg-[var(--surface-sunken)]"
+          >
+            Pending approvals
+            {pendingCount > 0 && (
+              <span className="inline-flex min-w-[20px] items-center justify-center rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[11px] font-semibold text-white">
+                {pendingCount}
+              </span>
+            )}
+          </Link>
+          <button
+            onClick={() => { setEditing(null); setModalOpen(true); }}
+            className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          >
+            New schedule
+          </button>
+        </div>
       </header>
 
       {error && (

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseServer } from "@/lib/supabase-server";
 import { randomUUID } from "node:crypto";
+import { computeNextRunAt } from "@/lib/schedule-next-run";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,11 @@ type Schedule = {
   nextRunAt: string;     // ISO
   createdAt: string;
   updatedAt: string;
+  // v2 fields (optional for back-compat)
+  timezone?: string;
+  timeOfDayLocal?: string;
+  weekdayMask?: number[];
+  requiresApproval?: boolean;
 };
 
 async function getSchedules(supabase: Awaited<ReturnType<typeof createSupabaseServer>>, userId: string): Promise<Schedule[]> {
@@ -38,6 +44,28 @@ async function putSchedules(
       { onConflict: "user_id" },
     );
   if (error) throw error;
+}
+
+function safeComputeNextRun(input: {
+  timezone?: string;
+  timeOfDayLocal?: string;
+  cadence: "daily" | "weekly" | "monthly";
+  weekdayMask?: number[];
+}): string {
+  try {
+    const iso = computeNextRunAt({
+      timezone: input.timezone ?? "UTC",
+      timeOfDayLocal: input.timeOfDayLocal ?? "09:00",
+      cadence: input.cadence,
+      weekdayMask: input.weekdayMask,
+    });
+    if (!iso || Number.isNaN(new Date(iso).getTime())) {
+      return new Date().toISOString();
+    }
+    return iso;
+  } catch {
+    return new Date().toISOString();
+  }
 }
 
 export async function GET(_req: NextRequest) {
@@ -79,21 +107,58 @@ export async function POST(req: NextRequest) {
   if (body.id) {
     const idx = current.findIndex((s) => s.id === body.id);
     if (idx < 0) return NextResponse.json({ error: "not_found" }, { status: 404 });
-    updated = { ...current[idx], ...(body as Partial<Schedule>), id: body.id, updatedAt: now };
+    const prev = current[idx];
+    const merged: Schedule = {
+      ...prev,
+      ...(body as Partial<Schedule>),
+      id: body.id,
+      updatedAt: now,
+    };
+    // Recompute nextRunAt if any of the scheduling inputs changed.
+    const schedulingChanged =
+      (body.cadence !== undefined && body.cadence !== prev.cadence) ||
+      (body.timezone !== undefined && body.timezone !== prev.timezone) ||
+      (body.timeOfDayLocal !== undefined && body.timeOfDayLocal !== prev.timeOfDayLocal) ||
+      (body.weekdayMask !== undefined);
+    if (schedulingChanged) {
+      merged.nextRunAt = safeComputeNextRun({
+        timezone: merged.timezone,
+        timeOfDayLocal: merged.timeOfDayLocal,
+        cadence: merged.cadence,
+        weekdayMask: merged.weekdayMask,
+      });
+    } else if (!merged.nextRunAt) {
+      merged.nextRunAt = safeComputeNextRun({
+        timezone: merged.timezone,
+        timeOfDayLocal: merged.timeOfDayLocal,
+        cadence: merged.cadence,
+        weekdayMask: merged.weekdayMask,
+      });
+    }
+    updated = merged;
     current[idx] = updated;
   } else {
+    const timezone = body.timezone ?? "UTC";
+    const timeOfDayLocal = body.timeOfDayLocal ?? "09:00";
+    const weekdayMask = body.weekdayMask;
+    const cadence = body.cadence!;
+    const computedNext = safeComputeNextRun({ timezone, timeOfDayLocal, cadence, weekdayMask });
     updated = {
       id: randomUUID(),
       name: body.name!,
-      cadence: body.cadence!,
+      cadence,
       niche: body.niche!,
       tone: body.tone,
       targetAudience: body.targetAudience,
       platforms: body.platforms ?? [],
       status: body.status ?? "active",
-      nextRunAt: body.nextRunAt ?? now,
+      nextRunAt: body.nextRunAt ?? computedNext,
       createdAt: now,
       updatedAt: now,
+      timezone,
+      timeOfDayLocal,
+      weekdayMask: weekdayMask ?? (cadence === "weekly" ? [1, 2, 3, 4, 5] : undefined),
+      requiresApproval: body.requiresApproval ?? false,
     };
     current.push(updated);
   }
