@@ -41,7 +41,7 @@ export default function AgentRunDetailPage({
     pending: "bg-[var(--surface-sunken)] text-[var(--text-tertiary)]",
     running: "bg-[var(--accent-light)] text-[var(--accent)]",
     succeeded: "bg-[var(--success-light)] text-[var(--success)]",
-    failed: "bg-[var(--danger-light)] text-[var(--danger)]",
+    failed: "bg-[var(--error-light)] text-[var(--error)]",
     cancelled: "bg-[var(--surface-sunken)] text-[var(--text-secondary)]",
   }[status ?? "pending"];
 
@@ -55,7 +55,7 @@ export default function AgentRunDetailPage({
         </Link>
       </nav>
 
-      <header className="mb-6 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] p-6">
+      <header className="mb-6 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-semibold text-[var(--text-primary)]">
@@ -110,7 +110,7 @@ export default function AgentRunDetailPage({
         </div>
 
         {cancelError && (
-          <div className="mt-3 rounded-lg border border-[var(--danger)] bg-[var(--danger-light)] px-3 py-2 text-xs text-[var(--danger)]">
+          <div className="mt-3 rounded-lg border border-[var(--error)] bg-[var(--error-light)] px-3 py-2 text-xs text-[var(--error)]">
             {cancelError}
           </div>
         )}
@@ -133,7 +133,7 @@ export default function AgentRunDetailPage({
       <AgentStream runId={id} onComplete={onComplete} />
 
       {run?.error && (
-        <div className="mt-4 rounded-lg border border-[var(--danger)] bg-[var(--danger-light)] px-4 py-3 text-sm text-[var(--danger)]">
+        <div className="mt-4 rounded-lg border border-[var(--error)] bg-[var(--error-light)] px-4 py-3 text-sm text-[var(--error)]">
           <p className="font-medium">Run failed</p>
           <p className="mt-1">{run.error}</p>
         </div>

@@ -26,10 +26,17 @@ async function getSchedules(supabase: Awaited<ReturnType<typeof createSupabaseSe
   return ((data as { autonomous_schedules?: Schedule[] } | null)?.autonomous_schedules) ?? [];
 }
 
-async function putSchedules(supabase: Awaited<ReturnType<typeof createSupabaseServer>>, userId: string, schedules: Schedule[]): Promise<void> {
-  const { error } = await supabase.from("user_settings")
-    .update({ autonomous_schedules: schedules, updated_at: new Date().toISOString() })
-    .eq("user_id", userId);
+async function putSchedules(
+  supabase: Awaited<ReturnType<typeof createSupabaseServer>>,
+  userId: string,
+  schedules: Schedule[],
+): Promise<void> {
+  const { error } = await supabase
+    .from("user_settings")
+    .upsert(
+      { user_id: userId, autonomous_schedules: schedules, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" },
+    );
   if (error) throw error;
 }
 

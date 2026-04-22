@@ -58,7 +58,7 @@ export function ScheduleModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div
-        className="w-full max-w-lg rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-6 shadow-xl"
+        className="w-full max-w-lg rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-semibold text-[var(--text-primary)]">
@@ -71,7 +71,7 @@ export function ScheduleModal({
               onChange={(e) => update("name", e.target.value)}
               required
               placeholder="e.g. SaaS growth weekly"
-              className="w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-sm"
+              className="w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-sm"
             />
           </Field>
           <Field label="Niche / topic seed" required>
@@ -79,7 +79,7 @@ export function ScheduleModal({
               value={form.niche}
               onChange={(e) => update("niche", e.target.value)}
               required
-              className="w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-sm"
+              className="w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-sm"
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
@@ -87,7 +87,7 @@ export function ScheduleModal({
               <select
                 value={form.cadence}
                 onChange={(e) => update("cadence", e.target.value as Schedule["cadence"])}
-                className="w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-sm"
+                className="w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-sm"
               >
                 <option value="daily">daily</option>
                 <option value="weekly">weekly</option>
@@ -98,7 +98,7 @@ export function ScheduleModal({
               <input
                 value={form.tone ?? ""}
                 onChange={(e) => update("tone", e.target.value)}
-                className="w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-sm"
+                className="w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-sm"
               />
             </Field>
           </div>
@@ -106,7 +106,7 @@ export function ScheduleModal({
             <input
               value={form.targetAudience ?? ""}
               onChange={(e) => update("targetAudience", e.target.value)}
-              className="w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-sm"
+              className="w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-sm"
             />
           </Field>
           <Field label="Platforms JSON (optional)">
@@ -117,12 +117,12 @@ export function ScheduleModal({
               }}
               rows={2}
               placeholder='[{"kind":"wordpress","id":"<blog-id>"}]'
-              className="w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 font-mono text-xs"
+              className="w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 font-mono text-xs"
             />
           </Field>
 
           {error && (
-            <div className="rounded border border-[var(--danger)] bg-[var(--danger-light)] px-3 py-2 text-xs text-[var(--danger)]">
+            <div className="rounded border border-[var(--error)] bg-[var(--error-light)] px-3 py-2 text-xs text-[var(--error)]">
               {error}
             </div>
           )}
@@ -164,7 +164,7 @@ function Field({
   return (
     <label className="block">
       <span className="block text-xs font-medium text-[var(--text-secondary)]">
-        {label}{required && <span className="text-[var(--danger)]"> *</span>}
+        {label}{required && <span className="text-[var(--error)]"> *</span>}
       </span>
       <span className="mt-1 block">{children}</span>
     </label>

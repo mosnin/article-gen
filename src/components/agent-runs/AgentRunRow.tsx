@@ -9,7 +9,7 @@ export function AgentRunRow({ run }: { run: AgentRun }) {
     pending: "bg-[var(--surface-sunken)] text-[var(--text-tertiary)]",
     running: "bg-[var(--accent-light)] text-[var(--accent)]",
     succeeded: "bg-[var(--success-light)] text-[var(--success)]",
-    failed: "bg-[var(--danger-light)] text-[var(--danger)]",
+    failed: "bg-[var(--error-light)] text-[var(--error)]",
     cancelled: "bg-[var(--surface-sunken)] text-[var(--text-secondary)]",
   }[run.status];
 

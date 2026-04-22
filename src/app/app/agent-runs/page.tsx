@@ -78,12 +78,12 @@ export default function AgentRunsPage() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-[var(--danger)] bg-[var(--danger-light)] px-4 py-3 text-sm text-[var(--danger)]">
+        <div className="mb-4 rounded-lg border border-[var(--error)] bg-[var(--error-light)] px-4 py-3 text-sm text-[var(--error)]">
           {error}
         </div>
       )}
 
-      <div className="overflow-hidden rounded-lg border border-[var(--border-subtle)]">
+      <div className="overflow-hidden rounded-lg border border-[var(--border-default)]">
         <table className="w-full text-sm">
           <thead className="bg-[var(--surface-sunken)] text-xs uppercase tracking-wider text-[var(--text-tertiary)]">
             <tr>
@@ -96,7 +96,7 @@ export default function AgentRunsPage() {
               <th className="px-4 py-2 text-left">Credits</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[var(--border-subtle)]">
+          <tbody className="divide-y divide-[var(--border-default)]">
             {isLoading && runs.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-12 text-center text-[var(--text-tertiary)]">
@@ -141,7 +141,7 @@ function Filter({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
-          "rounded border border-[var(--border-default)] bg-[var(--surface)] px-2 py-1 text-xs",
+          "rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-2 py-1 text-xs",
           "focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]",
         )}
       >

@@ -30,23 +30,23 @@ export function RecentAgentRuns({ className }: { className?: string }) {
     switch (s) {
       case "running": return "bg-[var(--accent-light)] text-[var(--accent)]";
       case "succeeded": return "bg-[var(--success-light)] text-[var(--success)]";
-      case "failed": return "bg-[var(--danger-light)] text-[var(--danger)]";
+      case "failed": return "bg-[var(--error-light)] text-[var(--error)]";
       case "cancelled": return "bg-[var(--surface-sunken)] text-[var(--text-secondary)]";
       default: return "bg-[var(--surface-sunken)] text-[var(--text-tertiary)]";
     }
   };
 
   return (
-    <section className={cn("rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)]", className)}>
-      <header className="flex items-center justify-between border-b border-[var(--border-subtle)] px-4 py-3">
+    <section className={cn("rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)]", className)}>
+      <header className="flex items-center justify-between border-b border-[var(--border-default)] px-4 py-3">
         <h2 className="text-sm font-semibold text-[var(--text-primary)]">Recent agent runs</h2>
         <Link href="/app/agent-runs" className="text-xs text-[var(--accent)] hover:underline">View all</Link>
       </header>
-      <div className="divide-y divide-[var(--border-subtle)]">
+      <div className="divide-y divide-[var(--border-default)]">
         {isLoading && runs.length === 0 ? (
           <p className="p-4 text-sm text-[var(--text-tertiary)]">Loading...</p>
         ) : error ? (
-          <p className="p-4 text-sm text-[var(--danger)]">{error}</p>
+          <p className="p-4 text-sm text-[var(--error)]">{error}</p>
         ) : runs.length === 0 ? (
           <p className="p-4 text-sm text-[var(--text-tertiary)]">
             No agent runs yet.{" "}

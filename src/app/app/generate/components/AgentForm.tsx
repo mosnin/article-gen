@@ -60,7 +60,7 @@ export function AgentForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface)] p-6">
+    <form onSubmit={onSubmit} className="space-y-4 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] p-6">
       <div>
         <label className="block text-sm font-medium text-[var(--text-secondary)]">Topic</label>
         <input
@@ -68,7 +68,7 @@ export function AgentForm() {
           onChange={(e) => setTopic(e.target.value)}
           required
           placeholder="e.g. How to price a SaaS product"
-          className="mt-1 w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+          className="mt-1 w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
         />
       </div>
       <div>
@@ -77,7 +77,7 @@ export function AgentForm() {
           value={focusKeyword}
           onChange={(e) => setFocusKeyword(e.target.value)}
           placeholder="e.g. saas pricing"
-          className="mt-1 w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+          className="mt-1 w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -86,7 +86,7 @@ export function AgentForm() {
           <select
             value={tone}
             onChange={(e) => setTone(e.target.value)}
-            className="mt-1 w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-sm"
+            className="mt-1 w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-sm"
           >
             {["professional", "conversational", "authoritative", "friendly", "technical"].map((t) => (
               <option key={t} value={t}>{t}</option>
@@ -98,7 +98,7 @@ export function AgentForm() {
           <select
             value={quality}
             onChange={(e) => setQuality(e.target.value as "standard" | "premium")}
-            className="mt-1 w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-sm"
+            className="mt-1 w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-sm"
           >
             <option value="standard">standard (1 credit)</option>
             <option value="premium">premium (3 credits)</option>
@@ -111,7 +111,7 @@ export function AgentForm() {
           value={targetAudience}
           onChange={(e) => setTargetAudience(e.target.value)}
           placeholder="e.g. indie founders"
-          className="mt-1 w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 text-sm"
+          className="mt-1 w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-sm"
         />
       </div>
       <div>
@@ -125,13 +125,13 @@ export function AgentForm() {
             onChange={(e) => setPlatformsJson(e.target.value)}
             rows={3}
             placeholder='[{"kind":"wordpress","id":"blog-uuid"}]'
-            className="mt-2 w-full rounded border border-[var(--border-default)] bg-[var(--surface)] px-3 py-2 font-mono text-xs"
+            className="mt-2 w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 font-mono text-xs"
           />
         )}
       </div>
 
       {error && (
-        <div className="rounded border border-[var(--danger)] bg-[var(--danger-light)] px-3 py-2 text-sm text-[var(--danger)]">
+        <div className="rounded border border-[var(--error)] bg-[var(--error-light)] px-3 py-2 text-sm text-[var(--error)]">
           {error}
         </div>
       )}

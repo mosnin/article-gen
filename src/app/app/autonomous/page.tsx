@@ -93,12 +93,12 @@ export default function AutonomousPage() {
       </header>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-[var(--danger)] bg-[var(--danger-light)] px-4 py-3 text-sm text-[var(--danger)]">
+        <div className="mb-4 rounded-lg border border-[var(--error)] bg-[var(--error-light)] px-4 py-3 text-sm text-[var(--error)]">
           {error}
         </div>
       )}
 
-      <div className="rounded-lg border border-[var(--border-subtle)]">
+      <div className="rounded-lg border border-[var(--border-default)]">
         {isLoading ? (
           <div className="p-12 text-center text-sm text-[var(--text-tertiary)]">Loading...</div>
         ) : schedules.length === 0 ? (
@@ -106,7 +106,7 @@ export default function AutonomousPage() {
             No schedules yet. Create one to start autonomous agent runs.
           </div>
         ) : (
-          <ul className="divide-y divide-[var(--border-subtle)]">
+          <ul className="divide-y divide-[var(--border-default)]">
             {schedules.map((s) => (
               <li key={s.id} className="flex items-center justify-between px-4 py-3">
                 <div className="min-w-0 flex-1">
@@ -152,7 +152,7 @@ export default function AutonomousPage() {
                   </button>
                   <button
                     onClick={() => void onDelete(s.id)}
-                    className="rounded border border-[var(--danger)] px-3 py-1 text-xs text-[var(--danger)] hover:bg-[var(--danger-light)]"
+                    className="rounded border border-[var(--error)] px-3 py-1 text-xs text-[var(--error)] hover:bg-[var(--error-light)]"
                   >
                     Delete
                   </button>

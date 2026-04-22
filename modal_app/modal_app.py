@@ -47,7 +47,6 @@ except Exception:
         "pydantic>=2.8,<3",
         "tenacity>=9,<10",
         "exa-py>=1.3,<2",
-        "upstash-vector>=0.6,<1",
         "python-dotenv>=1.0,<2",
         "fastapi>=0.110",
     )
