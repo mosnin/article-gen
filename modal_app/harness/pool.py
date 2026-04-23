@@ -69,6 +69,45 @@ class SubAgentPool:
         finally:
             self._active.pop(corr_id, None)
 
+    async def invoke_full(
+        self,
+        agent: Agent,
+        brief: str,
+        *,
+        session: Session | None = None,
+        name: str | None = None,
+    ) -> tuple[Any, list[Any]]:
+        """Same as invoke() but also returns result.raw_responses for cost aggregation."""
+        corr_id = f"{name or agent.name}:{uuid.uuid4().hex[:8]}"
+
+        async def _run() -> tuple[Any, list[Any]]:
+            async with self._sem:
+                await progress.emit(
+                    self.run_id, "agent_started", agent_name=agent.name, message=corr_id
+                )
+                try:
+                    result = await Runner.run(agent, brief, session=session)
+                    await progress.emit(
+                        self.run_id, "agent_ended", agent_name=agent.name, message=corr_id
+                    )
+                    raw = getattr(result, "raw_responses", None) or []
+                    return result.final_output, list(raw)
+                except Exception as e:
+                    await progress.emit(
+                        self.run_id,
+                        "agent_ended",
+                        agent_name=agent.name,
+                        message=f"{corr_id} error: {e!s}",
+                    )
+                    raise
+
+        task = asyncio.create_task(_run())
+        self._active[corr_id] = task
+        try:
+            return await task
+        finally:
+            self._active.pop(corr_id, None)
+
     async def invoke_many(
         self,
         calls: list[tuple[Agent, str, Session | None]],
