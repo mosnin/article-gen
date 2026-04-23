@@ -23,7 +23,17 @@ class TriggerPayload(BaseModel):
 
     runId: str
     userId: str
-    kind: Literal["article", "autopilot", "cluster", "research_only"] = "article"
+    kind: Literal[
+        "article",
+        "autopilot",
+        "cluster",
+        "research_only",
+        "refresh",
+        "audit",
+        "cluster_plan",
+        "social_snippet",
+        "keyword_harvest",
+    ] = "article"
     topic: str
     focusKeyword: str | None = None
     tone: str | None = None
@@ -33,6 +43,12 @@ class TriggerPayload(BaseModel):
     webhookUrl: str | None = None
     internalApiBase: str | None = None
     autopilotSlotId: str | None = None
+    articleId: str | None = None
+    articleIds: list[str] = Field(default_factory=list)
+    clusterId: str | None = None
+    clusterPillarTopic: str | None = None
+    socialPlatforms: list[str] = Field(default_factory=list)
+    gscSiteUrl: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -53,6 +69,37 @@ class Outline(BaseModel):
 
     title: str
     sections: list[OutlineSection]
+
+
+# ---------------------------------------------------------------------------
+# Cluster plan
+# ---------------------------------------------------------------------------
+
+
+class ClusterPlanSubtopic(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    title: str
+    keyword: str
+    intent: Literal[
+        "informational",
+        "commercial",
+        "transactional",
+        "navigational",
+    ] = "informational"
+    relationToPillar: str = ""
+    estimatedWordCount: int = 1500
+
+
+class ClusterPlan(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    clusterId: str | None = None
+    pillarTopic: str
+    pillarKeyword: str
+    pillarOutline: Outline | None = None
+    subtopics: list[ClusterPlanSubtopic] = Field(default_factory=list)
+    rationale: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -92,6 +139,38 @@ class NicheResearch(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Refresh
+# ---------------------------------------------------------------------------
+
+
+class RefreshBrief(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    articleId: str
+    priorTitle: str
+    priorMarkdown: str
+    priorKeywords: list[str] = Field(default_factory=list)
+    focusKeyword: str
+    serp: "SerpAnalysis | None" = None
+    gapsVsSerp: list[str] = Field(default_factory=list)
+    refreshReason: str = "scheduled"
+
+
+class RefreshResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    articleId: str
+    newArticleMarkdown: str
+    titleChanged: bool = False
+    newTitle: str | None = None
+    newMetaDescription: str | None = None
+    sectionsAdded: list[str] = Field(default_factory=list)
+    sectionsUpdated: list[str] = Field(default_factory=list)
+    sectionsRemoved: list[str] = Field(default_factory=list)
+    summary: str = ""
+
+
+# ---------------------------------------------------------------------------
 # Dedup / uniqueness
 # ---------------------------------------------------------------------------
 
@@ -104,6 +183,34 @@ class SimilarArticle(BaseModel):
     keyword: str
     score: float
     createdAt: str
+
+
+# ---------------------------------------------------------------------------
+# Keyword candidates
+# ---------------------------------------------------------------------------
+
+
+class KeywordCandidate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    keyword: str
+    source: Literal["gsc_queries", "serp_gap", "competitor", "manual"]
+    intent: Literal[
+        "informational",
+        "commercial",
+        "transactional",
+        "navigational",
+    ] | None = None
+    estimatedVolume: int | None = None
+    clusterHint: str | None = None
+    metadata: dict = Field(default_factory=dict)
+
+
+class KeywordCandidateSet(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    candidates: list[KeywordCandidate] = Field(default_factory=list)
+    rationale: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -239,6 +346,38 @@ class QualityScore(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Audit
+# ---------------------------------------------------------------------------
+
+
+class AuditRecommendation(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    kind: Literal[
+        "refresh",
+        "rewrite",
+        "add_schema",
+        "fix_internal_links",
+        "improve_alt_text",
+        "merge_cannibal",
+        "archive",
+    ]
+    reason: str
+    priority: Literal["low", "medium", "high"] = "medium"
+    details: dict = Field(default_factory=dict)
+
+
+class AuditReport(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    articleId: str
+    overallScore: float
+    gscSnapshot: dict = Field(default_factory=dict)
+    recommendations: list[AuditRecommendation] = Field(default_factory=list)
+    summary: str = ""
+
+
+# ---------------------------------------------------------------------------
 # Final article
 # ---------------------------------------------------------------------------
 
@@ -254,6 +393,34 @@ class FinalArticle(BaseModel):
     images: list[GeneratedImage] = Field(default_factory=list)
     schemaJson: str | None = None
     qa: QualityScore | None = None
+
+
+# ---------------------------------------------------------------------------
+# Social snippets
+# ---------------------------------------------------------------------------
+
+
+class SocialSnippet(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    platform: Literal[
+        "twitter",
+        "linkedin",
+        "instagram",
+        "facebook",
+        "newsletter",
+    ]
+    variant: str = "default"
+    body: str
+    hashtags: list[str] = Field(default_factory=list)
+    imageUrl: str | None = None
+
+
+class SocialSnippetSet(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    articleId: str
+    snippets: list[SocialSnippet] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -324,3 +491,7 @@ class WebhookEvent(BaseModel):
     durationMs: int | None = None
     statusUpdate: StatusUpdate | None = None
     at: str
+
+
+# Resolve forward references (RefreshBrief.serp -> SerpAnalysis).
+RefreshBrief.model_rebuild()
