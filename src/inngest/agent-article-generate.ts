@@ -52,7 +52,12 @@ export const agentArticleGenerate = inngest.createFunction(
             | "article"
             | "autopilot"
             | "cluster"
-            | "research_only",
+            | "research_only"
+            | "refresh"
+            | "audit"
+            | "cluster_plan"
+            | "social_snippet"
+            | "keyword_harvest",
           topic: input.topic,
           focusKeyword: input.focusKeyword,
           tone: input.tone,
@@ -60,6 +65,12 @@ export const agentArticleGenerate = inngest.createFunction(
           quality: input.quality ?? "standard",
           options: input.options ?? {},
           autopilotSlotId: input.autopilotSlotId,
+          articleId: input.articleId,
+          articleIds: input.articleIds,
+          clusterId: input.clusterId,
+          clusterPillarTopic: input.clusterPillarTopic,
+          socialPlatforms: input.socialPlatforms,
+          gscSiteUrl: input.gscSiteUrl,
         });
       });
 
