@@ -36,7 +36,16 @@ export type Events = {
     data: {
       runId?: string;
       userId: string;
-      kind?: "article" | "autopilot" | "cluster" | "research_only";
+      kind?:
+        | "article"
+        | "autopilot"
+        | "cluster"
+        | "research_only"
+        | "refresh"
+        | "audit"
+        | "cluster_plan"
+        | "social_snippet"
+        | "keyword_harvest";
       topic: string;
       focusKeyword?: string;
       tone?: string;
@@ -44,6 +53,12 @@ export type Events = {
       quality?: "standard" | "premium";
       options?: Record<string, unknown>;
       autopilotSlotId?: string;
+      articleId?: string;
+      articleIds?: string[];
+      clusterId?: string;
+      clusterPillarTopic?: string;
+      socialPlatforms?: string[];
+      gscSiteUrl?: string;
     };
   };
 };

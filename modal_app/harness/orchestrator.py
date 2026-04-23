@@ -261,15 +261,48 @@ async def run(payload_dict: dict) -> dict:
     payload = TriggerPayload.model_validate(payload_dict)
     from modal_app.harness.tools.http import set_run_id
     set_run_id(payload.runId)
+
     run_session = RunSession(run_id=payload.runId, user_id=payload.userId)
     pool = SubAgentPool(run_id=payload.runId)
     ctx = _RunCtx(payload=payload, run_session=run_session, pool=pool)
 
+    k = payload.kind
+    if k in ("article", "autopilot", "cluster"):
+        return await _run_article_pipeline(ctx)
+    if k == "research_only":
+        return await _run_single_subagent(
+            ctx, "research", _compose_research_brief(payload)
+        )
+    if k == "refresh":
+        return await _run_single_subagent(
+            ctx, "refresh", _compose_refresh_brief(payload)
+        )
+    if k == "audit":
+        return await _run_single_subagent(
+            ctx, "audit", _compose_audit_brief(payload)
+        )
+    if k == "cluster_plan":
+        return await _run_single_subagent(
+            ctx, "cluster_strategist", _compose_cluster_plan_brief(payload)
+        )
+    if k == "social_snippet":
+        return await _run_single_subagent(
+            ctx, "social_snippet", _compose_social_snippet_brief(payload)
+        )
+    if k == "keyword_harvest":
+        return await _run_single_subagent(
+            ctx, "keyword_harvester", _compose_keyword_harvest_brief(payload)
+        )
+    raise ValueError(f"unknown payload kind: {k!r}")
+
+
+async def _run_article_pipeline(ctx: _RunCtx) -> dict:
+    payload = ctx.payload
     orchestrator = build_orchestrator(ctx)
 
     brief = _compose_initial_brief(payload)
     result = await Runner.run(
-        orchestrator, brief, session=run_session.orchestrator_session
+        orchestrator, brief, session=ctx.session.orchestrator_session
     )
 
     final = result.final_output
@@ -287,6 +320,23 @@ async def run(payload_dict: dict) -> dict:
     # Attach raw responses so the Modal entrypoint can aggregate token usage
     # for cost telemetry. Popped off before the dict reaches the webhook.
     out_dict["_rawResponses"] = getattr(result, "raw_responses", []) or []
+    return out_dict
+
+
+async def _run_single_subagent(ctx: _RunCtx, subagent_name: str, brief: str) -> dict:
+    agent = _lazy_subagent(subagent_name)
+    session = ctx.session.build_subagent_session()
+    final_output, raw_responses = await ctx.pool.invoke_full(
+        agent, brief, session=session, name=subagent_name
+    )
+    if hasattr(final_output, "model_dump"):
+        out_dict = final_output.model_dump()
+    elif isinstance(final_output, dict):
+        out_dict = final_output
+    else:
+        out_dict = {"raw": str(final_output)}
+    out_dict["_rawResponses"] = raw_responses
+    out_dict.setdefault("kind", ctx.payload.kind)
     return out_dict
 
 
@@ -308,4 +358,68 @@ def _compose_initial_brief(payload: TriggerPayload) -> str:
         f"- platforms: {json.dumps(platforms)}\n\n"
         f"Follow the workflow in your instructions. Call check_past_work FIRST.\n"
         f"Return a FinalArticle JSON shape as your final_output."
+    )
+
+
+def _compose_refresh_brief(p: TriggerPayload) -> str:
+    return (
+        "Refresh an existing article.\n\n"
+        f"- articleId: {p.articleId}\n"
+        f"- focusKeyword: {p.focusKeyword or ''}\n"
+        f"- reason: scheduled refresh\n\n"
+        "Use your tools to fetch the prior article body and the current SERP. "
+        "Identify what to update: new sections, updated stats or dates, meta "
+        "description, images if truly stale. Return a RefreshResult JSON. "
+        "Preserve the original article's strengths and voice."
+    )
+
+
+def _compose_audit_brief(p: TriggerPayload) -> str:
+    ids = p.articleIds or ([p.articleId] if p.articleId else [])
+    return (
+        f"Audit {len(ids)} article(s): {ids}.\n"
+        "For each, pull GSC performance, current SERP, and existing schema. "
+        "Produce an AuditReport with recommendations ranked by priority. "
+        "Return an array of AuditReport JSON, or a single AuditReport if one article."
+    )
+
+
+def _compose_cluster_plan_brief(p: TriggerPayload) -> str:
+    return (
+        "Plan a topic cluster.\n\n"
+        f"- pillarTopic: {p.clusterPillarTopic or p.topic}\n"
+        f"- pillarKeyword: {p.focusKeyword or p.topic}\n"
+        f"- tone: {p.tone or 'professional'}\n"
+        f"- clusterId (if updating existing): {p.clusterId}\n\n"
+        "Use SERP + niche research to derive 10-20 cluster subtopics that together "
+        "cover the topic authoritatively. Return a ClusterPlan JSON."
+    )
+
+
+def _compose_social_snippet_brief(p: TriggerPayload) -> str:
+    platforms = p.socialPlatforms or ["twitter", "linkedin"]
+    return (
+        f"Produce social repurposing snippets for article {p.articleId}.\n"
+        f"Platforms: {platforms}.\n"
+        "For each platform produce 1-3 variants sized appropriately "
+        "(tweet threads, LinkedIn posts, IG captions, etc.). Return a "
+        "SocialSnippetSet JSON."
+    )
+
+
+def _compose_keyword_harvest_brief(p: TriggerPayload) -> str:
+    return (
+        "Harvest keyword candidates for this user's niche.\n"
+        f"- niche: {p.topic}\n"
+        f"- existing focus keyword hint: {p.focusKeyword or ''}\n"
+        f"- gscSiteUrl (for GSC-based harvest): {p.gscSiteUrl or ''}\n\n"
+        "Pull 20-50 candidates from GSC queries + SERP gap analysis + competitor "
+        "signals. Return a KeywordCandidateSet JSON."
+    )
+
+
+def _compose_research_brief(p: TriggerPayload) -> str:
+    return (
+        f"Research the topic '{p.topic}' (focusKeyword '{p.focusKeyword or p.topic}'). "
+        "Return only the research output. Do not produce an outline or article body."
     )
