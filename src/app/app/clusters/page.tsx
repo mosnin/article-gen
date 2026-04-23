@@ -4,7 +4,20 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-browser";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, formatDistanceToNow } from "date-fns";
+
+interface StrategyPlanSubtopic {
+  title?: string;
+  keyword?: string;
+  intent?: string;
+  relationToPillar?: string;
+  estimatedWordCount?: number;
+}
+
+interface StrategyPlan {
+  subtopics?: StrategyPlanSubtopic[];
+  [key: string]: unknown;
+}
 
 interface Cluster {
   id: string;
@@ -14,6 +27,8 @@ interface Cluster {
   pillar_article_id: string | null;
   existing_pillar_url: string | null;
   created_at: string;
+  last_planned_at: string | null;
+  strategy_plan: StrategyPlan | null;
   article_count: number;
 }
 
@@ -98,6 +113,60 @@ export default function ClustersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
+  // "Plan with Agent" inline form state
+  const [planOpen, setPlanOpen] = useState(false);
+  const [planTopic, setPlanTopic] = useState("");
+  const [planKeyword, setPlanKeyword] = useState("");
+  const [planTone, setPlanTone] = useState("");
+  const [planSubmitting, setPlanSubmitting] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
+
+  async function submitPlan(e: React.FormEvent) {
+    e.preventDefault();
+    const pillarTopic = planTopic.trim();
+    const pillarKeyword = planKeyword.trim();
+    if (!pillarTopic || !pillarKeyword) {
+      setPlanError("Pillar topic and pillar keyword are required.");
+      return;
+    }
+    setPlanSubmitting(true);
+    setPlanError(null);
+    try {
+      const body: {
+        kind: "cluster_plan";
+        topic: string;
+        focusKeyword: string;
+        clusterPillarTopic: string;
+        tone?: string;
+        quality: "standard";
+      } = {
+        kind: "cluster_plan",
+        topic: pillarTopic,
+        focusKeyword: pillarKeyword,
+        clusterPillarTopic: pillarTopic,
+        quality: "standard",
+      };
+      const tone = planTone.trim();
+      if (tone) body.tone = tone;
+
+      const resp = await fetch("/api/agent/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data: { runId?: string; error?: string } = await resp.json();
+      if (!resp.ok || !data.runId) {
+        setPlanError(data.error || `request failed (${resp.status})`);
+        return;
+      }
+      router.push(`/app/agent-runs/${data.runId}`);
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPlanSubmitting(false);
+    }
+  }
+
   useEffect(() => {
     const load = async () => {
       const {
@@ -112,7 +181,7 @@ export default function ClustersPage() {
       const { data: clusterRows } = await supabase
         .from("clusters")
         .select(
-          "id, pillar_topic, pillar_keyword, quality, pillar_article_id, existing_pillar_url, created_at"
+          "id, pillar_topic, pillar_keyword, quality, pillar_article_id, existing_pillar_url, created_at, last_planned_at, strategy_plan"
         )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
@@ -145,6 +214,11 @@ export default function ClustersPage() {
       setClusters(
         clusterRows.map((c) => ({
           ...c,
+          last_planned_at: (c as { last_planned_at?: string | null })
+            .last_planned_at ?? null,
+          strategy_plan:
+            ((c as { strategy_plan?: StrategyPlan | null }).strategy_plan) ??
+            null,
           article_count: countMap[c.id] ?? 0,
         }))
       );
@@ -173,13 +247,96 @@ export default function ClustersPage() {
             {clusters.length} cluster{clusters.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Link
-          href="/app/generate"
-          className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-        >
-          + New Cluster
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPlanOpen((v) => !v)}
+            aria-expanded={planOpen}
+            className="rounded-lg border border-[var(--accent)]/40 bg-[var(--surface-base)] px-4 py-2 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--accent-light)] transition-colors"
+          >
+            Plan with Agent
+          </button>
+          <Link
+            href="/app/generate"
+            className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+          >
+            + New Cluster
+          </Link>
+        </div>
       </div>
+
+      {/* Plan with Agent inline form */}
+      {planOpen && (
+        <form
+          onSubmit={submitPlan}
+          className="space-y-3 rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)] p-4"
+        >
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-[var(--text-primary)]">
+              Plan a new cluster with the strategist agent
+            </p>
+            <button
+              type="button"
+              onClick={() => setPlanOpen(false)}
+              className="text-xs text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+              aria-label="Close planner"
+            >
+              Close
+            </button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)]">
+                Pillar topic
+              </label>
+              <input
+                value={planTopic}
+                onChange={(e) => setPlanTopic(e.target.value)}
+                required
+                placeholder="e.g. Headless commerce"
+                className="mt-1 w-full rounded border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)]">
+                Pillar keyword
+              </label>
+              <input
+                value={planKeyword}
+                onChange={(e) => setPlanKeyword(e.target.value)}
+                required
+                placeholder="e.g. headless ecommerce platform"
+                className="mt-1 w-full rounded border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[var(--text-secondary)]">
+              Tone (optional)
+            </label>
+            <input
+              value={planTone}
+              onChange={(e) => setPlanTone(e.target.value)}
+              placeholder="e.g. authoritative"
+              className="mt-1 w-full rounded border border-[var(--border-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40"
+            />
+          </div>
+          {planError && (
+            <p className="text-xs text-[var(--error)]">{planError}</p>
+          )}
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="submit"
+              disabled={
+                planSubmitting || !planTopic.trim() || !planKeyword.trim()
+              }
+              className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {planSubmitting ? "Dispatching..." : "Plan cluster"}
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* Search */}
       <div className="relative">
@@ -284,6 +441,17 @@ export default function ClustersPage() {
                     {cluster.article_count === 1 ? "article" : "articles"}
                   </span>
 
+                  {/* Subtopic count badge */}
+                  {cluster.strategy_plan?.subtopics &&
+                    cluster.strategy_plan.subtopics.length > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-light)] border border-[var(--accent)]/20 px-2.5 py-0.5 text-xs font-medium text-[var(--accent)]">
+                        {cluster.strategy_plan.subtopics.length} subtopic
+                        {cluster.strategy_plan.subtopics.length === 1
+                          ? ""
+                          : "s"}
+                      </span>
+                    )}
+
                   {/* Date pill */}
                   <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-sunken)] border border-[var(--border-default)] px-2.5 py-0.5 text-xs text-[var(--text-tertiary)]">
                     <svg
@@ -299,6 +467,22 @@ export default function ClustersPage() {
                     </svg>
                     {format(parseISO(cluster.created_at), "MMM d, yyyy")}
                   </span>
+
+                  {/* Last planned pill */}
+                  {cluster.last_planned_at && (
+                    <span
+                      title={format(
+                        parseISO(cluster.last_planned_at),
+                        "PPpp"
+                      )}
+                      className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-sunken)] border border-[var(--border-default)] px-2.5 py-0.5 text-xs text-[var(--text-tertiary)]"
+                    >
+                      Last planned{" "}
+                      {formatDistanceToNow(parseISO(cluster.last_planned_at), {
+                        addSuffix: true,
+                      })}
+                    </span>
+                  )}
 
                   {/* Action link — pushed to right */}
                   <Link

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import { PageHeader } from "@/components/layout/page-header";
@@ -14,13 +14,7 @@ interface Article {
   title: string;
   topic: string;
   content: string | null;
-}
-
-interface SocialResult {
-  twitter: { thread: string[]; singleTweet: string };
-  linkedin: { post: string };
-  instagram: { caption: string; hashtags: string[] };
-  facebook: { post: string };
+  focus_keyword: string | null;
 }
 
 interface NewsletterResult {
@@ -31,7 +25,22 @@ interface NewsletterResult {
 }
 
 type Tab = "social" | "newsletter";
-type SocialPlatform = "twitter" | "linkedin" | "instagram";
+type SocialPlatform =
+  | "twitter"
+  | "linkedin"
+  | "instagram"
+  | "facebook"
+  | "newsletter";
+
+interface StoredSnippet {
+  id: string;
+  platform: SocialPlatform;
+  variant: string;
+  body: string;
+  hashtags: string[];
+  image_url: string | null;
+  created_at: string;
+}
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -102,13 +111,17 @@ function OutputBlock({ label, text }: { label: string; text: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Social Media Tab
+// Social Media Tab - delegates to the agentic /api/agent/generate pipeline
 // ---------------------------------------------------------------------------
 
-const SOCIAL_PLATFORMS: { key: SocialPlatform; label: string; icon: React.ReactNode }[] = [
+const SOCIAL_PLATFORMS: {
+  key: SocialPlatform;
+  label: string;
+  icon: React.ReactNode;
+}[] = [
   {
     key: "twitter",
-    label: "Twitter / X Thread",
+    label: "Twitter / X",
     icon: (
       <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
         <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
@@ -117,7 +130,7 @@ const SOCIAL_PLATFORMS: { key: SocialPlatform; label: string; icon: React.ReactN
   },
   {
     key: "linkedin",
-    label: "LinkedIn Post",
+    label: "LinkedIn",
     icon: (
       <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
         <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
@@ -126,154 +139,248 @@ const SOCIAL_PLATFORMS: { key: SocialPlatform; label: string; icon: React.ReactN
   },
   {
     key: "instagram",
-    label: "Instagram Caption",
+    label: "Instagram",
     icon: (
       <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
         <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
       </svg>
     ),
   },
+  {
+    key: "facebook",
+    label: "Facebook",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+      </svg>
+    ),
+  },
 ];
 
-function SocialTab({ articleId, articleContent }: { articleId: string; articleContent: string | null }) {
-  const [generating, setGenerating] = useState(false);
-  const [result, setResult] = useState<SocialResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [activePlatform, setActivePlatform] = useState<SocialPlatform>("twitter");
+const PLATFORM_LABELS: Record<SocialPlatform, string> = {
+  twitter: "Twitter / X",
+  linkedin: "LinkedIn",
+  instagram: "Instagram",
+  facebook: "Facebook",
+  newsletter: "Newsletter",
+};
 
-  const generate = async (platform: SocialPlatform) => {
-    setActivePlatform(platform);
-    setGenerating(true);
+function SocialTab({ article }: { article: Article }) {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [selectedPlatforms, setSelectedPlatforms] = useState<SocialPlatform[]>([
+    "twitter",
+    "linkedin",
+  ]);
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [snippets, setSnippets] = useState<StoredSnippet[]>([]);
+  const [loadingSnippets, setLoadingSnippets] = useState(true);
+
+  const togglePlatform = (p: SocialPlatform) => {
+    setSelectedPlatforms((prev) =>
+      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p],
+    );
+  };
+
+  const loadSnippets = useCallback(async () => {
+    setLoadingSnippets(true);
+    const { data } = await supabase
+      .from("social_snippets")
+      .select("id, platform, variant, body, hashtags, image_url, created_at")
+      .eq("article_id", article.id)
+      .order("created_at", { ascending: false });
+    const rows = (data ?? []) as StoredSnippet[];
+    setSnippets(rows);
+    setLoadingSnippets(false);
+  }, [article.id, supabase]);
+
+  useEffect(() => {
+    void loadSnippets();
+  }, [loadSnippets]);
+
+  const startGeneration = async () => {
+    if (selectedPlatforms.length === 0) {
+      setError("Select at least one platform.");
+      return;
+    }
+    setStarting(true);
     setError(null);
-    setResult(null);
 
     try {
-      const res = await fetch("/api/repurpose/social", {
+      const res = await fetch("/api/agent/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ articleId, platform }),
+        body: JSON.stringify({
+          kind: "social_snippet",
+          topic: article.title,
+          focusKeyword: article.focus_keyword ?? "",
+          articleId: article.id,
+          socialPlatforms: selectedPlatforms,
+          quality: "standard",
+        }),
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? `Request failed (${res.status})`);
       }
 
-      const data: SocialResult = await res.json();
-      setResult(data);
+      const data = (await res.json()) as { runId?: string };
+      if (!data.runId) {
+        throw new Error("Run did not return a runId.");
+      }
+
+      router.push(`/app/agent-runs/${data.runId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setGenerating(false);
+      setStarting(false);
     }
   };
 
-  // suppress unused warning — articleContent kept for future use
-  void articleContent;
+  // Group snippets by platform for the sidebar strip.
+  const grouped: Record<SocialPlatform, StoredSnippet[]> = {
+    twitter: [],
+    linkedin: [],
+    instagram: [],
+    facebook: [],
+    newsletter: [],
+  };
+  for (const s of snippets) grouped[s.platform]?.push(s);
 
   return (
-    <div className="space-y-6">
-      {/* Platform buttons */}
-      <div>
-        <p className="text-sm text-[var(--text-secondary)] mb-3">
-          Choose a platform to generate optimised content from your article.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {SOCIAL_PLATFORMS.map(({ key, label, icon }) => (
-            <button
-              key={key}
-              onClick={() => generate(key)}
-              disabled={generating}
-              className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                generating && activePlatform === key
-                  ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]"
-                  : "border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-light)]"
-              }`}
-            >
-              {generating && activePlatform === key ? (
+    <div className="grid gap-6 lg:grid-cols-[1fr,320px]">
+      {/* Left: start a new generation run */}
+      <div className="space-y-6">
+        <div>
+          <p className="text-sm text-[var(--text-secondary)] mb-3">
+            Pick the platforms you want snippets for. The SocialSnippetAgent
+            runs in the background; you will be redirected to the live run
+            stream.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {SOCIAL_PLATFORMS.map(({ key, label, icon }) => {
+              const active = selectedPlatforms.includes(key);
+              return (
+                <button
+                  key={key}
+                  onClick={() => togglePlatform(key)}
+                  disabled={starting}
+                  className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    active
+                      ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]"
+                      : "border-[var(--border-default)] bg-[var(--surface-base)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-light)]"
+                  }`}
+                >
+                  {icon}
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <button
+            onClick={startGeneration}
+            disabled={starting || selectedPlatforms.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {starting ? (
+              <>
                 <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-              ) : (
-                icon
-              )}
-              {label}
-            </button>
-          ))}
+                Starting run...
+              </>
+            ) : (
+              <>Generate snippets</>
+            )}
+          </button>
         </div>
+
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+      {/* Right: sidebar strip of previously-saved snippets */}
+      <aside className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+            Saved snippets
+          </h3>
+          <button
+            onClick={() => void loadSnippets()}
+            className="text-xs font-medium text-[var(--accent)] hover:underline"
+          >
+            Refresh
+          </button>
         </div>
-      )}
 
-      {/* Results */}
-      {result && !generating && (
-        <div className="space-y-5 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] p-5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-              {SOCIAL_PLATFORMS.find(p => p.key === activePlatform)?.label} — Generated Output
-            </h3>
-            <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-700">
-              Ready
-            </span>
-          </div>
-
-          {activePlatform === "twitter" && (
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">Single Tweet</span>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-mono ${result.twitter.singleTweet.length > 280 ? "text-red-500" : "text-[var(--text-tertiary)]"}`}>
-                      {result.twitter.singleTweet.length}/280
+        {loadingSnippets ? (
+          <div className="h-24 w-full animate-pulse rounded-lg bg-[var(--surface-sunken)]" />
+        ) : snippets.length === 0 ? (
+          <p className="text-xs text-[var(--text-tertiary)]">
+            No snippets yet. Generate some with the button on the left.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {(Object.keys(grouped) as SocialPlatform[]).map((p) => {
+              const list = grouped[p];
+              if (list.length === 0) return null;
+              return (
+                <div key={p} className="rounded-lg border border-[var(--border-default)] bg-[var(--surface-base)] p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      {PLATFORM_LABELS[p]}
                     </span>
-                    <CopyButton text={result.twitter.singleTweet} />
+                    <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
+                      {list.length}
+                    </span>
                   </div>
+                  <ul className="space-y-2">
+                    {list.map((s) => (
+                      <li
+                        key={s.id}
+                        className="rounded-md border border-[var(--border-default)] bg-[var(--surface-sunken)] p-2"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-mono uppercase text-[var(--text-tertiary)]">
+                            {s.variant}
+                          </span>
+                          <CopyButton text={s.body} label="Copy" />
+                        </div>
+                        <p className="text-xs text-[var(--text-primary)] whitespace-pre-wrap line-clamp-5">
+                          {s.body}
+                        </p>
+                        {s.hashtags.length > 0 && (
+                          <p className="mt-1 text-[10px] text-[var(--text-tertiary)]">
+                            {s.hashtags
+                              .map((h) => (h.startsWith("#") ? h : `#${h}`))
+                              .join(" ")}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <textarea
-                  readOnly
-                  value={result.twitter.singleTweet}
-                  rows={4}
-                  className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--surface-sunken)] px-3 py-2.5 text-sm text-[var(--text-primary)] font-mono resize-y focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-                />
-              </div>
-              {result.twitter.thread.length > 0 && (
-                <OutputBlock
-                  label={`Thread (${result.twitter.thread.length} tweets)`}
-                  text={result.twitter.thread.map((t, i) => `${i + 1}/ ${t}`).join("\n\n")}
-                />
-              )}
-            </div>
-          )}
-
-          {activePlatform === "linkedin" && (
-            <OutputBlock label="LinkedIn Post" text={result.linkedin.post} />
-          )}
-
-          {activePlatform === "instagram" && (
-            <div className="space-y-4">
-              <OutputBlock label="Caption" text={result.instagram.caption} />
-              {result.instagram.hashtags.length > 0 && (
-                <OutputBlock
-                  label="Hashtags"
-                  text={result.instagram.hashtags.map(h => (h.startsWith("#") ? h : `#${h}`)).join(" ")}
-                />
-              )}
-            </div>
-          )}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </aside>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Newsletter Tab
+// Newsletter Tab - unchanged, still uses /api/repurpose/newsletter
 // ---------------------------------------------------------------------------
 
 function NewsletterTab({ articleId }: { articleId: string }) {
@@ -298,7 +405,7 @@ function NewsletterTab({ articleId }: { articleId: string }) {
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? `Request failed (${res.status})`);
       }
 
@@ -370,7 +477,7 @@ function NewsletterTab({ articleId }: { articleId: string }) {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              Generating…
+              Generating...
             </>
           ) : (
             <>
@@ -395,7 +502,7 @@ function NewsletterTab({ articleId }: { articleId: string }) {
       {result && !generating && (
         <div className="space-y-5 rounded-xl border border-[var(--border-default)] bg-[var(--surface-raised)] p-5">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Newsletter — Generated Output</h3>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Newsletter - Generated Output</h3>
             <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-700">
               Ready
             </span>
@@ -463,16 +570,16 @@ export default function RepurposePage() {
 
       const { data } = await supabase
         .from("articles")
-        .select("id, title, topic, content")
+        .select("id, title, topic, content, focus_keyword")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      const items = data ?? [];
+      const items = (data ?? []) as Article[];
       setArticles(items);
       if (items.length > 0) setSelectedId(items[0].id);
       setLoadingArticles(false);
     };
-    load();
+    void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -541,14 +648,10 @@ export default function RepurposePage() {
             ))}
           </div>
 
-          {/* Tab content — keyed by articleId so state resets on article change */}
+          {/* Tab content - keyed by articleId so state resets on article change */}
           <div className="p-5">
             {tab === "social" && (
-              <SocialTab
-                key={selectedArticle.id}
-                articleId={selectedArticle.id}
-                articleContent={selectedArticle.content}
-              />
+              <SocialTab key={selectedArticle.id} article={selectedArticle} />
             )}
             {tab === "newsletter" && (
               <NewsletterTab key={selectedArticle.id} articleId={selectedArticle.id} />

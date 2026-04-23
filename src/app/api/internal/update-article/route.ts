@@ -16,6 +16,9 @@ const ALLOWED_COLUMNS = new Set([
   "published_platform",
   "wp_blog_id",
   "cluster_id",
+  "last_refreshed_at",
+  "lifecycle",
+  "parent_article_id",
 ]);
 
 type UpdateBody = {

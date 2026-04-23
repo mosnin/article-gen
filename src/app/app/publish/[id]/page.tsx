@@ -128,6 +128,9 @@ export default function PublishPage() {
   const [aiRefreshing, setAiRefreshing] = useState(false);
   const [aiRefreshStats, setAiRefreshStats] = useState<{ wordsAdded: number; serpTopics: string[] } | null>(null);
 
+  // Agent refresh dispatch state
+  const [agentRefreshDispatching, setAgentRefreshDispatching] = useState(false);
+
   // NLP SEO score state
   const [nlpScoring, setNlpScoring] = useState(false);
   const [nlpScore, setNlpScore] = useState<NLPScoreResult | null>(null);
@@ -507,6 +510,34 @@ export default function PublishPage() {
     setAiRefreshing(false);
   };
 
+  const handleAgentRefresh = async () => {
+    if (!article) return;
+    const confirmed = window.confirm(
+      "Dispatch the RefreshAgent? This runs asynchronously and updates the article when finished."
+    );
+    if (!confirmed) return;
+
+    setAgentRefreshDispatching(true);
+    const toastId = toast.loading("Dispatching refresh agent...");
+    try {
+      const res = await fetch("/api/articles/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ articleId: article.id }),
+      });
+      const data = (await res.json()) as { dispatched?: boolean; error?: string };
+      if (!res.ok || !data.dispatched) {
+        toast.error(data.error || "Failed to dispatch refresh", { id: toastId });
+      } else {
+        toast.success("Refresh dispatched", { id: toastId });
+        router.push("/app/agent-runs");
+      }
+    } catch {
+      toast.error("Failed to dispatch refresh", { id: toastId });
+    }
+    setAgentRefreshDispatching(false);
+  };
+
   const platformLabel: Record<Platform, string> = {
     wordpress: "WordPress",
     shopify: "Shopify",
@@ -689,6 +720,29 @@ export default function PublishPage() {
                     <>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-4.95" /></svg>
                       Refresh with AI
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={handleAgentRefresh}
+                  disabled={agentRefreshDispatching}
+                  style={{
+                    padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    background: "var(--surface-base)", border: "1px solid var(--border-default)", color: "var(--text-primary)",
+                    cursor: agentRefreshDispatching ? "not-allowed" : "pointer",
+                    opacity: agentRefreshDispatching ? 0.6 : 1,
+                    display: "flex", alignItems: "center", gap: 6,
+                  }}
+                >
+                  {agentRefreshDispatching ? (
+                    <>
+                      <svg className="progress-spinner" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                      Dispatching…
+                    </>
+                  ) : (
+                    <>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 .49-4.95" /></svg>
+                      Refresh via Agent
                     </>
                   )}
                 </button>

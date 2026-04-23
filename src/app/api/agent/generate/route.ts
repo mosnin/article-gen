@@ -10,12 +10,27 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 type GenerateRequest = {
-  kind?: "article" | "autopilot" | "cluster" | "research_only";
+  kind?:
+    | "article"
+    | "autopilot"
+    | "cluster"
+    | "research_only"
+    | "refresh"
+    | "audit"
+    | "cluster_plan"
+    | "social_snippet"
+    | "keyword_harvest";
   topic: string;
   focusKeyword?: string;
   tone?: string;
   targetAudience?: string;
   quality?: "standard" | "premium";
+  articleId?: string;
+  articleIds?: string[];
+  clusterId?: string;
+  clusterPillarTopic?: string;
+  socialPlatforms?: string[];
+  gscSiteUrl?: string;
   options?: {
     imageCount?: number;
     autoPublish?: boolean;
@@ -75,7 +90,9 @@ export async function POST(req: NextRequest) {
   try {
     run = await createAgentRun({
       userId,
-      kind,
+      // Cast: AgentRun["kind"] lags behind the broader TriggerPayload kind union;
+      // the DB column accepts the wider set, so pass through.
+      kind: kind as "article" | "autopilot" | "cluster" | "research_only",
       topic: body.topic,
       focusKeyword: body.focusKeyword,
       tone: body.tone,
@@ -101,6 +118,12 @@ export async function POST(req: NextRequest) {
       targetAudience: body.targetAudience,
       quality,
       options: body.options ?? {},
+      articleId: body.articleId,
+      articleIds: body.articleIds,
+      clusterId: body.clusterId,
+      clusterPillarTopic: body.clusterPillarTopic,
+      socialPlatforms: body.socialPlatforms,
+      gscSiteUrl: body.gscSiteUrl,
     });
     await updateAgentRunStatus({ runId: run.id, modalCallId: trigger.modalCallId });
     return NextResponse.json({ runId: run.id, status: "pending" });
