@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAgentRun } from "@/hooks/useAgentRun";
 import { StepEvent } from "./StepEvent";
 import { cn } from "@/lib/utils";
@@ -14,13 +14,21 @@ export function AgentStream({
   className?: string;
   onComplete?: (articleId: string | null) => void;
 }) {
-  const { run, events, isLoading, error, status, transport, cancel } = useAgentRun(runId);
-  const [isCancelling, setIsCancelling] = useState(false);
+  const { run, events, isLoading, error, status, transport } = useAgentRun(runId);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [autoScroll, setAutoScroll] = useState<boolean>(true);
 
   useEffect(() => {
     if (!run) return;
     if (status === "succeeded") onComplete?.(run.article_id ?? null);
   }, [run, status, onComplete]);
+
+  useEffect(() => {
+    if (!autoScroll) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [events.length, autoScroll]);
 
   if (!runId) return null;
   if (isLoading && events.length === 0) {
@@ -38,6 +46,26 @@ export function AgentStream({
     );
   }
 
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distanceFromBottom > 50) {
+      if (autoScroll) setAutoScroll(false);
+    } else if (distanceFromBottom <= 50) {
+      if (!autoScroll) setAutoScroll(true);
+    }
+  };
+
+  const handleToggleAutoScroll = () => {
+    if (autoScroll) {
+      setAutoScroll(false);
+    } else {
+      setAutoScroll(true);
+      const el = scrollRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    }
+  };
+
   return (
     <div className={cn("rounded-lg border border-[var(--border-default)] bg-[var(--surface-raised)]", className)}>
       <div className="flex items-center justify-between border-b border-[var(--border-default)] px-4 py-3">
@@ -52,19 +80,14 @@ export function AgentStream({
           <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">
             {transport}
           </span>
-          {status === "running" && (
-            <button
-              onClick={async () => {
-                if (isCancelling) return;
-                setIsCancelling(true);
-                try { await cancel(); } finally { setIsCancelling(false); }
-              }}
-              disabled={isCancelling}
-              className="rounded border border-[var(--border-strong)] px-2 py-0.5 text-xs hover:bg-[var(--surface-sunken)] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isCancelling ? "Cancelling..." : "Cancel"}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleToggleAutoScroll}
+            aria-pressed={!autoScroll}
+            className="rounded border border-[var(--border-strong)] px-2 py-0.5 text-xs hover:bg-[var(--surface-sunken)]"
+          >
+            {autoScroll ? "Pause" : "Resume"}
+          </button>
         </div>
       </div>
       {typeof run?.progress_pct === "number" && (
@@ -75,7 +98,13 @@ export function AgentStream({
           />
         </div>
       )}
-      <div className="max-h-[480px] overflow-y-auto px-4 py-2">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        aria-live="polite"
+        aria-relevant="additions"
+        className="max-h-[480px] overflow-y-auto px-4 py-2"
+      >
         {events.length === 0 ? (
           <p className="py-8 text-center text-sm text-[var(--text-tertiary)]">Waiting for agent output...</p>
         ) : (

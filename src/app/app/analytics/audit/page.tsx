@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
+import React, { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import type { ArticleAuditItem } from "@/app/api/audit/route";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
@@ -391,9 +391,8 @@ export default function ContentAuditPage() {
                   const expanded = expandedAuditId === audit.id;
                   const recs = Array.isArray(audit.recommendations) ? audit.recommendations : [];
                   return (
-                    <>
+                    <React.Fragment key={audit.id}>
                       <tr
-                        key={audit.id}
                         className="hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer"
                         onClick={() => setExpandedAuditId(expanded ? null : audit.id)}
                       >
@@ -422,7 +421,7 @@ export default function ContentAuditPage() {
                         </td>
                       </tr>
                       {expanded && (
-                        <tr key={`${audit.id}-expanded`} className="bg-[var(--surface-sunken)]">
+                        <tr className="bg-[var(--surface-sunken)]">
                           <td colSpan={5} className="px-4 py-3">
                             {recs.length === 0 ? (
                               <p className="text-sm text-[var(--text-secondary)]">
@@ -447,7 +446,7 @@ export default function ContentAuditPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </tbody>

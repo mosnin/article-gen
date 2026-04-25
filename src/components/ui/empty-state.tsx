@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 
 interface EmptyStateProps {
@@ -11,7 +13,7 @@ interface EmptyStateProps {
 export function EmptyState({ icon, title, description, action, secondaryAction }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-[var(--bg-hover)] flex items-center justify-center text-3xl mb-4">
+      <div className="w-16 h-16 rounded-2xl bg-[var(--surface-sunken)] flex items-center justify-center text-3xl mb-4">
         {icon}
       </div>
       <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">{title}</h3>
@@ -19,13 +21,13 @@ export function EmptyState({ icon, title, description, action, secondaryAction }
       {action && (
         <div className="flex gap-3">
           {action.href ? (
-            <Link href={action.href} className="px-4 py-2 rounded-lg bg-[var(--brand)] text-white text-sm font-medium hover:opacity-90 transition-opacity">{action.label}</Link>
+            <Link href={action.href} className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity">{action.label}</Link>
           ) : (
-            <button onClick={action.onClick} className="px-4 py-2 rounded-lg bg-[var(--brand)] text-white text-sm font-medium hover:opacity-90 transition-opacity">{action.label}</button>
+            <button onClick={action.onClick} className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity">{action.label}</button>
           )}
           {secondaryAction && (secondaryAction.href ?
-            <Link href={secondaryAction.href} className="px-4 py-2 rounded-lg border border-[var(--border)] text-[var(--text-secondary)] text-sm font-medium hover:bg-[var(--bg-hover)] transition-colors">{secondaryAction.label}</Link> :
-            <button onClick={secondaryAction.onClick} className="px-4 py-2 rounded-lg border border-[var(--border)] text-[var(--text-secondary)] text-sm font-medium hover:bg-[var(--bg-hover)] transition-colors">{secondaryAction.label}</button>
+            <Link href={secondaryAction.href} className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)] text-sm font-medium hover:bg-[var(--surface-sunken)] transition-colors">{secondaryAction.label}</Link> :
+            <button onClick={secondaryAction.onClick} className="px-4 py-2 rounded-lg border border-[var(--border-default)] text-[var(--text-secondary)] text-sm font-medium hover:bg-[var(--surface-sunken)] transition-colors">{secondaryAction.label}</button>
           )}
         </div>
       )}

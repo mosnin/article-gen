@@ -131,8 +131,8 @@ export default function OutlineEditor({
   };
 
   const confirmBtnStyle: React.CSSProperties = {
-    background: "var(--primary)",
-    color: "var(--primary-foreground)",
+    background: "var(--accent)",
+    color: "white",
     border: "none",
     borderRadius: "8px",
     padding: "8px 20px",
