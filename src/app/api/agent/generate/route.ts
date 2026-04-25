@@ -37,6 +37,8 @@ type GenerateRequest = {
   clusterPillarTopic?: string;
   socialPlatforms?: string[];
   gscSiteUrl?: string;
+  competitorIds?: string[];
+  contentBriefId?: string;
   options?: {
     imageCount?: number;
     autoPublish?: boolean;
@@ -130,6 +132,8 @@ export async function POST(req: NextRequest) {
       clusterPillarTopic: body.clusterPillarTopic,
       socialPlatforms: body.socialPlatforms,
       gscSiteUrl: body.gscSiteUrl,
+      competitorIds: body.competitorIds,
+      contentBriefId: body.contentBriefId,
     });
     await updateAgentRunStatus({ runId: run.id, modalCallId: trigger.modalCallId });
     return NextResponse.json({ runId: run.id, status: "pending" });
