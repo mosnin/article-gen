@@ -8,15 +8,18 @@ type ListBody = {
   limit?: number;
 };
 
+type GeneratedImage = {
+  type?: string;
+  altText?: string | null;
+  storagePath?: string;
+  publicUrl?: string;
+  success?: boolean;
+};
+
 type ArticleRow = {
   id: string;
   title: string | null;
-  slug: string | null;
-  focus_keyword: string | null;
-  keywords: string[] | null;
-  article_markdown: string | null;
-  topic: string | null;
-  created_at: string | null;
+  generated_images: unknown;
 };
 
 function isListBody(v: unknown): v is ListBody {
@@ -25,6 +28,28 @@ function isListBody(v: unknown): v is ListBody {
   if (typeof r.userId !== "string" || r.userId.trim() === "") return false;
   if (r.limit !== undefined && typeof r.limit !== "number") return false;
   return true;
+}
+
+function normaliseImages(raw: unknown): GeneratedImage[] {
+  if (!Array.isArray(raw)) return [];
+  const out: GeneratedImage[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const r = item as Record<string, unknown>;
+    out.push({
+      type: typeof r.type === "string" ? r.type : "",
+      altText:
+        typeof r.altText === "string"
+          ? r.altText
+          : r.altText === null
+            ? null
+            : "",
+      storagePath: typeof r.storagePath === "string" ? r.storagePath : "",
+      publicUrl: typeof r.publicUrl === "string" ? r.publicUrl : "",
+      success: typeof r.success === "boolean" ? r.success : true,
+    });
+  }
+  return out;
 }
 
 export async function POST(req: Request) {
@@ -45,9 +70,11 @@ export async function POST(req: Request) {
   const sb = getAdminClient();
   const { data, error } = await sb
     .from("articles")
-    .select("id, title, slug, focus_keyword, keywords, article_markdown, topic, created_at")
+    .select("id, title, generated_images")
     .eq("user_id", parsed.userId)
     .eq("lifecycle", "published")
+    .filter("generated_images", "neq", "[]")
+    .not("generated_images", "is", null)
     .order("updated_at", { ascending: false })
     .limit(limit);
 
@@ -59,16 +86,13 @@ export async function POST(req: Request) {
   }
 
   const rows = (data ?? []) as ArticleRow[];
-  return Response.json({
-    articles: rows.map((a) => ({
+  const articles = rows
+    .map((a) => ({
       id: a.id,
       title: a.title ?? "",
-      slug: a.slug ?? "",
-      focusKeyword: a.focus_keyword ?? "",
-      keywords: a.keywords ?? [],
-      excerpt: (a.article_markdown ?? "").slice(0, 240),
-      topic: a.topic ?? "",
-      createdAt: a.created_at ?? null,
-    })),
-  });
+      generatedImages: normaliseImages(a.generated_images),
+    }))
+    .filter((a) => a.generatedImages.length > 0);
+
+  return Response.json({ articles });
 }
