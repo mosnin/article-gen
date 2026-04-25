@@ -3,7 +3,9 @@ import { getAdminClient } from "@/lib/supabase-admin";
 export type AgentRun = {
   id: string;
   user_id: string;
-  kind: "article" | "autopilot" | "cluster" | "research_only";
+  kind: "article" | "autopilot" | "cluster" | "research_only"
+      | "refresh" | "audit" | "cluster_plan" | "social_snippet" | "keyword_harvest"
+      | "topic_research" | "research_and_write";
   status: "pending" | "running" | "succeeded" | "failed" | "cancelled";
   topic: string;
   focus_keyword: string | null;
@@ -145,8 +147,17 @@ export async function updateAgentRunStatus(params: {
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (params.status) {
     patch.status = params.status;
-    if (params.status === "running" && params.progressPct === undefined) {
-      patch.started_at = new Date().toISOString();
+    if (params.status === "running") {
+      // Set started_at on the FIRST running transition only (when existing row has it null).
+      const { data: existing } = await sb
+        .from("agent_runs")
+        .select("started_at")
+        .eq("id", params.runId)
+        .maybeSingle();
+      const existingStartedAt = (existing as { started_at: string | null } | null)?.started_at ?? null;
+      if (existingStartedAt === null) {
+        patch.started_at = new Date().toISOString();
+      }
     }
     if (["succeeded", "failed", "cancelled"].includes(params.status)) {
       patch.completed_at = new Date().toISOString();
