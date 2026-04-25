@@ -363,6 +363,96 @@ async def _run_single_subagent(ctx: _RunCtx, subagent_name: str, brief: str) -> 
     return out_dict
 
 
+async def _run_research_and_write(ctx: _RunCtx) -> dict:
+    """Two-phase pipeline: research candidates, validate, then hand off to
+    the article pipeline for the top-ranked proposal. Streams progress to
+    the same run."""
+    from modal_app.harness import topic_filter
+    from modal_app.harness.models import TopicProposalSet
+
+    payload = ctx.payload
+
+    # Phase 1: TopicResearcher
+    researcher = _lazy_subagent("topic_researcher")
+    researcher_session = ctx.session.build_subagent_session()
+    researcher_brief = _compose_topic_research_brief(payload)
+    raw_set = await ctx.pool.invoke(
+        researcher, researcher_brief,
+        session=researcher_session, name="topic_researcher",
+    )
+    proposal_set = _coerce_topic_proposal_set(raw_set, payload.topic)
+
+    # Phase 2: programmatic on-topic filter
+    kept, programmatic_rejects = topic_filter.filter_on_topic(
+        proposal_set.proposals, required_niche=payload.topic
+    )
+    proposal_set.proposals = kept
+    proposal_set.rejected.extend(programmatic_rejects)
+
+    # Phase 3: TopicValidator critic
+    if kept:
+        validator = _lazy_subagent("topic_validator")
+        validator_session = ctx.session.build_subagent_session()
+        validator_brief = (
+            "Critic pass on the following TopicProposalSet. Apply E-E-A-T, "
+            "freshness, and cannibalization filters. Drop weak ones. Return "
+            "a TopicProposalSet JSON.\n\n"
+            f"niche: {payload.topic}\n\n"
+            f"input set: {proposal_set.model_dump_json()}"
+        )
+        validated = await ctx.pool.invoke(
+            validator, validator_brief,
+            session=validator_session, name="topic_validator",
+        )
+        proposal_set = _coerce_topic_proposal_set(validated, payload.topic)
+
+    if not proposal_set.proposals:
+        await progress.emit(
+            payload.runId, "warning",
+            agent_name="orchestrator",
+            message="research_and_write: no proposals survived filtering",
+        )
+        return {
+            "kind": "research_and_write",
+            "articleId": None,
+            "proposalsConsidered": len(proposal_set.rejected),
+            "rejected": [r.model_dump() for r in proposal_set.rejected],
+        }
+
+    # Phase 4: pick top-1 by relevance and hand off
+    top = max(proposal_set.proposals, key=lambda p: p.relevanceScore)
+    await progress.emit(
+        payload.runId, "handoff",
+        agent_name="orchestrator",
+        message=f"handoff to article pipeline: {top.title!r}",
+        payload={"focusKeyword": top.focusKeyword, "relevance": top.relevanceScore},
+    )
+
+    # Phase 5: mutate ctx.payload to the chosen proposal and run the article pipeline
+    payload.topic = top.title
+    payload.focusKeyword = top.focusKeyword
+    article_result = await _run_article_pipeline(ctx)
+
+    article_result["kind"] = "research_and_write"
+    article_result["chosenProposal"] = top.model_dump()
+    article_result["rejectedProposals"] = [r.model_dump() for r in proposal_set.rejected]
+    return article_result
+
+
+def _coerce_topic_proposal_set(raw, niche: str):
+    from modal_app.harness.models import TopicProposalSet
+    if isinstance(raw, TopicProposalSet):
+        return raw
+    if hasattr(raw, "model_dump"):
+        raw = raw.model_dump()
+    if isinstance(raw, str):
+        return TopicProposalSet.model_validate_json(raw)
+    if isinstance(raw, dict):
+        return TopicProposalSet.model_validate(raw)
+    # Last resort: treat as empty set
+    return TopicProposalSet(niche=niche, proposals=[], rejected=[], rationale="")
+
+
 def _compose_initial_brief(payload: TriggerPayload) -> str:
     tone = payload.tone or "professional"
     audience = payload.targetAudience or "a general SEO-aware reader"
@@ -455,4 +545,18 @@ def _compose_research_brief(p: TriggerPayload) -> str:
         f"Research the topic '{p.topic}' (focusKeyword '{p.focusKeyword or p.topic}').\n"
         f"- userId: {p.userId}\n\n"
         "Return only the research output. Do not produce an outline or article body."
+    )
+
+
+def _compose_topic_research_brief(p: TriggerPayload) -> str:
+    return (
+        "Research candidate article topics for this niche.\n\n"
+        f"- userId: {p.userId}\n"
+        f"- niche: {p.topic}\n"
+        f"- tone hint: {p.tone or 'neutral'}\n"
+        f"- audience: {p.targetAudience or 'general'}\n\n"
+        "Use web_search and find_recent_news to gather signals. "
+        "Apply the dedup + niche + evidence + freshness rules. Save the "
+        "approved proposals via save_topic_proposals. Return a "
+        "TopicProposalSet JSON with niche, proposals, and rejected[]."
     )

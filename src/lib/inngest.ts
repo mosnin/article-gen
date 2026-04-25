@@ -45,7 +45,9 @@ export type Events = {
         | "audit"
         | "cluster_plan"
         | "social_snippet"
-        | "keyword_harvest";
+        | "keyword_harvest"
+        | "topic_research"
+        | "research_and_write";
       topic: string;
       focusKeyword?: string;
       tone?: string;
