@@ -472,7 +472,7 @@ function ChipList({
   title: string;
   items: string[];
   variant: "accent" | "default" | "muted";
-}): React.JSX.Element {
+}) {
   const chipClass =
     variant === "accent"
       ? "bg-[var(--accent-light)] text-[var(--accent)]"
