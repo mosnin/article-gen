@@ -258,18 +258,18 @@ function ArticlesContent() {
         </div>
 
         {/* Status tabs */}
-        <div className="flex rounded-lg border border-[var(--border-default)] overflow-hidden text-sm">
-          {(["all", "published", "draft"] as const).map((f) => (
+        <div className="flex flex-wrap rounded-lg border border-[var(--border-default)] overflow-hidden text-sm">
+          {FILTER_TABS.map((tab) => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-2 font-medium capitalize transition-colors ${
-                filter === f
+              key={tab.key}
+              onClick={() => setFilter(tab.key)}
+              className={`px-3 py-2 font-medium transition-colors ${
+                filter === tab.key
                   ? "bg-[var(--accent)] text-white"
                   : "bg-[var(--surface-base)] text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)]"
               }`}
             >
-              {f}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -385,18 +385,21 @@ function ArticlesContent() {
 
                   {/* Status */}
                   <td className="px-4 py-3 hidden sm:table-cell whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                        article.posted
-                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                          : "bg-[var(--surface-sunken)] text-[var(--text-secondary)] border border-[var(--border-default)]"
-                      }`}
-                    >
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <span
-                        className={`h-1.5 w-1.5 rounded-full ${article.posted ? "bg-green-500" : "bg-[var(--text-tertiary)]"}`}
-                      />
-                      {article.posted ? "Published" : "Draft"}
-                    </span>
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                          article.posted
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            : "bg-[var(--surface-sunken)] text-[var(--text-secondary)] border border-[var(--border-default)]"
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${article.posted ? "bg-green-500" : "bg-[var(--text-tertiary)]"}`}
+                        />
+                        {article.posted ? "Published" : "Draft"}
+                      </span>
+                      <LifecycleBadge lifecycle={article.lifecycle} />
+                    </div>
                   </td>
 
                   {/* Platform */}
@@ -450,5 +453,19 @@ function ArticlesContent() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ArticlesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-8 text-center text-sm text-[var(--text-secondary)]">
+          Loading…
+        </div>
+      }
+    >
+      <ArticlesContent />
+    </Suspense>
   );
 }
