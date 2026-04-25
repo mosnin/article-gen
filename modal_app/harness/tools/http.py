@@ -13,11 +13,28 @@ import hmac
 import json
 
 import httpx
+from tenacity import (
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from modal_app import config
 
+
+def _is_http_retryable(exc: BaseException) -> bool:
+    if isinstance(exc, httpx.TransportError):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code >= 500
+    return False
+
 _run_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "agent_run_id", default=None
+)
+_user_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "agent_user_id", default=None
 )
 
 
@@ -27,6 +44,14 @@ def set_run_id(run_id: str) -> None:
 
 def get_run_id() -> str | None:
     return _run_id_ctx.get()
+
+
+def set_user_id(user_id: str) -> None:
+    _user_id_ctx.set(user_id)
+
+
+def get_user_id() -> str | None:
+    return _user_id_ctx.get()
 
 
 _client: httpx.AsyncClient | None = None

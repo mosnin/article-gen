@@ -105,7 +105,6 @@ export async function POST(req: Request) {
         freshness_signal: p.freshnessSignal,
         competitor_gap: p.competitorGap ?? false,
         status: "pending",
-        rejection_reasons: null,
       })
       .select("id")
       .single();

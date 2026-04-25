@@ -28,7 +28,7 @@ export async function GET() {
 
   const { data: articles } = await supabase
     .from("articles")
-    .select("id, title, focus_keyword, content, meta_description, created_at, published_at, status, word_count")
+    .select("id, title, focus_keyword, article_markdown, meta_description, created_at, published_at, lifecycle, posted, word_count")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -38,14 +38,22 @@ export async function GET() {
   const now = new Date();
 
   const items: ArticleAuditItem[] = articles.map((a) => {
-    const content = a.content ?? "";
-    const wordCount = a.word_count ?? content.split(/\s+/).filter(Boolean).length;
+    const content: string = typeof a.article_markdown === "string" ? a.article_markdown : "";
+    const wordCount: number =
+      typeof a.word_count === "number"
+        ? a.word_count
+        : content.split(/\s+/).filter(Boolean).length;
     const ageInDays = Math.floor((now.getTime() - new Date(a.created_at).getTime()) / 86400000);
     const hasImages = content.includes("![") || content.includes("<img");
     const hasFaq = content.toLowerCase().includes("faq") || content.includes("## Q:");
     const hasMetaDescription = !!a.meta_description;
-    const wordCountHealth = wordCount >= 1200 ? "good" : wordCount >= 600 ? "thin" : "unknown";
-    const needsRefresh = ageInDays > 90 && a.status !== "draft";
+    const wordCountHealth: "good" | "thin" | "unknown" =
+      wordCount >= 1200 ? "good" : wordCount >= 600 ? "thin" : "unknown";
+    const lifecycle: string | null = typeof a.lifecycle === "string" ? a.lifecycle : null;
+    const isPosted: boolean = a.posted === true;
+    const isPublished: boolean = lifecycle === "published" || isPosted;
+    // "needs refresh" = older than 90 days and not still in draft state
+    const needsRefresh = ageInDays > 90 && lifecycle !== "draft";
 
     // Compute health score
     let score = 0;
@@ -63,7 +71,7 @@ export async function GET() {
       wordCount,
       createdAt: a.created_at,
       publishedAt: a.published_at ?? undefined,
-      isPublished: a.status === "published",
+      isPublished,
       hasImages,
       hasFaq,
       hasMetaDescription,

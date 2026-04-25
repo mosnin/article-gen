@@ -24,7 +24,7 @@ from modal_app.harness.models import (
     SimilarArticle,
     TriggerPayload,
 )
-from modal_app.harness.pool import SubAgentPool
+from modal_app.harness.pool import SubAgentPool, _runner_run_with_retry
 from modal_app.harness.sessions import RunSession
 
 
@@ -276,8 +276,9 @@ def build_orchestrator(ctx: _RunCtx) -> Agent:
 # --- Public entrypoint called from modal_app/modal_app.py ---
 async def run(payload_dict: dict) -> dict:
     payload = TriggerPayload.model_validate(payload_dict)
-    from modal_app.harness.tools.http import set_run_id
+    from modal_app.harness.tools.http import set_run_id, set_user_id
     set_run_id(payload.runId)
+    set_user_id(payload.userId)
 
     run_session = RunSession(run_id=payload.runId, user_id=payload.userId)
     pool = SubAgentPool(run_id=payload.runId)
@@ -324,7 +325,7 @@ async def _run_article_pipeline(ctx: _RunCtx) -> dict:
     orchestrator = build_orchestrator(ctx)
 
     brief = _compose_initial_brief(payload)
-    result = await Runner.run(
+    result = await _runner_run_with_retry(
         orchestrator, brief, session=ctx.session.orchestrator_session
     )
 
@@ -342,7 +343,9 @@ async def _run_article_pipeline(ctx: _RunCtx) -> dict:
         }
     # Attach raw responses so the Modal entrypoint can aggregate token usage
     # for cost telemetry. Popped off before the dict reaches the webhook.
-    out_dict["_rawResponses"] = getattr(result, "raw_responses", []) or []
+    raw_top = list(getattr(result, "raw_responses", []) or [])
+    raw_top.extend(ctx.pool.collect_subagent_responses())
+    out_dict["_rawResponses"] = raw_top
     return out_dict
 
 
@@ -428,10 +431,29 @@ async def _run_research_and_write(ctx: _RunCtx) -> dict:
         payload={"focusKeyword": top.focusKeyword, "relevance": top.relevanceScore},
     )
 
-    # Phase 5: mutate ctx.payload to the chosen proposal and run the article pipeline
-    payload.topic = top.title
-    payload.focusKeyword = top.focusKeyword
-    article_result = await _run_article_pipeline(ctx)
+    # Phase 5: build a copy of the payload pinned to the chosen proposal so the
+    # caller's TriggerPayload (and downstream consumers like check_past_work
+    # or articles.topic) keep the original niche string intact.
+    inner_payload = payload.model_copy(
+        update={
+            "topic": top.title,
+            "focusKeyword": top.focusKeyword,
+            "options": {
+                **(payload.options or {}),
+                "originalNiche": payload.topic,
+            },
+        }
+    )
+    inner_ctx = _RunCtx(
+        payload=inner_payload, run_session=ctx.session, pool=ctx.pool
+    )
+    article_result = await _run_article_pipeline(inner_ctx)
+    # Fold any subagent responses accumulated during this two-phase run that
+    # weren't already drained by the inner article pipeline.
+    extra = ctx.pool.collect_subagent_responses()
+    if extra:
+        existing = article_result.get("_rawResponses") or []
+        article_result["_rawResponses"] = list(existing) + extra
 
     article_result["kind"] = "research_and_write"
     article_result["chosenProposal"] = top.model_dump()

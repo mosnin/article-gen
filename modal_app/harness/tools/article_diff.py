@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from modal_app.harness.tools.http import post_internal
+from modal_app.harness.tools.http import get_user_id, post_internal
 
 
 async def fetch_article_for_refresh(article_id: str) -> dict:
@@ -52,9 +52,15 @@ async def save_refreshed_article(
     if new_meta_description:
         patch["meta_description"] = new_meta_description
 
+    uid = get_user_id()
+    if not uid:
+        raise RuntimeError(
+            "save_refreshed_article requires user_id in context; ensure "
+            "set_user_id(payload.userId) is called by the orchestrator"
+        )
     await post_internal(
         "/update-article",
-        {"articleId": article_id, "patch": patch},
+        {"articleId": article_id, "userId": uid, "patch": patch},
     )
     return {
         "articleId": article_id,

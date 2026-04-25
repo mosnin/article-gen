@@ -7,7 +7,7 @@ never leaves Vercel.
 from __future__ import annotations
 
 from modal_app.harness.models import ArticleSavePayload, CreditsStatus, SavedArticleRef
-from modal_app.harness.tools.http import post_internal
+from modal_app.harness.tools.http import get_user_id, post_internal
 
 
 async def save_article(payload: ArticleSavePayload) -> SavedArticleRef:
@@ -15,8 +15,19 @@ async def save_article(payload: ArticleSavePayload) -> SavedArticleRef:
     return SavedArticleRef.model_validate(data)
 
 
-async def update_article(article_id: str, patch: dict) -> None:
-    await post_internal("/update-article", {"articleId": article_id, "patch": patch})
+async def update_article(
+    article_id: str, patch: dict, *, user_id: str | None = None
+) -> None:
+    uid = user_id or get_user_id()
+    if not uid:
+        raise RuntimeError(
+            "update_article requires user_id (pass explicitly or call set_user_id "
+            "from orchestrator before invoking)"
+        )
+    await post_internal(
+        "/update-article",
+        {"articleId": article_id, "userId": uid, "patch": patch},
+    )
 
 
 async def check_credits(user_id: str, amount: int = 1) -> CreditsStatus:
