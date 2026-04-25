@@ -446,6 +446,25 @@ export function Sidebar({
         </svg>
       ),
     },
+    {
+      label: "Newsletters",
+      href: "/app/newsletters",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+          <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+        </svg>
+      ),
+    },
+    {
+      label: "Sponsorship fit",
+      href: "/app/analytics/sponsorship",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.293-12.707a1 1 0 011.414 0l2 2a1 1 0 010 1.414L9.414 13H7v-2.414l4.293-4.293zm.707 3.121L8.5 11h.086l2.5-2.5-.586-.586z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
   ];
 
   const configNav: NavItem[] = [
@@ -482,6 +501,18 @@ export function Sidebar({
       icon: (
         <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
           <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+  ];
+
+  const integrationsSubNav: NavItem[] = [
+    {
+      label: "Social accounts",
+      href: "/app/integrations/social",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
         </svg>
       ),
     },
@@ -551,7 +582,13 @@ export function Sidebar({
             <NavLink key={item.href} item={item} collapsed={false} />
           ))}
           {configNav.map((item) => (
-            <NavLink key={item.href} item={item} collapsed={false} />
+            <div key={item.href}>
+              <NavLink item={item} collapsed={false} />
+              {item.href === "/app/integrations" &&
+                integrationsSubNav.map((sub) => (
+                  <NavLink key={sub.href} item={sub} collapsed={false} indent />
+                ))}
+            </div>
           ))}
         </SectionHeader>
 

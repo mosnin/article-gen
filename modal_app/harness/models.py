@@ -43,6 +43,9 @@ class TriggerPayload(BaseModel):
         "cannibalization_resolve",
         "image_optimize",
         "performance_coach",
+        "newsletter_digest",
+        "social_publish",
+        "sponsorship_fit",
     ] = "article"
     topic: str
     focusKeyword: str | None = None
@@ -61,6 +64,8 @@ class TriggerPayload(BaseModel):
     gscSiteUrl: str | None = None
     competitorIds: list[str] = Field(default_factory=list)
     contentBriefId: str | None = None
+    newsletterPeriodDays: int | None = None
+    snippetIds: list[str] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -745,6 +750,66 @@ class PerformanceCoachReport(BaseModel):
     alerts: list[PerformanceAlert] = Field(default_factory=list)
     articlesAnalyzed: int = 0
     periodDays: int = 30
+
+
+# ---------------------------------------------------------------------------
+# NewsletterDigest (Tier 3)
+# ---------------------------------------------------------------------------
+
+
+class NewsletterDigest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    periodStart: str   # ISO date YYYY-MM-DD
+    periodEnd: str
+    subject: str = Field(min_length=10, max_length=200)
+    preheader: str = ""
+    intro: str = ""
+    articleIds: list[str] = Field(default_factory=list)
+    bodyMarkdown: str
+    bodyHtml: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# SocialPublish (Tier 3) — non-LLM action runner; reuses SocialSnippet shapes
+# ---------------------------------------------------------------------------
+
+
+class SocialPublishResult(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    snippetId: str
+    platform: str
+    success: bool
+    externalUrl: str | None = None
+    error: str | None = None
+
+
+class SocialPublishReport(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    results: list[SocialPublishResult] = Field(default_factory=list)
+    publishedCount: int = 0
+    failedCount: int = 0
+
+
+# ---------------------------------------------------------------------------
+# SponsorshipFit (Tier 3)
+# ---------------------------------------------------------------------------
+
+
+class SponsorFit(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    articleId: str
+    fitScore: float = Field(ge=0.0, le=1.0)
+    monthlyTrafficEstimate: int | None = None
+    nicheTightness: float | None = Field(default=None, ge=0.0, le=1.0)
+    evergreenScore: float | None = Field(default=None, ge=0.0, le=1.0)
+    suggestedSponsorArchetypes: list[str] = Field(default_factory=list)
+    rationale: str = ""
+
+
+class SponsorshipFitReport(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    fits: list[SponsorFit] = Field(default_factory=list)
+    articlesAnalyzed: int = 0
 
 
 # Resolve forward references (RefreshBrief.serp -> SerpAnalysis).

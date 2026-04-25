@@ -71,7 +71,10 @@ export const agentArticleGenerate = inngest.createFunction(
             | "seasonal_calendar"
             | "cannibalization_resolve"
             | "image_optimize"
-            | "performance_coach",
+            | "performance_coach"
+            | "newsletter_digest"
+            | "social_publish"
+            | "sponsorship_fit",
           topic: input.topic,
           focusKeyword: input.focusKeyword,
           tone: input.tone,
@@ -85,6 +88,8 @@ export const agentArticleGenerate = inngest.createFunction(
           clusterPillarTopic: input.clusterPillarTopic,
           socialPlatforms: input.socialPlatforms,
           gscSiteUrl: input.gscSiteUrl,
+          newsletterPeriodDays: input.newsletterPeriodDays,
+          snippetIds: input.snippetIds,
         });
         if (result.modalCallId) {
           const admin = getAdminClient();

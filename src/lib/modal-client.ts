@@ -22,7 +22,10 @@ export type ModalTriggerPayload = {
     | "seasonal_calendar"
     | "cannibalization_resolve"
     | "image_optimize"
-    | "performance_coach";
+    | "performance_coach"
+    | "newsletter_digest"
+    | "social_publish"
+    | "sponsorship_fit";
   topic: string;
   focusKeyword?: string;
   tone?: string;
@@ -38,6 +41,8 @@ export type ModalTriggerPayload = {
   gscSiteUrl?: string;
   competitorIds?: string[];
   contentBriefId?: string;
+  newsletterPeriodDays?: number;
+  snippetIds?: string[];
   webhookUrl?: string;       // filled server-side if omitted
   internalApiBase?: string;  // filled server-side if omitted
 };

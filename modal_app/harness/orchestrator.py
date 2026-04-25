@@ -349,6 +349,18 @@ async def run(payload_dict: dict) -> dict:
         return await _run_single_subagent(
             ctx, "performance_coach", _compose_performance_coach_brief(payload)
         )
+    if k == "newsletter_digest":
+        return await _run_single_subagent(
+            ctx, "newsletter_digest", _compose_newsletter_digest_brief(payload)
+        )
+    if k == "social_publish":
+        return await _run_single_subagent(
+            ctx, "social_publisher", _compose_social_publish_brief(payload)
+        )
+    if k == "sponsorship_fit":
+        return await _run_single_subagent(
+            ctx, "sponsorship_fit", _compose_sponsorship_fit_brief(payload)
+        )
     raise ValueError(f"unknown payload kind: {k!r}")
 
 
@@ -711,4 +723,41 @@ def _compose_performance_coach_brief(p: TriggerPayload) -> str:
         "(stale data, lost backlinks, algorithm shift, weak schema). Recommend an action "
         "(refresh / rewrite / archive / add_internal_links / add_schema / no_action). "
         "Save via save_performance_alerts. Return a PerformanceCoachReport JSON."
+    )
+
+
+def _compose_newsletter_digest_brief(p: TriggerPayload) -> str:
+    days = p.newsletterPeriodDays or 7
+    return (
+        f"Compose a {days}-day newsletter digest for the user.\n\n"
+        f"- userId: {p.userId}\n"
+        f"- niche: {p.topic}\n"
+        f"- periodDays: {days}\n\n"
+        "Pull the user's published articles from the last period. Pick the top 3-5 "
+        "most engagement-worthy. Write a subject line, preheader, intro paragraph, "
+        "and a markdown body (each article gets a 1-2 sentence editorial framing + "
+        "linked title). Save via save_newsletter_digest. Return a NewsletterDigest JSON."
+    )
+
+
+def _compose_social_publish_brief(p: TriggerPayload) -> str:
+    return (
+        "Publish the supplied social snippets to their target platforms.\n\n"
+        f"- userId: {p.userId}\n"
+        f"- snippetIds: {p.snippetIds}\n\n"
+        "For each snippet id, look up the snippet + the matching social_account, then "
+        "post via the platform-appropriate path (OAuth API or webhook). Mark posted_at "
+        "and external_url on success. Return a SocialPublishReport JSON."
+    )
+
+
+def _compose_sponsorship_fit_brief(p: TriggerPayload) -> str:
+    return (
+        "Identify articles in this user's corpus best matched for sponsor placements.\n\n"
+        f"- userId: {p.userId}\n\n"
+        "Pull published articles + GSC traffic data. Score each by: monthly traffic, "
+        "niche tightness (focused topic vs broad), evergreen-ness (slow decay over time). "
+        "Suggest 1-3 sponsor archetypes per high-fit article (e.g. 'B2B SaaS analytics tool', "
+        "'developer education platform'). Save via save_sponsor_fits. Return a "
+        "SponsorshipFitReport JSON."
     )

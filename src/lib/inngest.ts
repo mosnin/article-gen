@@ -55,7 +55,10 @@ export type Events = {
         | "seasonal_calendar"
         | "cannibalization_resolve"
         | "image_optimize"
-        | "performance_coach";
+        | "performance_coach"
+        | "newsletter_digest"
+        | "social_publish"
+        | "sponsorship_fit";
       topic: string;
       focusKeyword?: string;
       tone?: string;
@@ -71,6 +74,8 @@ export type Events = {
       gscSiteUrl?: string;
       competitorIds?: string[];
       contentBriefId?: string;
+      newsletterPeriodDays?: number;
+      snippetIds?: string[];
     };
   };
 };

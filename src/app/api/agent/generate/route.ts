@@ -29,7 +29,10 @@ type GenerateRequest = {
     | "seasonal_calendar"
     | "cannibalization_resolve"
     | "image_optimize"
-    | "performance_coach";
+    | "performance_coach"
+    | "newsletter_digest"
+    | "social_publish"
+    | "sponsorship_fit";
   topic: string;
   focusKeyword?: string;
   tone?: string;
@@ -43,6 +46,8 @@ type GenerateRequest = {
   gscSiteUrl?: string;
   competitorIds?: string[];
   contentBriefId?: string;
+  newsletterPeriodDays?: number;
+  snippetIds?: string[];
   options?: {
     imageCount?: number;
     autoPublish?: boolean;
@@ -138,6 +143,8 @@ export async function POST(req: NextRequest) {
       gscSiteUrl: body.gscSiteUrl,
       competitorIds: body.competitorIds,
       contentBriefId: body.contentBriefId,
+      newsletterPeriodDays: body.newsletterPeriodDays,
+      snippetIds: body.snippetIds,
     });
     await updateAgentRunStatus({ runId: run.id, modalCallId: trigger.modalCallId });
     return NextResponse.json({ runId: run.id, status: "pending" });
