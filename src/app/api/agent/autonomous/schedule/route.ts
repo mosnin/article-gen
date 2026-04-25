@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseServer } from "@/lib/supabase-server";
 import { inngest } from "@/lib/inngest";
+import { checkCredits } from "@/lib/credits";
+import { acquireGenerationSlot } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -31,6 +33,19 @@ export async function POST(req: NextRequest) {
   const list = (data as { autonomous_schedules?: Schedule[] } | null)?.autonomous_schedules ?? [];
   const sched = list.find((s) => s.id === body.scheduleId);
   if (!sched) return NextResponse.json({ error: "schedule_not_found" }, { status: 404 });
+
+  // Pre-flight gating mirrors /api/agent/generate: refuse if the user has no
+  // credits or is at the concurrency limit. The slot is released by the
+  // webhook when the run terminates; the credit deduction is idempotent
+  // (Fix 1) and happens inside the agent run.
+  const hasCredits = await checkCredits(supabase, auth.user.id, 1);
+  if (!hasCredits.allowed) {
+    return NextResponse.json({ error: "insufficient_credits" }, { status: 402 });
+  }
+  const slotAcquired = await acquireGenerationSlot(supabase, auth.user.id);
+  if (!slotAcquired) {
+    return NextResponse.json({ error: "rate_limit" }, { status: 429 });
+  }
 
   await inngest.send({
     name: "agent/article.generate",

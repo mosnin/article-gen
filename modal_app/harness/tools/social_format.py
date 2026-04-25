@@ -10,6 +10,7 @@ import json
 import openai
 
 from modal_app import config
+from modal_app.harness import usage
 from modal_app.harness.tools.http import get_run_id, post_internal
 
 
@@ -21,6 +22,24 @@ def _oai() -> openai.AsyncOpenAI:
     if _client is None:
         _client = openai.AsyncOpenAI(api_key=config.openai_api_key())
     return _client
+
+
+def _record_resp_usage(resp: object, model: str) -> None:
+    """Forward response token counts to the run-scoped usage accumulator."""
+    u = getattr(resp, "usage", None)
+    if u is None:
+        return
+    in_tok = (
+        getattr(u, "prompt_tokens", None)
+        if getattr(u, "prompt_tokens", None) is not None
+        else getattr(u, "input_tokens", 0)
+    )
+    out_tok = (
+        getattr(u, "completion_tokens", None)
+        if getattr(u, "completion_tokens", None) is not None
+        else getattr(u, "output_tokens", 0)
+    )
+    usage.record_extra_usage(model, int(in_tok or 0), int(out_tok or 0))
 
 
 PLATFORM_HINTS: dict[str, str] = {
@@ -74,6 +93,7 @@ async def compose_snippet(
             {"role": "user", "content": user},
         ],
     )
+    _record_resp_usage(resp, config.MODEL_SUBAGENT)
     raw = resp.choices[0].message.content or "{}"
     try:
         data = json.loads(raw)

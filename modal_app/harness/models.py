@@ -278,6 +278,7 @@ class ArticleSavePayload(BaseModel):
 
     userId: str
     runId: str
+    agentRunId: str | None = None
     title: str
     slug: str
     metaDescription: str

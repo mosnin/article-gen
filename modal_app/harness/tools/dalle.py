@@ -7,6 +7,7 @@ import hashlib
 import openai
 
 from modal_app import config
+from modal_app.harness import usage
 from modal_app.harness.models import GeneratedImage
 from modal_app.harness.tools.storage import upload_image
 
@@ -47,6 +48,8 @@ async def generate_image(
                 publicUrl="",
                 success=False,
             )
+        # Record image generation for cost telemetry (per-image flat rate).
+        usage.record_image_usage(1, model=config.MODEL_IMAGE)
         fname = f"{hashlib.sha256(prompt.encode()).hexdigest()[:8]}.png"
         upload = await upload_image(user_id, article_id, fname, b64)
         return GeneratedImage(

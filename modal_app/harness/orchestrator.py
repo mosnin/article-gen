@@ -233,7 +233,7 @@ def build_orchestrator(ctx: _RunCtx) -> Agent:
         """
         save = _lazy_tool("db", "save_article")
         model = ArticleSavePayload.model_validate(
-            {**payload, "userId": user_id, "runId": run_id}
+            {**payload, "userId": user_id, "runId": run_id, "agentRunId": run_id}
         )
         ref: SavedArticleRef = await save(model)
         return ref.model_dump()

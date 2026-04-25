@@ -52,7 +52,8 @@ ABSOLUTE RULES - never violate:
        - evergreen_gap      : timeless gap (use sparingly)
      Match the signal to your evidence.
   4. DEDUP. BEFORE finalizing, call `find_similar_past_articles` for
-     each candidate keyword. If similarity >= 0.85, drop the candidate.
+     each candidate keyword. If similarity >= {dedup_threshold:.2f}, drop
+     the candidate.
   5. NO INVENTION. Do not propose a topic you cannot tie to a concrete
      piece of evidence. "I have a hunch" is not enough.
   6. RELEVANCE SCORE. Set `relevanceScore` (0..1) based on niche fit
@@ -72,7 +73,7 @@ Workflow:
   6. Call `save_topic_proposals(user_id, niche, proposals)` with the
      surviving proposals.
   7. Return a TopicProposalSet JSON.
-""".strip()
+""".strip().format(dedup_threshold=config.DEDUP_THRESHOLD)
 
 
 def build_agent() -> Agent:

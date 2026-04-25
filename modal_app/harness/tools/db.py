@@ -11,7 +11,13 @@ from modal_app.harness.tools.http import get_user_id, post_internal
 
 
 async def save_article(payload: ArticleSavePayload) -> SavedArticleRef:
-    data = await post_internal("/save-article", payload.model_dump())
+    # Re-use payload.runId as the idempotency key (`agentRunId`) when not
+    # explicitly set, so retries of the same run resolve to the same row via
+    # the unique partial index on articles(agent_run_id).
+    body = payload.model_dump()
+    if not body.get("agentRunId"):
+        body["agentRunId"] = body.get("runId")
+    data = await post_internal("/save-article", body)
     return SavedArticleRef.model_validate(data)
 
 

@@ -19,21 +19,31 @@ export async function getOrCreateProfile(
   supabase: SupabaseClient,
   userId: string
 ): Promise<UserProfile> {
-  const { data: existing } = await supabase
+  // Use maybeSingle() so a missing row is `null` (not an error) — that lets us
+  // surface real DB failures (RLS, network, etc.) instead of silently treating
+  // them as "row not found" and falling through to the insert path. PGRST116
+  // is the PostgREST "no rows" code; we tolerate it explicitly for safety.
+  const { data: existing, error } = await supabase
     .from("user_profiles")
     .select("*")
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
+
+  if (error && error.code !== "PGRST116") {
+    throw error;
+  }
 
   if (existing) return existing as UserProfile;
 
-  const { data: created, error } = await supabase
+  const { data: created, error: insertError } = await supabase
     .from("user_profiles")
     .insert({ user_id: userId })
     .select()
     .single();
 
-  if (error) throw new Error("Failed to create user profile: " + error.message);
+  if (insertError) {
+    throw new Error("Failed to create user profile: " + insertError.message);
+  }
   return created as UserProfile;
 }
 

@@ -7,10 +7,12 @@ supports it; falls back to JSON mode otherwise.
 from __future__ import annotations
 
 import json
+import re
 
 import openai
 
 from modal_app import config
+from modal_app.harness import usage
 from modal_app.harness.models import (
     FinalArticle,
     ImagePrompt,
@@ -30,6 +32,28 @@ def _oai() -> openai.AsyncOpenAI:
     if _client is None:
         _client = openai.AsyncOpenAI(api_key=config.openai_api_key())
     return _client
+
+
+def _record_resp_usage(resp: object, model: str) -> None:
+    """Pull token counts off an OpenAI response and forward to the run accumulator.
+
+    Tolerates both shapes the SDK exposes: ``prompt_tokens``/``completion_tokens``
+    (chat.completions) and ``input_tokens``/``output_tokens`` (Responses API).
+    """
+    u = getattr(resp, "usage", None)
+    if u is None:
+        return
+    in_tok = (
+        getattr(u, "prompt_tokens", None)
+        if getattr(u, "prompt_tokens", None) is not None
+        else getattr(u, "input_tokens", 0)
+    )
+    out_tok = (
+        getattr(u, "completion_tokens", None)
+        if getattr(u, "completion_tokens", None) is not None
+        else getattr(u, "output_tokens", 0)
+    )
+    usage.record_extra_usage(model, int(in_tok or 0), int(out_tok or 0))
 
 
 # ---------------------------------------------------------------------------
@@ -66,6 +90,7 @@ async def generate_outline_json(
         response_format=Outline,
         temperature=0.7,
     )
+    _record_resp_usage(resp, config.MODEL_SUBAGENT)
     parsed = resp.choices[0].message.parsed
     if parsed is None:
         raise RuntimeError("generate_outline_json: model returned no parsed payload")
@@ -105,6 +130,7 @@ async def generate_metadata_json(
         response_format=Metadata,
         temperature=0.5,
     )
+    _record_resp_usage(resp, config.MODEL_SUBAGENT)
     parsed = resp.choices[0].message.parsed
     if parsed is None:
         raise RuntimeError("generate_metadata_json: model returned no parsed payload")
@@ -147,6 +173,7 @@ async def generate_schema_json(article: FinalArticle) -> str:
         response_format={"type": "json_object"},
         temperature=0.5,
     )
+    _record_resp_usage(resp, config.MODEL_SUBAGENT)
     raw = resp.choices[0].message.content or "{}"
     try:
         parsed = json.loads(raw)
@@ -202,6 +229,7 @@ async def write_section(heading: str, notes: str, context: SectionContext) -> st
         ],
         temperature=0.7,
     )
+    _record_resp_usage(resp, config.MODEL_WRITER)
     return (resp.choices[0].message.content or "").strip()
 
 
@@ -248,6 +276,7 @@ async def interlink_suggest(user_id: str, article_md: str) -> list[InterlinkSugg
         response_format={"type": "json_object"},
         temperature=0.5,
     )
+    _record_resp_usage(resp, config.MODEL_SUBAGENT)
     raw = resp.choices[0].message.content or "{}"
     try:
         parsed = json.loads(raw)
@@ -300,6 +329,7 @@ async def generate_image_prompts(
         response_format={"type": "json_object"},
         temperature=0.7,
     )
+    _record_resp_usage(resp, config.MODEL_SUBAGENT)
     raw = resp.choices[0].message.content or "{}"
     try:
         parsed = json.loads(raw)
@@ -323,8 +353,17 @@ async def score_article(article_md: str, focus_keyword: str) -> QualityScore:
     """Score E-E-A-T + readability; compute density; flag em/en-dashes."""
     words = [w for w in article_md.split() if w.strip()]
     word_count = len(words)
-    needle = focus_keyword.lower().strip()
-    occurrences = article_md.lower().count(needle) if needle else 0
+    needle = focus_keyword.strip()
+    if needle:
+        occurrences = len(
+            re.findall(
+                rf"\b{re.escape(needle)}\b",
+                article_md,
+                flags=re.IGNORECASE,
+            )
+        )
+    else:
+        occurrences = 0
     density = (occurrences / word_count) if word_count else 0.0
 
     em_count = article_md.count("—")
@@ -355,6 +394,7 @@ async def score_article(article_md: str, focus_keyword: str) -> QualityScore:
         response_format={"type": "json_object"},
         temperature=0.5,
     )
+    _record_resp_usage(resp, config.MODEL_SUBAGENT)
     raw = resp.choices[0].message.content or "{}"
     try:
         parsed = json.loads(raw)

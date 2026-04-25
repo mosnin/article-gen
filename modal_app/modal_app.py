@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+import json
 import sys
 import traceback
 
@@ -89,6 +90,37 @@ async def trigger(request: Request) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# HTTPS cancel endpoint (HMAC-guarded)
+# ---------------------------------------------------------------------------
+
+
+@app.function(image=image, secrets=[secret], timeout=30)
+@modal.fastapi_endpoint(method="POST", label="cancel")
+async def cancel(request: Request) -> dict:
+    """Cancel a previously-spawned ``run_article_agent`` call by id.
+
+    Body: ``{"modalCallId": "<id>"}``. HMAC over the raw body using
+    ``MODAL_AGENT_TOKEN`` in the ``X-Signature`` header.
+    """
+    body = await request.body()
+    sig = request.headers.get("x-signature") or request.headers.get("X-Signature") or ""
+    expected = "sha256=" + hmac.new(
+        config.modal_agent_token().encode(), body, hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(expected, sig):
+        raise HTTPException(401, "invalid signature")
+    payload = json.loads(body)
+    call_id = payload.get("modalCallId")
+    if not call_id:
+        raise HTTPException(400, "missing modalCallId")
+    try:
+        modal.FunctionCall.from_id(call_id).cancel()
+        return {"cancelled": True, "modalCallId": call_id}
+    except Exception as e:
+        return {"cancelled": False, "error": str(e), "modalCallId": call_id}
+
+
+# ---------------------------------------------------------------------------
 # Long-running orchestrator entrypoint
 # ---------------------------------------------------------------------------
 
@@ -106,11 +138,18 @@ async def run_article_agent(payload: dict) -> dict:
     # step. Importing here keeps the image build + endpoint deploy green.
     try:
         from modal_app.harness import orchestrator, progress  # type: ignore
+        from modal_app.harness import usage as usage_mod  # type: ignore
     except Exception as e:
         print(f"[run_article_agent] orchestrator not importable yet: {e}")
         return {"error": "orchestrator not implemented"}
 
     run_id = payload["runId"]
+    # Reset per-run usage accumulators (token usage from direct OpenAI tool
+    # calls + DALL-E image counts) before kicking off the orchestrator.
+    try:
+        usage_mod.reset_extra_usage()
+    except Exception as e:
+        print(f"usage.reset_extra_usage failed: {e}", file=sys.stderr)
 
     await _safe_emit(
         progress,
@@ -146,9 +185,28 @@ async def run_article_agent(payload: dict) -> dict:
         raw_responses = result.pop("_rawResponses", [])
         usage: dict = {}
         try:
-            from modal_app.harness.usage import aggregate_usage
+            from modal_app.harness.usage import (
+                aggregate_extra_images,
+                aggregate_extra_usage,
+                aggregate_usage,
+                drain_extra_images,
+                drain_extra_usage,
+            )
 
-            usage = aggregate_usage(raw_responses)
+            sdk_usage = aggregate_usage(raw_responses)
+            tool_usage = aggregate_extra_usage(drain_extra_usage())
+            image_usage = aggregate_extra_images(drain_extra_images())
+            usage = {
+                "tokensIn": sdk_usage["tokensIn"] + tool_usage["tokensIn"],
+                "tokensOut": sdk_usage["tokensOut"] + tool_usage["tokensOut"],
+                "costUsd": round(
+                    sdk_usage["costUsd"]
+                    + tool_usage["costUsd"]
+                    + image_usage["costUsd"],
+                    4,
+                ),
+                "images": image_usage["images"],
+            }
         except Exception as e:
             print(f"usage aggregation failed: {e}", file=sys.stderr)
         status_update: dict = {

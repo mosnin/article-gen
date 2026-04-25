@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 type SaveBody = {
   userId: string;
   runId: string;
+  agentRunId?: string;
   title: string;
   slug: string;
   metaDescription: string;
@@ -47,6 +48,28 @@ export async function POST(req: Request) {
   }
 
   const sb = getAdminClient();
+  const agentRunId = body.agentRunId;
+
+  // Idempotency: if we've already saved an article for this agent_run_id,
+  // return the existing reference instead of inserting a duplicate. The
+  // unique partial index `idx_articles_agent_run_unique` (migration
+  // 20260425000000_audit_fixes.sql) is the belt-and-braces guard.
+  if (agentRunId) {
+    const { data: existing } = await sb
+      .from("articles")
+      .select("id, slug")
+      .eq("user_id", body.userId)
+      .eq("agent_run_id", agentRunId)
+      .maybeSingle();
+    if (existing) {
+      return Response.json({
+        articleId: existing.id,
+        slug: existing.slug,
+        idempotent: true,
+      });
+    }
+  }
+
   const { data, error } = await sb
     .from("articles")
     .insert({
@@ -63,6 +86,7 @@ export async function POST(req: Request) {
       generated_images: body.generatedImages ?? [],
       schema_json: body.schemaJson ?? null,
       cluster_id: body.clusterId ?? null,
+      agent_run_id: agentRunId ?? null,
     })
     .select("id, slug")
     .single();

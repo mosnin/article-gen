@@ -17,10 +17,44 @@ import asyncio
 import uuid
 from typing import Any
 
+import openai
 from agents import Agent, Runner, SQLiteSession
+from tenacity import (
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from modal_app import config
 from modal_app.harness import progress
+
+
+def _is_runner_retryable(exc: BaseException) -> bool:
+    if isinstance(exc, openai.RateLimitError):
+        return True
+    if isinstance(exc, openai.APIConnectionError):
+        return True
+    if isinstance(exc, openai.APIStatusError):
+        return getattr(exc, "status_code", 0) >= 500
+    return False
+
+
+async def _runner_run_with_retry(
+    agent: Agent, brief: str, *, session: SQLiteSession | None = None
+) -> Any:
+    """Wrap ``Runner.run`` with bounded retries on rate-limit / 5xx / network."""
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=20),
+        retry=retry_if_exception(_is_runner_retryable),
+        reraise=True,
+    )
+    async def _attempt() -> Any:
+        return await Runner.run(agent, brief, session=session)
+
+    return await _attempt()
 
 
 class SubAgentPool:
@@ -28,6 +62,9 @@ class SubAgentPool:
         self.run_id = run_id
         self._active: dict[str, asyncio.Task] = {}
         self._sem = asyncio.Semaphore(config.SUBAGENT_CONCURRENCY)
+        # Per-run accumulator of raw_responses from invoke() calls so the
+        # article pipeline can include subagent token usage in cost telemetry.
+        self._subagent_responses: list[Any] = []
 
     def list_active(self) -> list[str]:
         return list(self._active.keys())
@@ -48,10 +85,15 @@ class SubAgentPool:
                     self.run_id, "agent_started", agent_name=agent.name, message=corr_id
                 )
                 try:
-                    result = await Runner.run(agent, brief, session=session)
+                    result = await _runner_run_with_retry(
+                        agent, brief, session=session
+                    )
                     await progress.emit(
                         self.run_id, "agent_ended", agent_name=agent.name, message=corr_id
                     )
+                    # Accumulate raw_responses for downstream cost aggregation.
+                    raw = getattr(result, "raw_responses", None) or []
+                    self._subagent_responses.extend(raw)
                     return result.final_output
                 except Exception as e:
                     await progress.emit(
@@ -68,6 +110,12 @@ class SubAgentPool:
             return await task
         finally:
             self._active.pop(corr_id, None)
+
+    def collect_subagent_responses(self) -> list[Any]:
+        """Drain and return the accumulated subagent raw_responses list."""
+        out = self._subagent_responses
+        self._subagent_responses = []
+        return out
 
     async def invoke_full(
         self,
@@ -86,7 +134,9 @@ class SubAgentPool:
                     self.run_id, "agent_started", agent_name=agent.name, message=corr_id
                 )
                 try:
-                    result = await Runner.run(agent, brief, session=session)
+                    result = await _runner_run_with_retry(
+                        agent, brief, session=session
+                    )
                     await progress.emit(
                         self.run_id, "agent_ended", agent_name=agent.name, message=corr_id
                     )

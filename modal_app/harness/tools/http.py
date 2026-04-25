@@ -74,7 +74,11 @@ def sign_body(raw: bytes) -> str:
 
 
 async def post_internal(path: str, body: dict, run_id: str | None = None) -> dict:
-    """POST to internal API with HMAC auth. Raises httpx.HTTPStatusError on non-2xx."""
+    """POST to internal API with HMAC auth. Raises httpx.HTTPStatusError on non-2xx.
+
+    Retries up to 3 times on transport errors and 5xx responses with
+    exponential backoff (0.5s -> 4s).
+    """
     if not path.startswith("/"):
         raise ValueError("path must start with '/'")
     url = config.internal_api(path)
@@ -86,6 +90,16 @@ async def post_internal(path: str, body: dict, run_id: str | None = None) -> dic
         "X-Agent-Run-Id": rid,
         "X-Signature": sign_body(raw),
     }
-    resp = await _http().post(url, content=raw, headers=headers)
-    resp.raise_for_status()
-    return resp.json()
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=0.5, min=0.5, max=4.0),
+        retry=retry_if_exception(_is_http_retryable),
+        reraise=True,
+    )
+    async def _attempt() -> dict:
+        resp = await _http().post(url, content=raw, headers=headers)
+        resp.raise_for_status()
+        return resp.json()
+
+    return await _attempt()

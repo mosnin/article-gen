@@ -92,20 +92,49 @@ export async function POST(req: Request) {
   }
 
   if (body.statusUpdate) {
+    // Terminal-state guard: once a run is cancelled / succeeded / failed, do
+    // not let a late event from Modal flip it back. The event itself is still
+    // recorded above so the timeline is faithful — only the status mutation
+    // is suppressed.
+    let suppressStatusMutation = false;
     try {
-      await updateAgentRunStatus({
-        runId: body.runId,
-        status: body.statusUpdate.status,
-        progressPct: body.statusUpdate.progressPct,
-        currentStep: body.statusUpdate.currentStep,
-        currentAgent: body.statusUpdate.currentAgent,
-        error: body.statusUpdate.error,
-        articleId: body.statusUpdate.articleId,
-        output: body.statusUpdate.output,
-        tokensIn: body.statusUpdate.tokensIn,
-        tokensOut: body.statusUpdate.tokensOut,
-        costUsd: body.statusUpdate.costUsd,
-      });
+      const { data: existing } = await getAdminClient()
+        .from("agent_runs")
+        .select("status")
+        .eq("id", body.runId)
+        .single();
+      const existingStatus = (existing as { status?: string } | null)?.status;
+      if (
+        existingStatus &&
+        TERMINAL_STATUSES.has(existingStatus) &&
+        existingStatus !== body.statusUpdate.status
+      ) {
+        suppressStatusMutation = true;
+        logger.error(
+          `[webhook] suppressing late status mutation: run=${body.runId} ` +
+            `existing=${existingStatus} incoming=${body.statusUpdate.status ?? "none"}`,
+        );
+      }
+    } catch (error: unknown) {
+      logger.error("Failed to read existing run status", error);
+    }
+
+    try {
+      if (!suppressStatusMutation) {
+        await updateAgentRunStatus({
+          runId: body.runId,
+          status: body.statusUpdate.status,
+          progressPct: body.statusUpdate.progressPct,
+          currentStep: body.statusUpdate.currentStep,
+          currentAgent: body.statusUpdate.currentAgent,
+          error: body.statusUpdate.error,
+          articleId: body.statusUpdate.articleId,
+          output: body.statusUpdate.output,
+          tokensIn: body.statusUpdate.tokensIn,
+          tokensOut: body.statusUpdate.tokensOut,
+          costUsd: body.statusUpdate.costUsd,
+        });
+      }
     } catch (error: unknown) {
       logger.error("Failed to update agent run status", error);
       return NextResponse.json({ error: "Update failed" }, { status: 500 });

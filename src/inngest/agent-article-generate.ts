@@ -5,6 +5,7 @@ import {
   updateAgentRunStatus,
   getAgentRun,
 } from "@/lib/agent-runs";
+import { getAdminClient } from "@/lib/supabase-admin";
 
 export const agentArticleGenerate = inngest.createFunction(
   {
@@ -44,8 +45,11 @@ export const agentArticleGenerate = inngest.createFunction(
     const runId = run.id;
 
     try {
+      // Persist modal_call_id INSIDE the trigger-modal step so that an Inngest
+      // retry between trigger + DB-write cannot lose the call id (which is the
+      // only handle we have to cancel the Modal job from the UI).
       const trigger = await step.run("trigger-modal", async () => {
-        return triggerAgentRun({
+        const result = await triggerAgentRun({
           runId,
           userId: input.userId,
           kind: (input.kind ?? "article") as
@@ -74,13 +78,14 @@ export const agentArticleGenerate = inngest.createFunction(
           socialPlatforms: input.socialPlatforms,
           gscSiteUrl: input.gscSiteUrl,
         });
-      });
-
-      await step.run("record-call-id", async () => {
-        await updateAgentRunStatus({
-          runId,
-          modalCallId: trigger.modalCallId,
-        });
+        if (result.modalCallId) {
+          const admin = getAdminClient();
+          await admin
+            .from("agent_runs")
+            .update({ modal_call_id: result.modalCallId })
+            .eq("id", runId);
+        }
+        return result;
       });
 
       return { runId, modalCallId: trigger.modalCallId };

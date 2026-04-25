@@ -1,5 +1,6 @@
 import { inngest } from "@/lib/inngest";
 import { getAdminClient } from "@/lib/supabase-admin";
+import { releaseGenerationSlot } from "@/lib/rate-limit";
 
 const STUCK_AFTER_MINUTES = 10;
 
@@ -23,6 +24,40 @@ export const agentRunsStuckAlert = inngest.createFunction(
   async () => {
     const admin = getAdminClient();
     const threshold = new Date(Date.now() - STUCK_AFTER_MINUTES * 60 * 1000).toISOString();
+    const escalateThreshold = new Date(
+      Date.now() - STUCK_AFTER_MINUTES * 2 * 60 * 1000,
+    ).toISOString();
+
+    // First pass: forcibly terminate runs that have been silent for >2× the
+    // stuck threshold. These are presumed dead — flip them to "failed" and
+    // release the user's concurrency slot so they can dispatch a new run.
+    // The status check in the WHERE clause makes the update a no-op for runs
+    // that were terminated concurrently.
+    const { data: deadRuns } = await admin
+      .from("agent_runs")
+      .select("id, user_id")
+      .eq("status", "running")
+      .lt("updated_at", escalateThreshold);
+    let escalated = 0;
+    for (const run of deadRuns ?? []) {
+      const { error: updErr } = await admin
+        .from("agent_runs")
+        .update({
+          status: "failed",
+          error: "stuck_run_escalated",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", run.id)
+        .eq("status", "running");
+      if (!updErr) {
+        escalated++;
+        try {
+          await releaseGenerationSlot(admin, run.user_id);
+        } catch (err) {
+          console.error("[agent-runs-stuck-alert] release slot failed", err);
+        }
+      }
+    }
 
     const { data: stuckRuns, error } = await admin
       .from("agent_runs")
@@ -31,7 +66,7 @@ export const agentRunsStuckAlert = inngest.createFunction(
       .lt("updated_at", threshold);
     if (error) throw error;
 
-    if (!stuckRuns || stuckRuns.length === 0) return { stuck: 0 };
+    if (!stuckRuns || stuckRuns.length === 0) return { stuck: 0, escalated };
 
     // Determine monotonic next seq per run; we'll just use -1 sentinel
     // (since seq is non-nullable, compute max + 1 per run via a quick roundtrip)
@@ -79,6 +114,6 @@ export const agentRunsStuckAlert = inngest.createFunction(
       );
     }
 
-    return { stuck: stuckRuns.length, warned };
+    return { stuck: stuckRuns.length, warned, escalated };
   }
 );

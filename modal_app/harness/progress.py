@@ -108,6 +108,12 @@ async def _post_with_retry(raw: bytes, headers: dict) -> None:
     resp = await _http().post(config.webhook_url(), content=raw, headers=headers)
     if resp.status_code >= 500:
         resp.raise_for_status()
+    if 400 <= resp.status_code < 500:
+        print(
+            f"progress.emit got non-retryable {resp.status_code}: "
+            f"{resp.text[:200]}",
+            file=sys.stderr,
+        )
 
 
 # ---------------------------------------------------------------------------
