@@ -22,6 +22,7 @@ type Schedule = {
   timeOfDayLocal?: string;          // "HH:MM" 24-hour, in the user's timezone
   weekdayMask?: number[];           // 0=Sun..6=Sat; only meaningful when cadence='weekly'
   requiresApproval?: boolean;
+  topicSource?: "static_niche" | "topic_proposals" | "keyword_candidates";
 };
 
 export default function AutonomousPage() {

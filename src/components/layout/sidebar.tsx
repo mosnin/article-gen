@@ -6,7 +6,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getTheme, setTheme } from "@/lib/theme";
+import { createClient as createSupabaseBrowser } from "@/lib/supabase-browser";
 import { BlogSelector } from "./blog-selector";
+
+function formatBadgeCount(n: number): string {
+  if (n <= 0) return "0";
+  if (n > 9) return "9+";
+  return String(n);
+}
 
 interface NavItem {
   label: string;

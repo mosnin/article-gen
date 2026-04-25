@@ -20,6 +20,7 @@ type AutonomousSchedule = {
   timeOfDayLocal?: string;
   weekdayMask?: number[];
   requiresApproval?: boolean;
+  topicSource?: "static_niche" | "topic_proposals" | "keyword_candidates" | string;
   [key: string]: unknown;
 };
 

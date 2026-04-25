@@ -18,6 +18,7 @@ type Schedule = {
   timeOfDayLocal?: string;
   weekdayMask?: number[];
   requiresApproval?: boolean;
+  topicSource?: "static_niche" | "topic_proposals" | "keyword_candidates";
 };
 
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"] as const;
@@ -75,6 +76,7 @@ export function ScheduleModal({
     timeOfDayLocal: initial?.timeOfDayLocal ?? "09:00",
     weekdayMask: initial?.weekdayMask ?? DEFAULT_WEEKDAY_MASK,
     requiresApproval: initial?.requiresApproval ?? false,
+    topicSource: initial?.topicSource ?? "static_niche",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -168,6 +170,24 @@ export function ScheduleModal({
               onChange={(e) => update("targetAudience", e.target.value)}
               className="w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-sm"
             />
+          </Field>
+
+          <Field label="Topic source">
+            <select
+              value={form.topicSource ?? "static_niche"}
+              onChange={(e) =>
+                update("topicSource", e.target.value as Schedule["topicSource"])
+              }
+              className="w-full rounded border border-[var(--border-default)] bg-[var(--surface-raised)] px-3 py-2 text-sm"
+            >
+              <option value="static_niche">Static niche (use the configured niche)</option>
+              <option value="topic_proposals">
+                Approved topic proposals (TopicResearcher inbox)
+              </option>
+              <option value="keyword_candidates">
+                Accepted keyword candidates (KeywordHarvester)
+              </option>
+            </select>
           </Field>
 
           <div className="grid grid-cols-2 gap-3">

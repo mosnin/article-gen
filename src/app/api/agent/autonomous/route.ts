@@ -22,6 +22,7 @@ type Schedule = {
   timeOfDayLocal?: string;
   weekdayMask?: number[];
   requiresApproval?: boolean;
+  topicSource?: "static_niche" | "topic_proposals" | "keyword_candidates";
 };
 
 async function getSchedules(supabase: Awaited<ReturnType<typeof createSupabaseServer>>, userId: string): Promise<Schedule[]> {
@@ -159,6 +160,7 @@ export async function POST(req: NextRequest) {
       timeOfDayLocal,
       weekdayMask: weekdayMask ?? (cadence === "weekly" ? [1, 2, 3, 4, 5] : undefined),
       requiresApproval: body.requiresApproval ?? false,
+      topicSource: body.topicSource ?? "static_niche",
     };
     current.push(updated);
   }
