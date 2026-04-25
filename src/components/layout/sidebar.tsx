@@ -547,9 +547,36 @@ export function Sidebar({
         </svg>
       ),
     },
+    {
+      label: "Cost optimizer",
+      href: "/app/account/cost-optimizer",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm3 5a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm-1 4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+    {
+      label: "My segment",
+      href: "/app/account/segment",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
   ];
 
   if (isAdmin) {
+    accountNav.push({
+      label: "Prompt drift",
+      href: "/app/admin/drift",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M3 10a1 1 0 011-1h3V6a1 1 0 112 0v3h2V4a1 1 0 112 0v5h3a1 1 0 110 2h-3v5a1 1 0 11-2 0v-5H9v3a1 1 0 11-2 0v-3H4a1 1 0 01-1-1z" clipRule="evenodd" />
+        </svg>
+      ),
+    });
     accountNav.push({
       label: "Admin",
       href: "/app/admin",

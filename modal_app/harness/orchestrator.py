@@ -361,6 +361,18 @@ async def run(payload_dict: dict) -> dict:
         return await _run_single_subagent(
             ctx, "sponsorship_fit", _compose_sponsorship_fit_brief(payload)
         )
+    if k == "cost_optimize":
+        return await _run_single_subagent(
+            ctx, "cost_optimizer", _compose_cost_optimize_brief(payload)
+        )
+    if k == "prompt_drift_detect":
+        return await _run_single_subagent(
+            ctx, "prompt_drift_detector", _compose_prompt_drift_brief(payload)
+        )
+    if k == "user_segment":
+        return await _run_single_subagent(
+            ctx, "user_segment", _compose_user_segment_brief(payload)
+        )
     raise ValueError(f"unknown payload kind: {k!r}")
 
 
@@ -760,4 +772,49 @@ def _compose_sponsorship_fit_brief(p: TriggerPayload) -> str:
         "Suggest 1-3 sponsor archetypes per high-fit article (e.g. 'B2B SaaS analytics tool', "
         "'developer education platform'). Save via save_sponsor_fits. Return a "
         "SponsorshipFitReport JSON."
+    )
+
+
+def _compose_cost_optimize_brief(p: TriggerPayload) -> str:
+    days = p.costPeriodDays or 30
+    return (
+        f"Analyze this user's agent run cost over the last {days} days and "
+        f"recommend optimizations.\n\n"
+        f"- userId: {p.userId}\n"
+        f"- periodDays: {days}\n\n"
+        "Pull agent_runs with cost_usd. Group by kind. Identify high-spend / "
+        "low-value combinations (e.g. audit runs costing $0.30 each but rarely "
+        "yielding decided_action). Recommend specific config tweaks "
+        "(downgrade model, reduce image count, skip QA for short-form, "
+        "disable writer fan-out, increase dedup threshold, throttle autonomous). "
+        "Save via save_cost_optimization_report. Return a CostOptimizationReport JSON."
+    )
+
+
+def _compose_prompt_drift_brief(p: TriggerPayload) -> str:
+    scope = p.driftScope or "global"
+    user_part = (f"- userId: {p.userId}\n" if scope == "user" else "")
+    return (
+        f"Detect prompt-drift / quality regressions in agent output.\n\n"
+        f"- scope: {scope}\n"
+        f"{user_part}"
+        f"\nSample completed runs from the last 30 days, compare quality scores "
+        f"(when available from QAAgent results) against the prior 30 days as a "
+        f"baseline. Flag agent_kinds whose mean score dropped >5%. Diagnose "
+        f"likely cause (model_snapshot_change, prompt_edit, data_drift, unknown). "
+        f"Save via save_prompt_drift_alerts. Return a PromptDriftReport JSON."
+    )
+
+
+def _compose_user_segment_brief(p: TriggerPayload) -> str:
+    return (
+        "Infer this user's audience persona + content posture from their corpus.\n\n"
+        f"- userId: {p.userId}\n\n"
+        "Pull the user's published articles + autonomous schedule + niche. "
+        "Synthesize a structured persona: industry, businessModel (B2B|B2C|D2C|...), "
+        "audienceTechnicalLevel, primaryGoals[], brandVoice, contentPillars[], "
+        "toneKeywords[], a personaLabel + personaDescription, plus a confidence "
+        "score. Save via save_user_segment. Return a UserSegment JSON. The other "
+        "agents (article, refresh, social) will read this segment to enrich their "
+        "briefs going forward."
     )

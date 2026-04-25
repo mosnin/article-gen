@@ -58,7 +58,10 @@ export type Events = {
         | "performance_coach"
         | "newsletter_digest"
         | "social_publish"
-        | "sponsorship_fit";
+        | "sponsorship_fit"
+        | "cost_optimize"
+        | "prompt_drift_detect"
+        | "user_segment";
       topic: string;
       focusKeyword?: string;
       tone?: string;
@@ -76,6 +79,8 @@ export type Events = {
       contentBriefId?: string;
       newsletterPeriodDays?: number;
       snippetIds?: string[];
+      costPeriodDays?: number;
+      driftScope?: "global" | "user";
     };
   };
 };

@@ -46,6 +46,9 @@ class TriggerPayload(BaseModel):
         "newsletter_digest",
         "social_publish",
         "sponsorship_fit",
+        "cost_optimize",
+        "prompt_drift_detect",
+        "user_segment",
     ] = "article"
     topic: str
     focusKeyword: str | None = None
@@ -66,6 +69,8 @@ class TriggerPayload(BaseModel):
     contentBriefId: str | None = None
     newsletterPeriodDays: int | None = None
     snippetIds: list[str] = Field(default_factory=list)
+    costPeriodDays: int | None = None
+    driftScope: Literal["global", "user"] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -810,6 +815,79 @@ class SponsorshipFitReport(BaseModel):
     model_config = ConfigDict(extra="ignore")
     fits: list[SponsorFit] = Field(default_factory=list)
     articlesAnalyzed: int = 0
+
+
+# ---------------------------------------------------------------------------
+# CostOptimizer (Tier 4)
+# ---------------------------------------------------------------------------
+
+
+class CostRecommendation(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    kind: Literal[
+        "downgrade_model", "reduce_image_count", "skip_qa_short", "disable_writer_fanout",
+        "increase_dedup_threshold", "cache_research", "throttle_autonomous", "other",
+    ]
+    change: str
+    estimatedSavingsUsd: float = 0.0
+    reason: str
+
+
+class CostOptimizationReport(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    periodStart: str
+    periodEnd: str
+    totalCostUsd: float
+    totalRuns: int
+    costByKind: dict[str, float] = Field(default_factory=dict)
+    recommendations: list[CostRecommendation] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# PromptDriftDetector (Tier 4)
+# ---------------------------------------------------------------------------
+
+
+class PromptDriftAlert(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    scope: Literal["global", "user"]
+    agentKind: str
+    baselineScore: float
+    currentScore: float
+    deltaPct: float
+    sampleSize: int
+    diagnosedCause: Literal[
+        "model_snapshot_change", "prompt_edit", "data_drift", "unknown"
+    ] = "unknown"
+    severity: Literal["low", "medium", "high", "critical"]
+    evidence: list[dict] = Field(default_factory=list)
+
+
+class PromptDriftReport(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    alerts: list[PromptDriftAlert] = Field(default_factory=list)
+    runsAnalyzed: int = 0
+
+
+# ---------------------------------------------------------------------------
+# UserSegment (Tier 4)
+# ---------------------------------------------------------------------------
+
+
+class UserSegment(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    personaLabel: str = Field(min_length=3, max_length=120)
+    personaDescription: str = Field(min_length=20)
+    industry: str | None = None
+    businessModel: str | None = None
+    audienceTechnicalLevel: Literal[
+        "beginner", "intermediate", "advanced", "mixed"
+    ] | None = None
+    primaryGoals: list[str] = Field(default_factory=list)
+    brandVoice: str | None = None
+    contentPillars: list[str] = Field(default_factory=list)
+    toneKeywords: list[str] = Field(default_factory=list)
+    confidence: float = Field(ge=0.0, le=1.0)
 
 
 # Resolve forward references (RefreshBrief.serp -> SerpAnalysis).

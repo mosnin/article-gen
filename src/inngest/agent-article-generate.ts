@@ -74,7 +74,10 @@ export const agentArticleGenerate = inngest.createFunction(
             | "performance_coach"
             | "newsletter_digest"
             | "social_publish"
-            | "sponsorship_fit",
+            | "sponsorship_fit"
+            | "cost_optimize"
+            | "prompt_drift_detect"
+            | "user_segment",
           topic: input.topic,
           focusKeyword: input.focusKeyword,
           tone: input.tone,
@@ -90,6 +93,8 @@ export const agentArticleGenerate = inngest.createFunction(
           gscSiteUrl: input.gscSiteUrl,
           newsletterPeriodDays: input.newsletterPeriodDays,
           snippetIds: input.snippetIds,
+          costPeriodDays: input.costPeriodDays,
+          driftScope: input.driftScope,
         });
         if (result.modalCallId) {
           const admin = getAdminClient();

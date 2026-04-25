@@ -8,7 +8,8 @@ export type AgentRun = {
       | "topic_research" | "research_and_write"
       | "competitor_monitor" | "internal_link_optimize" | "schema_doctor" | "content_brief"
       | "seasonal_calendar" | "cannibalization_resolve" | "image_optimize" | "performance_coach"
-      | "newsletter_digest" | "social_publish" | "sponsorship_fit";
+      | "newsletter_digest" | "social_publish" | "sponsorship_fit"
+      | "cost_optimize" | "prompt_drift_detect" | "user_segment";
   status: "pending" | "running" | "succeeded" | "failed" | "cancelled";
   topic: string;
   focus_keyword: string | null;

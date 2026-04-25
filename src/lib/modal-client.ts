@@ -25,7 +25,10 @@ export type ModalTriggerPayload = {
     | "performance_coach"
     | "newsletter_digest"
     | "social_publish"
-    | "sponsorship_fit";
+    | "sponsorship_fit"
+    | "cost_optimize"
+    | "prompt_drift_detect"
+    | "user_segment";
   topic: string;
   focusKeyword?: string;
   tone?: string;
@@ -43,6 +46,8 @@ export type ModalTriggerPayload = {
   contentBriefId?: string;
   newsletterPeriodDays?: number;
   snippetIds?: string[];
+  costPeriodDays?: number;
+  driftScope?: "global" | "user";
   webhookUrl?: string;       // filled server-side if omitted
   internalApiBase?: string;  // filled server-side if omitted
 };

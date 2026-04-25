@@ -32,7 +32,10 @@ type GenerateRequest = {
     | "performance_coach"
     | "newsletter_digest"
     | "social_publish"
-    | "sponsorship_fit";
+    | "sponsorship_fit"
+    | "cost_optimize"
+    | "prompt_drift_detect"
+    | "user_segment";
   topic: string;
   focusKeyword?: string;
   tone?: string;
@@ -48,6 +51,8 @@ type GenerateRequest = {
   contentBriefId?: string;
   newsletterPeriodDays?: number;
   snippetIds?: string[];
+  costPeriodDays?: number;
+  driftScope?: "global" | "user";
   options?: {
     imageCount?: number;
     autoPublish?: boolean;
@@ -145,6 +150,8 @@ export async function POST(req: NextRequest) {
       contentBriefId: body.contentBriefId,
       newsletterPeriodDays: body.newsletterPeriodDays,
       snippetIds: body.snippetIds,
+      costPeriodDays: body.costPeriodDays,
+      driftScope: body.driftScope,
     });
     await updateAgentRunStatus({ runId: run.id, modalCallId: trigger.modalCallId });
     return NextResponse.json({ runId: run.id, status: "pending" });
