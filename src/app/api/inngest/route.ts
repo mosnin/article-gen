@@ -6,6 +6,8 @@ import { agentArticleGenerate } from "@/inngest/agent-article-generate";
 import { agentEventsRetention } from "@/inngest/agent-events-retention";
 import { agentRunsStuckAlert } from "@/inngest/agent-runs-stuck-alert";
 import { competitorMonitorCron } from "@/inngest/competitor-monitor-cron";
+import { newsletterCron } from "@/inngest/newsletter-cron";
+import { socialPublishCron } from "@/inngest/social-publish-cron";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -16,5 +18,7 @@ export const { GET, POST, PUT } = serve({
     agentEventsRetention,
     agentRunsStuckAlert,
     competitorMonitorCron,
+    newsletterCron,
+    socialPublishCron,
   ],
 });
