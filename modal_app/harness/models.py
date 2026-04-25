@@ -39,6 +39,10 @@ class TriggerPayload(BaseModel):
         "internal_link_optimize",
         "schema_doctor",
         "content_brief",
+        "seasonal_calendar",
+        "cannibalization_resolve",
+        "image_optimize",
+        "performance_coach",
     ] = "article"
     topic: str
     focusKeyword: str | None = None
@@ -636,6 +640,111 @@ class ContentBriefArtifact(BaseModel):
     ] = "informational"
     estimatedReadingTime: int | None = None
     outlineHint: Outline | None = None
+
+
+# ---------------------------------------------------------------------------
+# SeasonalCalendar (Tier 2)
+# ---------------------------------------------------------------------------
+
+
+class SeasonalRecommendation(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    topic: str
+    focusKeyword: str
+    rationale: str = ""
+    signalType: Literal[
+        "seasonal_event", "recurring_topic", "holiday",
+        "industry_cycle", "evergreen_seasonal",
+    ] = "evergreen_seasonal"
+    recommendedPublishAt: str   # ISO date
+
+
+class SeasonalCalendarReport(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    recommendations: list[SeasonalRecommendation] = Field(default_factory=list)
+    horizonDays: int = 90
+    rationale: str = ""
+
+
+# ---------------------------------------------------------------------------
+# CannibalizationResolver (Tier 2)
+# ---------------------------------------------------------------------------
+
+
+class CannibalizationResolution(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    primaryArticleId: str
+    secondaryArticleId: str
+    similarityScore: float = Field(ge=0.0, le=1.0)
+    sharedKeywords: list[str] = Field(default_factory=list)
+    recommendedAction: Literal[
+        "merge", "canonical", "archive_secondary",
+        "retarget_secondary", "no_action",
+    ]
+    rationale: str = ""
+
+
+class CannibalizationReport(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    resolutions: list[CannibalizationResolution] = Field(default_factory=list)
+    pairsScanned: int = 0
+    threshold: float = 0.85
+
+
+# ---------------------------------------------------------------------------
+# ImageOptimizer (Tier 2)
+# ---------------------------------------------------------------------------
+
+
+class ImageOptimizationRecommendation(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    articleId: str
+    imageIndex: int
+    imageStoragePath: str | None = None
+    issue: Literal[
+        "missing_alt", "generic_alt", "oversized",
+        "no_webp", "low_resolution", "broken", "other",
+    ]
+    recommendedAction: Literal[
+        "generate_alt", "regenerate", "compress", "convert_webp", "remove",
+    ]
+    currentValue: str | None = None
+    recommendedValue: str | None = None
+
+
+class ImageOptimizationReport(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    recommendations: list[ImageOptimizationRecommendation] = Field(default_factory=list)
+    articlesScanned: int = 0
+
+
+# ---------------------------------------------------------------------------
+# PerformanceCoach (Tier 2)
+# ---------------------------------------------------------------------------
+
+
+class PerformanceAlert(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    articleId: str
+    metricName: Literal["clicks", "impressions", "position", "ctr"]
+    periodDays: int = 30
+    baselineValue: float
+    currentValue: float
+    changePct: float
+    severity: Literal["low", "medium", "high", "critical"] = "medium"
+    diagnosedCause: str | None = None
+    recommendedKind: Literal[
+        "refresh", "rewrite", "archive",
+        "add_internal_links", "add_schema", "no_action",
+    ] | None = None
+    rationale: str = ""
+
+
+class PerformanceCoachReport(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    alerts: list[PerformanceAlert] = Field(default_factory=list)
+    articlesAnalyzed: int = 0
+    periodDays: int = 30
 
 
 # Resolve forward references (RefreshBrief.serp -> SerpAnalysis).

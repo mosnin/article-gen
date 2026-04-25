@@ -333,6 +333,22 @@ async def run(payload_dict: dict) -> dict:
         return await _run_single_subagent(
             ctx, "content_brief", _compose_content_brief_brief(payload)
         )
+    if k == "seasonal_calendar":
+        return await _run_single_subagent(
+            ctx, "seasonal_calendar", _compose_seasonal_calendar_brief(payload)
+        )
+    if k == "cannibalization_resolve":
+        return await _run_single_subagent(
+            ctx, "cannibalization_resolver", _compose_cannibalization_brief(payload)
+        )
+    if k == "image_optimize":
+        return await _run_single_subagent(
+            ctx, "image_optimizer", _compose_image_optimize_brief(payload)
+        )
+    if k == "performance_coach":
+        return await _run_single_subagent(
+            ctx, "performance_coach", _compose_performance_coach_brief(payload)
+        )
     raise ValueError(f"unknown payload kind: {k!r}")
 
 
@@ -646,4 +662,53 @@ def _compose_content_brief_brief(p: TriggerPayload) -> str:
         "Use SERP analysis + niche research to determine target word count, must-cover "
         "entities, recommended source URLs, reader persona, intent, and a draft outline "
         "hint. Save via save_content_brief. Return a ContentBriefArtifact JSON."
+    )
+
+
+def _compose_seasonal_calendar_brief(p: TriggerPayload) -> str:
+    return (
+        "Plot ideal publish dates for seasonal/recurring content in this user's niche.\n\n"
+        f"- userId: {p.userId}\n"
+        f"- niche: {p.topic}\n"
+        f"- horizon: 90 days from today\n\n"
+        "Combine the user's article history (look for recurring patterns) with public "
+        "seasonal signals (holidays, industry cycles, conference seasons). Propose 5-15 "
+        "SeasonalRecommendation entries with concrete recommendedPublishAt dates. "
+        "Save via save_seasonal_recommendations. Return a SeasonalCalendarReport JSON."
+    )
+
+
+def _compose_cannibalization_brief(p: TriggerPayload) -> str:
+    return (
+        "Detect article pairs in this user's corpus that compete for the same query "
+        "(keyword cannibalization).\n\n"
+        f"- userId: {p.userId}\n\n"
+        "Scan published articles, compute pairwise semantic similarity using existing "
+        "embeddings, identify pairs above threshold 0.85. For each pair, propose a "
+        "resolution (merge / canonical / archive_secondary / retarget_secondary / no_action). "
+        "Save via save_cannibalization_resolutions. Return a CannibalizationReport JSON."
+    )
+
+
+def _compose_image_optimize_brief(p: TriggerPayload) -> str:
+    return (
+        "Audit images across this user's published articles for SEO / accessibility issues.\n\n"
+        f"- userId: {p.userId}\n\n"
+        "Scan articles.generated_images. Flag missing/generic alt text, oversized files, "
+        "missing WebP variants, low resolution, broken links. Recommend an action per "
+        "issue (generate_alt / regenerate / compress / convert_webp / remove). "
+        "Save via save_image_optimization_recommendations. Return an ImageOptimizationReport JSON."
+    )
+
+
+def _compose_performance_coach_brief(p: TriggerPayload) -> str:
+    return (
+        "Analyze the user's article performance over the last 30 days and surface "
+        "declining content with diagnosed causes.\n\n"
+        f"- userId: {p.userId}\n\n"
+        "Pull GSC clicks/impressions/position/CTR per published article over 30d vs prior "
+        "30d baseline. Identify articles trending down significantly. Diagnose the cause "
+        "(stale data, lost backlinks, algorithm shift, weak schema). Recommend an action "
+        "(refresh / rewrite / archive / add_internal_links / add_schema / no_action). "
+        "Save via save_performance_alerts. Return a PerformanceCoachReport JSON."
     )

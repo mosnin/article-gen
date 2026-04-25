@@ -51,7 +51,11 @@ export type Events = {
         | "competitor_monitor"
         | "internal_link_optimize"
         | "schema_doctor"
-        | "content_brief";
+        | "content_brief"
+        | "seasonal_calendar"
+        | "cannibalization_resolve"
+        | "image_optimize"
+        | "performance_coach";
       topic: string;
       focusKeyword?: string;
       tone?: string;

@@ -67,7 +67,11 @@ export const agentArticleGenerate = inngest.createFunction(
             | "competitor_monitor"
             | "internal_link_optimize"
             | "schema_doctor"
-            | "content_brief",
+            | "content_brief"
+            | "seasonal_calendar"
+            | "cannibalization_resolve"
+            | "image_optimize"
+            | "performance_coach",
           topic: input.topic,
           focusKeyword: input.focusKeyword,
           tone: input.tone,

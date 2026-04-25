@@ -6,7 +6,8 @@ export type AgentRun = {
   kind: "article" | "autopilot" | "cluster" | "research_only"
       | "refresh" | "audit" | "cluster_plan" | "social_snippet" | "keyword_harvest"
       | "topic_research" | "research_and_write"
-      | "competitor_monitor" | "internal_link_optimize" | "schema_doctor" | "content_brief";
+      | "competitor_monitor" | "internal_link_optimize" | "schema_doctor" | "content_brief"
+      | "seasonal_calendar" | "cannibalization_resolve" | "image_optimize" | "performance_coach";
   status: "pending" | "running" | "succeeded" | "failed" | "cancelled";
   topic: string;
   focus_keyword: string | null;
