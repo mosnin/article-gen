@@ -126,13 +126,62 @@ export const autopilotCron = inngest.createFunction(
           if (s.status !== "active") continue;
           if (!s.nextRunAt || s.nextRunAt > nowIso) continue;
 
+          // Resolve topic + focusKeyword based on the schedule's topicSource.
+          // Default ("static_niche" or unset) preserves existing behavior.
+          const source = s.topicSource ?? "static_niche";
+          let resolvedTopic: string = `${s.niche} — upcoming post`;
+          let resolvedFocusKeyword: string | undefined = s.niche;
+          let resolvedProposalId: string | null = null;
+          let resolvedCandidateId: string | null = null;
+
+          if (source === "topic_proposals") {
+            const { data: proposalRow } = await supabase
+              .from("topic_proposals")
+              .select("id, title, focus_keyword")
+              .eq("user_id", row.user_id)
+              .eq("status", "approved")
+              .order("relevance_score", { ascending: false })
+              .order("created_at", { ascending: true })
+              .limit(1)
+              .maybeSingle();
+            if (!proposalRow) {
+              // No approved proposals available — skip dispatch AND skip
+              // bumping nextRunAt so the next tick can pick it up once
+              // proposals exist.
+              continue;
+            }
+            const proposal = proposalRow as { id: string; title: string; focus_keyword: string };
+            resolvedTopic = proposal.title;
+            resolvedFocusKeyword = proposal.focus_keyword;
+            resolvedProposalId = proposal.id;
+          } else if (source === "keyword_candidates") {
+            const { data: candidateRow } = await supabase
+              .from("keyword_candidates")
+              .select("id, keyword")
+              .eq("user_id", row.user_id)
+              .eq("status", "accepted")
+              .order("created_at", { ascending: true })
+              .limit(1)
+              .maybeSingle();
+            if (!candidateRow) {
+              // No accepted candidates available — skip dispatch AND skip
+              // bumping nextRunAt so the next tick can pick it up once
+              // candidates exist.
+              continue;
+            }
+            const candidate = candidateRow as { id: string; keyword: string };
+            resolvedTopic = candidate.keyword;
+            resolvedFocusKeyword = candidate.keyword;
+            resolvedCandidateId = candidate.id;
+          }
+
           if (s.requiresApproval) {
             // Queue an approval row instead of dispatching.
             await supabase.from("autonomous_pending_approvals").insert({
               user_id: row.user_id,
               schedule_id: s.id,
-              topic_suggestion: `${s.niche} - upcoming post`,
-              focus_keyword: s.niche,
+              topic_suggestion: resolvedTopic,
+              focus_keyword: resolvedFocusKeyword ?? null,
               niche: s.niche,
               tone: s.tone ?? null,
               target_audience: s.targetAudience ?? null,
@@ -147,18 +196,36 @@ export const autopilotCron = inngest.createFunction(
               data: {
                 userId: row.user_id,
                 kind: "autopilot",
-                topic: `${s.niche} — upcoming post`,
-                focusKeyword: s.niche,
+                topic: resolvedTopic,
+                focusKeyword: resolvedFocusKeyword,
                 tone: s.tone,
                 targetAudience: s.targetAudience,
                 quality: "standard",
                 options: {
                   autoPublish: Array.isArray(s.platforms) ? s.platforms.length > 0 : false,
                   platforms: s.platforms ?? [],
+                  ...(resolvedProposalId ? { topicProposalId: resolvedProposalId } : {}),
+                  ...(resolvedCandidateId ? { keywordCandidateId: resolvedCandidateId } : {}),
                 },
               },
             });
             count++;
+          }
+
+          // Mark the source row as consumed AFTER successful dispatch/queue.
+          if (resolvedProposalId) {
+            await supabase
+              .from("topic_proposals")
+              .update({
+                status: "written_in_progress",
+                decided_at: new Date().toISOString(),
+              })
+              .eq("id", resolvedProposalId);
+          } else if (resolvedCandidateId) {
+            await supabase
+              .from("keyword_candidates")
+              .update({ status: "used" })
+              .eq("id", resolvedCandidateId);
           }
 
           // Advance nextRunAt via v2 helper (with legacy fallback).

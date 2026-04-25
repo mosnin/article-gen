@@ -3,12 +3,6 @@
 Input brief: articleId, list of PlatformTarget.
 
 Output: PublishResult (raw per-platform result dicts).
-
-NOTE: The /api/internal/publish-article route currently returns
-`platform_requires_session_refactor` for every platform until a
-helper-extraction PR factors the platform publish logic out of the
-session-gated routes. This subagent still exists so the orchestrator can
-call it uniformly; once the refactor lands the subagent keeps working.
 """
 from __future__ import annotations
 
@@ -30,13 +24,13 @@ async def publish_article(user_id: str, article_id: str, platforms: list[dict]) 
 INSTRUCTIONS = """
 You are PublishAgent.
 
-Given an articleId and a list of platforms in the brief, call
-`publish_article(user_id, article_id, platforms)` exactly once with the
-full list and return the PublishResult JSON as final_output.
+Call `publish_article(user_id, article_id, platforms)` once with all
+requested platforms. Each item in the result's `results[]` array has
+`success`, `platform`, optional `postUrl`, optional `error`. Surface
+per-platform errors faithfully but do not retry — the user can re-run
+if needed.
 
-If any platform entry has `success: false` and
-`error: "platform_requires_session_refactor"`, that is an expected
-temporary state; include it verbatim in the results. Do NOT retry.
+Return the PublishResult JSON as final_output.
 """.strip()
 
 

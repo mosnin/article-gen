@@ -17,6 +17,11 @@ export default function AgentRunDetailPage({
   const { run, status, cancel } = useAgentRun(id);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [retryToast, setRetryToast] = useState<{
+    kind: "success" | "error";
+    message: string;
+  } | null>(null);
 
   const onCancel = useCallback(async () => {
     setCancelling(true);
@@ -29,6 +34,28 @@ export default function AgentRunDetailPage({
       setCancelling(false);
     }
   }, [cancel]);
+
+  const onRetry = useCallback(async () => {
+    setRetrying(true);
+    setRetryToast(null);
+    try {
+      const resp = await fetch(`/api/agent/runs/${id}/retry`, { method: "POST" });
+      if (!resp.ok) {
+        const data = (await resp.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data?.error ?? `retry failed (${resp.status})`);
+      }
+      setRetryToast({ kind: "success", message: "Retry dispatched. Redirecting..." });
+      // The new run has a different id and Inngest needs to provision it,
+      // so send the user back to the runs index.
+      setTimeout(() => router.push("/app/agent-runs"), 800);
+    } catch (e) {
+      setRetryToast({
+        kind: "error",
+        message: e instanceof Error ? e.message : String(e),
+      });
+      setRetrying(false);
+    }
+  }, [id, router]);
 
   const onComplete = useCallback((articleId: string | null) => {
     if (articleId) {
@@ -111,6 +138,18 @@ export default function AgentRunDetailPage({
                 {cancelling ? "Cancelling..." : "Cancel run"}
               </button>
             )}
+            {status === "failed" && (
+              <button
+                onClick={() => void onRetry()}
+                disabled={retrying}
+                className={cn(
+                  "rounded bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white",
+                  "hover:opacity-90 disabled:opacity-50",
+                )}
+              >
+                {retrying ? "Retrying..." : "Retry"}
+              </button>
+            )}
             {run?.article_id && (
               <Link
                 href={`/app/articles/${run.article_id}`}
@@ -125,6 +164,19 @@ export default function AgentRunDetailPage({
         {cancelError && (
           <div className="mt-3 rounded-lg border border-[var(--error)] bg-[var(--error-light)] px-3 py-2 text-xs text-[var(--error)]">
             {cancelError}
+          </div>
+        )}
+
+        {retryToast && (
+          <div
+            className={cn(
+              "mt-3 rounded-lg border px-3 py-2 text-xs",
+              retryToast.kind === "success"
+                ? "border-[var(--success)] bg-[var(--success-light)] text-[var(--success)]"
+                : "border-[var(--error)] bg-[var(--error-light)] text-[var(--error)]",
+            )}
+          >
+            {retryToast.message}
           </div>
         )}
 

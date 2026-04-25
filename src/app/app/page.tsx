@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/layout/page-header";
 import { CreditForecast } from "./components/CreditForecast";
 import { RecentAgentRuns } from "@/components/dashboard/RecentAgentRuns";
+import { AgentCostCard } from "@/components/dashboard/AgentCostCard";
 
 interface Article {
   id: string;
@@ -300,6 +301,9 @@ export default function DashboardPage() {
         />
         <CreditForecast />
       </div>
+
+      {/* Agent cost summary */}
+      <AgentCostCard />
 
       {/* Content Velocity */}
       {!loading && (

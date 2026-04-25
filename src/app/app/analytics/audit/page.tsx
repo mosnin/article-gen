@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
+import { toast } from "sonner";
 import type { ArticleAuditItem } from "@/app/api/audit/route";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
@@ -22,6 +24,25 @@ type RecentAuditRow = {
   decided_action: string | null;
   created_at: string;
 };
+
+type DecidedAction = "refresh" | "rewrite" | "archive" | "ignore" | "pending" | "applied";
+
+type ArticleLite = {
+  id: string;
+  title: string | null;
+  topic: string | null;
+  focus_keyword: string | null;
+};
+
+const AUTO_ACTION_LABEL: Record<string, string> = {
+  refresh: "Apply refresh",
+  rewrite: "Apply rewrite",
+  archive: "Archive article",
+};
+
+function applyButtonLabel(kind: string): string {
+  return AUTO_ACTION_LABEL[kind] ?? "Mark applied";
+}
 
 function ScoreBadge({ score }: { score: number }) {
   const color =
@@ -76,6 +97,7 @@ function PriorityPill({ priority }: { priority?: "low" | "medium" | "high" }) {
 }
 
 export default function ContentAuditPage() {
+  const router = useRouter();
   const [items, setItems] = useState<ArticleAuditItem[]>([]);
   const [summary, setSummary] = useState<{
     total: number;
@@ -94,6 +116,7 @@ export default function ContentAuditPage() {
   const [recentAudits, setRecentAudits] = useState<RecentAuditRow[]>([]);
   const [recentLoading, setRecentLoading] = useState(true);
   const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
+  const [applyingKey, setApplyingKey] = useState<string | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -127,6 +150,123 @@ export default function ContentAuditPage() {
     if (filter === "no-images") return !i.hasImages;
     return true;
   });
+
+  const updateDecidedAction = useCallback(
+    async (auditId: string, decided: DecidedAction): Promise<boolean> => {
+      const { error } = await supabase
+        .from("article_audits")
+        .update({ decided_action: decided })
+        .eq("id", auditId);
+      if (error) {
+        toast.error(`Failed to update audit: ${error.message}`);
+        return false;
+      }
+      setRecentAudits((prev) =>
+        prev.map((row) => (row.id === auditId ? { ...row, decided_action: decided } : row))
+      );
+      return true;
+    },
+    [supabase]
+  );
+
+  const fetchArticleLite = useCallback(
+    async (articleId: string): Promise<ArticleLite | null> => {
+      const { data, error } = await supabase
+        .from("articles")
+        .select("id, title, topic, focus_keyword")
+        .eq("id", articleId)
+        .maybeSingle();
+      if (error || !data) return null;
+      return data as ArticleLite;
+    },
+    [supabase]
+  );
+
+  const applyRecommendation = useCallback(
+    async (audit: RecentAuditRow, rec: AuditRecommendationRow, idx: number) => {
+      const key = `${audit.id}-${idx}`;
+      setApplyingKey(key);
+      try {
+        if (rec.kind === "refresh") {
+          const resp = await fetch("/api/articles/refresh", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              articleId: audit.article_id,
+              auditId: audit.id,
+              recommendationKind: "refresh",
+            }),
+          });
+          if (!resp.ok) {
+            const payload = (await resp.json().catch(() => ({}))) as { error?: string };
+            throw new Error(payload.error ?? `Refresh failed (${resp.status})`);
+          }
+          toast.success("Refresh dispatched");
+          await updateDecidedAction(audit.id, "refresh");
+          return;
+        }
+
+        if (rec.kind === "rewrite") {
+          const article = await fetchArticleLite(audit.article_id);
+          if (!article) {
+            throw new Error("Article not found");
+          }
+          const topic = article.title?.trim() || article.topic?.trim() || "";
+          if (!topic) {
+            throw new Error("Article has no title or topic to use");
+          }
+          const resp = await fetch("/api/agent/generate", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              kind: "article",
+              topic,
+              focusKeyword: article.focus_keyword ?? undefined,
+              options: { auditId: audit.id, source: "audit_rewrite" },
+            }),
+          });
+          if (!resp.ok) {
+            const payload = (await resp.json().catch(() => ({}))) as { error?: string };
+            throw new Error(payload.error ?? `Rewrite failed (${resp.status})`);
+          }
+          const out = (await resp.json()) as { runId?: string };
+          await updateDecidedAction(audit.id, "rewrite");
+          toast.success("Rewrite dispatched");
+          if (out.runId) {
+            router.push(`/app/agent-runs/${out.runId}`);
+          }
+          return;
+        }
+
+        if (rec.kind === "archive") {
+          const ok = window.confirm(
+            "Archive this article? It will be hidden from the active list but can be restored later."
+          );
+          if (!ok) return;
+          const { error: archiveErr } = await supabase
+            .from("articles")
+            .update({ lifecycle: "archived" })
+            .eq("id", audit.article_id);
+          if (archiveErr) {
+            throw new Error(archiveErr.message);
+          }
+          await updateDecidedAction(audit.id, "archive");
+          toast.success("Article archived");
+          return;
+        }
+
+        // add_schema, fix_internal_links, improve_alt_text, merge_cannibal, etc.
+        const ok = await updateDecidedAction(audit.id, "applied");
+        if (ok) toast.success("Marked as applied");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to apply";
+        toast.error(message);
+      } finally {
+        setApplyingKey(null);
+      }
+    },
+    [fetchArticleLite, router, supabase, updateDecidedAction]
+  );
 
   const dispatchAudit = useCallback(
     async (item: ArticleAuditItem) => {
@@ -429,18 +569,36 @@ export default function ContentAuditPage() {
                               </p>
                             ) : (
                               <ul className="space-y-2">
-                                {recs.map((rec, idx) => (
-                                  <li
-                                    key={`${audit.id}-rec-${idx}`}
-                                    className="flex items-start gap-2 text-sm"
-                                  >
-                                    <PriorityPill priority={rec.priority} />
-                                    <div className="flex-1">
-                                      <p className="font-semibold text-[var(--text-primary)]">{rec.kind}</p>
-                                      <p className="text-[var(--text-secondary)]">{rec.reason}</p>
-                                    </div>
-                                  </li>
-                                ))}
+                                {recs.map((rec, idx) => {
+                                  const key = `${audit.id}-${idx}`;
+                                  const busy = applyingKey === key;
+                                  const alreadyApplied =
+                                    audit.decided_action !== null &&
+                                    audit.decided_action !== "pending";
+                                  return (
+                                    <li
+                                      key={`${audit.id}-rec-${idx}`}
+                                      className="flex items-start gap-2 text-sm"
+                                    >
+                                      <PriorityPill priority={rec.priority} />
+                                      <div className="flex-1">
+                                        <p className="font-semibold text-[var(--text-primary)]">{rec.kind}</p>
+                                        <p className="text-[var(--text-secondary)]">{rec.reason}</p>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                                          e.stopPropagation();
+                                          void applyRecommendation(audit, rec, idx);
+                                        }}
+                                        disabled={busy || alreadyApplied}
+                                        className="shrink-0 inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                      >
+                                        {busy ? "Applying…" : applyButtonLabel(rec.kind)}
+                                      </button>
+                                    </li>
+                                  );
+                                })}
                               </ul>
                             )}
                           </td>

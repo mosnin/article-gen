@@ -116,9 +116,52 @@ export function Sidebar({
 }: SidebarProps) {
   const router = useRouter();
   const [isDark, setIsDark] = useState(false);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number | null>(null);
+  const [pendingTopicProposalsCount, setPendingTopicProposalsCount] = useState<number | null>(null);
 
   useEffect(() => {
     setIsDark(getTheme() === "dark");
+  }, []);
+
+  // Fetch pending approvals count once on mount.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await fetch("/api/agent/autonomous/approvals", { cache: "no-store" });
+        if (!resp.ok) return;
+        const data = (await resp.json()) as { approvals?: unknown[] };
+        if (!cancelled) {
+          setPendingApprovalsCount(Array.isArray(data.approvals) ? data.approvals.length : 0);
+        }
+      } catch {
+        if (!cancelled) setPendingApprovalsCount(0);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Fetch pending topic_proposals count once on mount via supabase browser client.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createSupabaseBrowser();
+        const { count, error } = await supabase
+          .from("topic_proposals")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "pending");
+        if (cancelled) return;
+        if (error) {
+          setPendingTopicProposalsCount(0);
+          return;
+        }
+        setPendingTopicProposalsCount(count ?? 0);
+      } catch {
+        if (!cancelled) setPendingTopicProposalsCount(0);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   function handleThemeToggle() {
@@ -190,6 +233,21 @@ export function Sidebar({
     },
   ];
 
+  const autonomousSubNav: NavItem[] = [
+    {
+      label: "Approvals",
+      href: "/app/autonomous/approvals",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+        </svg>
+      ),
+      ...(pendingApprovalsCount !== null && pendingApprovalsCount > 0
+        ? { badge: formatBadgeCount(pendingApprovalsCount) }
+        : {}),
+    },
+  ];
+
   const researchSubNav: NavItem[] = [
     {
       label: "Brief",
@@ -199,6 +257,19 @@ export function Sidebar({
           <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
         </svg>
       ),
+    },
+    {
+      label: "Topic proposals",
+      href: "/app/research/topics",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+          <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+        </svg>
+      ),
+      ...(pendingTopicProposalsCount !== null && pendingTopicProposalsCount > 0
+        ? { badge: formatBadgeCount(pendingTopicProposalsCount) }
+        : {}),
     },
     {
       label: "SERP",
@@ -428,6 +499,10 @@ export function Sidebar({
           {toolsNav.map((item) => (
             <div key={item.href}>
               <NavLink item={item} collapsed={false} />
+              {item.href === "/app/autonomous" &&
+                autonomousSubNav.map((sub) => (
+                  <NavLink key={sub.href} item={sub} collapsed={false} indent />
+                ))}
               {item.href === "/app/research" &&
                 researchSubNav.map((sub) => (
                   <NavLink key={sub.href} item={sub} collapsed={false} indent />

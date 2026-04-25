@@ -1,12 +1,3 @@
-// TODO(autopilot-rewire): This function previously called OpenAI directly,
-// saved the article, and flipped `user_settings.autopilot_plan[slotId].status`
-// to "done" with the generated `articleId`. After migrating to the agent
-// pipeline the generation / credit deduction / saving / status broadcasting
-// all live inside `agent/article.generate`. The agent webhook
-// (`/api/agent/webhook`) already writes back `agent_runs.article_id` on
-// `run_completed`; a follow-up task must consume that event to also flip the
-// autopilot slot (by `autopilotSlotId === slotId`) to `{ status: "done",
-// articleId }`. Until that follow-up lands the slot stays in its prior state.
 import { inngest } from "@/lib/inngest";
 
 export const generateAutopilotArticle = inngest.createFunction(

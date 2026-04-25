@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useMemo, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-browser";
 import { format, parseISO, differenceInDays, differenceInWeeks, differenceInMonths } from "date-fns";
 import { EmptyState } from "@/components/ui/empty-state";
+
+type Lifecycle =
+  | "draft"
+  | "scheduled"
+  | "published"
+  | "needs_refresh"
+  | "archived";
 
 interface Article {
   id: string;
@@ -19,6 +26,7 @@ interface Article {
   word_count: number | null;
   publish_at: string | null;
   focus_keyword: string | null;
+  lifecycle: Lifecycle | null;
 }
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -33,7 +41,66 @@ const PLATFORM_LABELS: Record<string, string> = {
 };
 
 type SortKey = "created_at" | "word_count" | "published_platform";
-type FilterKey = "all" | "published" | "draft";
+type FilterKey =
+  | "all"
+  | "published"
+  | "scheduled"
+  | "draft"
+  | "needs_refresh"
+  | "archived";
+
+const FILTER_TABS: ReadonlyArray<{ key: FilterKey; label: string }> = [
+  { key: "all", label: "All" },
+  { key: "published", label: "Published" },
+  { key: "scheduled", label: "Scheduled" },
+  { key: "draft", label: "Drafts" },
+  { key: "needs_refresh", label: "Needs refresh" },
+  { key: "archived", label: "Archived" },
+];
+
+const LIFECYCLE_BADGE: Record<
+  Lifecycle,
+  { label: string; bg: string; fg: string }
+> = {
+  published: {
+    label: "Published",
+    bg: "var(--success-light)",
+    fg: "var(--success)",
+  },
+  scheduled: {
+    label: "Scheduled",
+    bg: "var(--accent-light)",
+    fg: "var(--accent)",
+  },
+  needs_refresh: {
+    label: "Needs refresh",
+    bg: "var(--warning-light)",
+    fg: "var(--warning)",
+  },
+  draft: {
+    label: "Draft",
+    bg: "var(--surface-sunken)",
+    fg: "var(--text-tertiary)",
+  },
+  archived: {
+    label: "Archived",
+    bg: "var(--surface-sunken)",
+    fg: "var(--text-tertiary)",
+  },
+};
+
+function LifecycleBadge({ lifecycle }: { lifecycle: Lifecycle | null }) {
+  const key: Lifecycle = lifecycle ?? "draft";
+  const cfg = LIFECYCLE_BADGE[key];
+  return (
+    <span
+      className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize"
+      style={{ backgroundColor: cfg.bg, color: cfg.fg }}
+    >
+      {cfg.label}
+    </span>
+  );
+}
 
 function ageLabel(isoDate: string): string {
   const now = new Date();
@@ -64,8 +131,10 @@ function WordCountBar({ count }: { count: number | null }) {
   );
 }
 
-export default function ArticlesPage() {
+function ArticlesContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const clusterId = searchParams.get("cluster");
   const supabase = createClient();
 
   const [articles, setArticles] = useState<Article[]>([]);
@@ -84,30 +153,46 @@ export default function ArticlesPage() {
         return;
       }
 
-      const { data } = await supabase
+      let query = supabase
         .from("articles")
         .select(
-          "id, title, topic, slug, posted, published_platform, created_at, updated_at, word_count, publish_at, focus_keyword"
+          "id, title, topic, slug, posted, published_platform, created_at, updated_at, word_count, publish_at, focus_keyword, lifecycle"
         )
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        .eq("user_id", user.id);
+      if (clusterId) {
+        query = query.eq("cluster_id", clusterId);
+      }
+      const { data } = await query.order("created_at", { ascending: false });
 
-      setArticles(data ?? []);
+      setArticles((data ?? []) as Article[]);
       setLoading(false);
     };
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [clusterId]);
 
   const filtered = useMemo(() => {
     let list = articles.filter((a) => {
       const matchesSearch =
         !search ||
         (a.title || a.topic).toLowerCase().includes(search.toLowerCase());
-      const matchesFilter =
-        filter === "all" ||
-        (filter === "published" && a.posted) ||
-        (filter === "draft" && !a.posted);
+      const lifecycle: Lifecycle | null = a.lifecycle ?? null;
+      let matchesFilter = false;
+      if (filter === "all") {
+        // Hide archived from "all" by default unless explicitly selected.
+        matchesFilter = lifecycle !== "archived";
+      } else if (filter === "published") {
+        // Backward compat: include legacy posted=true rows even if lifecycle hasn't been backfilled.
+        matchesFilter = lifecycle === "published" || a.posted;
+      } else if (filter === "scheduled") {
+        matchesFilter = lifecycle === "scheduled";
+      } else if (filter === "draft") {
+        matchesFilter = (lifecycle === "draft" || lifecycle === null) && !a.posted;
+      } else if (filter === "needs_refresh") {
+        matchesFilter = lifecycle === "needs_refresh";
+      } else if (filter === "archived") {
+        matchesFilter = lifecycle === "archived";
+      }
       return matchesSearch && matchesFilter;
     });
 
