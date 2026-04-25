@@ -16,6 +16,7 @@ type ArticleRow = {
   meta_description: string | null;
   slug: string | null;
   topic: string | null;
+  schema_json: string | null;
 };
 
 export async function POST(req: Request) {
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
   const { data, error } = await sb
     .from("articles")
     .select(
-      "id, title, article_markdown, focus_keyword, keywords, meta_description, slug, topic",
+      "id, title, article_markdown, focus_keyword, keywords, meta_description, slug, topic, schema_json",
     )
     .eq("id", body.articleId)
     .maybeSingle();
@@ -62,5 +63,6 @@ export async function POST(req: Request) {
     metaDescription: row.meta_description ?? "",
     slug: row.slug ?? "",
     topic: row.topic ?? "",
+    schemaJson: row.schema_json ?? "",
   });
 }

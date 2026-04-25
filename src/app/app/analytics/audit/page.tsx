@@ -25,6 +25,27 @@ type RecentAuditRow = {
   created_at: string;
 };
 
+type SchemaRecommendationRow = {
+  kind: string;
+  reason: string;
+  priority?: "low" | "medium" | "high";
+};
+
+type SchemaValidationStatus = "valid" | "warnings" | "invalid" | "pending";
+
+type SchemaDiagnosisRow = {
+  id: string;
+  article_id: string;
+  current_schema: Record<string, unknown> | null;
+  recommended_schema: Record<string, unknown> | null;
+  recommendations: SchemaRecommendationRow[];
+  validation_status: SchemaValidationStatus;
+  validation_errors: string[];
+  status: string | null;
+  created_at: string;
+  articles?: { title: string | null } | null;
+};
+
 type DecidedAction = "refresh" | "rewrite" | "archive" | "ignore" | "pending" | "applied";
 
 type ArticleLite = {
@@ -96,6 +117,24 @@ function PriorityPill({ priority }: { priority?: "low" | "medium" | "high" }) {
   );
 }
 
+function ValidationPill({ status }: { status: SchemaValidationStatus }) {
+  const color =
+    status === "valid"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : status === "warnings"
+        ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+        : status === "invalid"
+          ? "bg-red-50 text-red-700 border-red-200"
+          : "bg-[var(--surface-sunken)] text-[var(--text-secondary)] border-[var(--border-default)]";
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${color}`}
+    >
+      {status}
+    </span>
+  );
+}
+
 export default function ContentAuditPage() {
   const router = useRouter();
   const [items, setItems] = useState<ArticleAuditItem[]>([]);
@@ -118,6 +157,12 @@ export default function ContentAuditPage() {
   const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
   const [applyingKey, setApplyingKey] = useState<string | null>(null);
 
+  const [schemaDiagnoses, setSchemaDiagnoses] = useState<SchemaDiagnosisRow[]>([]);
+  const [schemaLoading, setSchemaLoading] = useState(true);
+  const [expandedSchemaId, setExpandedSchemaId] = useState<string | null>(null);
+  const [applyingSchemaId, setApplyingSchemaId] = useState<string | null>(null);
+  const [schemaCheckingId, setSchemaCheckingId] = useState<string | null>(null);
+
   const supabase = useMemo(() => createClient(), []);
 
   const loadRecentAudits = useCallback(async () => {
@@ -133,6 +178,21 @@ export default function ContentAuditPage() {
     setRecentLoading(false);
   }, [supabase]);
 
+  const loadSchemaDiagnoses = useCallback(async () => {
+    setSchemaLoading(true);
+    const { data, error } = await supabase
+      .from("schema_diagnoses")
+      .select(
+        "id, article_id, current_schema, recommended_schema, recommendations, validation_status, validation_errors, status, created_at, articles(title)"
+      )
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (!error && data) {
+      setSchemaDiagnoses(data as unknown as SchemaDiagnosisRow[]);
+    }
+    setSchemaLoading(false);
+  }, [supabase]);
+
   useEffect(() => {
     fetch("/api/audit")
       .then((r) => r.json())
@@ -142,7 +202,8 @@ export default function ContentAuditPage() {
       })
       .finally(() => setLoading(false));
     void loadRecentAudits();
-  }, [loadRecentAudits]);
+    void loadSchemaDiagnoses();
+  }, [loadRecentAudits, loadSchemaDiagnoses]);
 
   const filtered = items.filter((i) => {
     if (filter === "refresh") return i.needsRefresh;
@@ -300,6 +361,81 @@ export default function ContentAuditPage() {
     []
   );
 
+  const dispatchSchemaCheck = useCallback(
+    async (item: ArticleAuditItem) => {
+      setDispatchError(null);
+      setDispatchOk(null);
+      setSchemaCheckingId(item.id);
+      try {
+        const topic = item.title || item.focusKeyword || "";
+        const resp = await fetch("/api/agent/generate", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            kind: "schema_doctor",
+            articleId: item.id,
+            topic,
+            focusKeyword: item.focusKeyword || undefined,
+          }),
+        });
+        if (!resp.ok) {
+          const payload = (await resp.json().catch(() => ({}))) as { error?: string };
+          throw new Error(payload.error ?? `Request failed (${resp.status})`);
+        }
+        const out = (await resp.json()) as { runId?: string };
+        if (out.runId) {
+          router.push(`/app/agent-runs/${out.runId}`);
+        } else {
+          setDispatchOk("Schema check queued");
+        }
+      } catch (err) {
+        setDispatchError(
+          err instanceof Error ? err.message : "Failed to dispatch schema check"
+        );
+      } finally {
+        setSchemaCheckingId(null);
+      }
+    },
+    [router]
+  );
+
+  const applySchemaDiagnosis = useCallback(
+    async (row: SchemaDiagnosisRow) => {
+      if (!row.recommended_schema) {
+        toast.error("No recommended schema to apply");
+        return;
+      }
+      setApplyingSchemaId(row.id);
+      try {
+        const stringified = JSON.stringify(row.recommended_schema, null, 2);
+        const { error: patchErr } = await supabase
+          .from("articles")
+          .update({ schema_json: stringified })
+          .eq("id", row.article_id);
+        if (patchErr) {
+          throw new Error(patchErr.message);
+        }
+        const { error: statusErr } = await supabase
+          .from("schema_diagnoses")
+          .update({ status: "applied", decided_at: new Date().toISOString() })
+          .eq("id", row.id);
+        if (statusErr) {
+          throw new Error(statusErr.message);
+        }
+        setSchemaDiagnoses((prev) =>
+          prev.map((r) => (r.id === row.id ? { ...r, status: "applied" } : r))
+        );
+        toast.success("Schema applied to article");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to apply schema";
+        toast.error(message);
+      } finally {
+        setApplyingSchemaId(null);
+      }
+    },
+    [supabase]
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader title="Content Audit" description="Health check across all your articles" />
@@ -416,12 +552,15 @@ export default function ContentAuditPage() {
                 <th className="text-right px-3 py-3 text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
                   Action
                 </th>
+                <th className="text-right px-3 py-3 text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
+                  Schema check
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-default)]">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-[var(--text-secondary)]">
+                  <td colSpan={9} className="text-center py-12 text-[var(--text-secondary)]">
                     No articles match this filter
                   </td>
                 </tr>
@@ -477,6 +616,16 @@ export default function ContentAuditPage() {
                       className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {dispatchingId === item.id ? "Queuing…" : "Run audit (Agent)"}
+                    </button>
+                  </td>
+                  <td className="px-3 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => void dispatchSchemaCheck(item)}
+                      disabled={schemaCheckingId === item.id}
+                      className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {schemaCheckingId === item.id ? "Queuing…" : "Schema check"}
                     </button>
                   </td>
                 </tr>
@@ -601,6 +750,170 @@ export default function ContentAuditPage() {
                                 })}
                               </ul>
                             )}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* Schema diagnoses */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Schema diagnoses</h2>
+          <button
+            type="button"
+            onClick={() => void loadSchemaDiagnoses()}
+            className="text-xs text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
+        {schemaLoading ? (
+          <div className="text-center py-8 text-[var(--text-secondary)] text-sm">
+            Loading schema diagnoses…
+          </div>
+        ) : schemaDiagnoses.length === 0 ? (
+          <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl p-6 text-sm text-[var(--text-secondary)]">
+            No schema diagnoses yet. Click &ldquo;Schema check&rdquo; next to an article above
+            to generate one.
+          </div>
+        ) : (
+          <div className="bg-[var(--surface-base)] border border-[var(--border-default)] rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--border-default)] bg-[var(--surface-raised)]">
+                  <th className="text-left px-4 py-3 text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
+                    Article
+                  </th>
+                  <th className="text-center px-3 py-3 text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
+                    Validation
+                  </th>
+                  <th className="text-center px-3 py-3 text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
+                    Recs
+                  </th>
+                  <th className="text-center px-3 py-3 text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
+                    Action
+                  </th>
+                  <th className="text-right px-3 py-3 text-xs font-medium text-[var(--text-tertiary)] uppercase tracking-wide">
+                    Created
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-default)]">
+                {schemaDiagnoses.map((row) => {
+                  const expanded = expandedSchemaId === row.id;
+                  const recs = Array.isArray(row.recommendations) ? row.recommendations : [];
+                  const articleTitle =
+                    row.articles?.title?.trim() || `${row.article_id.slice(0, 8)}…`;
+                  const status = row.status ?? "pending";
+                  const alreadyApplied = status !== "pending";
+                  const busy = applyingSchemaId === row.id;
+                  const currentStr = JSON.stringify(row.current_schema ?? {}, null, 2);
+                  const recommendedStr = JSON.stringify(row.recommended_schema ?? {}, null, 2);
+                  return (
+                    <React.Fragment key={row.id}>
+                      <tr
+                        className="hover:bg-[var(--surface-sunken)] transition-colors cursor-pointer"
+                        onClick={() => setExpandedSchemaId(expanded ? null : row.id)}
+                      >
+                        <td className="px-4 py-3">
+                          <Link
+                            href={`/app/articles/${row.article_id}`}
+                            onClick={(e: MouseEvent<HTMLAnchorElement>) => e.stopPropagation()}
+                            className="text-[var(--accent)] hover:underline font-medium"
+                          >
+                            {articleTitle}
+                          </Link>
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          <ValidationPill status={row.validation_status} />
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          <span className="text-xs font-medium text-[var(--text-primary)]">
+                            {recs.length}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--surface-sunken)] text-[var(--text-secondary)]">
+                            {status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-right text-xs text-[var(--text-tertiary)]">
+                          {new Date(row.created_at).toLocaleString()}
+                        </td>
+                      </tr>
+                      {expanded && (
+                        <tr className="bg-[var(--surface-sunken)]">
+                          <td colSpan={5} className="px-4 py-3 space-y-3">
+                            {row.validation_errors && row.validation_errors.length > 0 && (
+                              <div className="text-xs text-red-700">
+                                <p className="font-semibold mb-1">Validation errors</p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                  {row.validation_errors.map((err, i) => (
+                                    <li key={`${row.id}-err-${i}`}>{err}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {recs.length > 0 ? (
+                              <ul className="space-y-2">
+                                {recs.map((rec, idx) => (
+                                  <li
+                                    key={`${row.id}-srec-${idx}`}
+                                    className="flex items-start gap-2 text-sm"
+                                  >
+                                    <PriorityPill priority={rec.priority} />
+                                    <div className="flex-1">
+                                      <p className="font-semibold text-[var(--text-primary)]">
+                                        {rec.kind}
+                                      </p>
+                                      <p className="text-[var(--text-secondary)]">{rec.reason}</p>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-sm text-[var(--text-secondary)]">
+                                No recommendations.
+                              </p>
+                            )}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase mb-1">
+                                  Current
+                                </p>
+                                <pre className="text-[11px] bg-[var(--surface-base)] border border-[var(--border-default)] rounded-md p-2 overflow-auto max-h-64 whitespace-pre-wrap break-all">
+{currentStr}
+                                </pre>
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase mb-1">
+                                  Recommended
+                                </p>
+                                <pre className="text-[11px] bg-[var(--surface-base)] border border-[var(--border-default)] rounded-md p-2 overflow-auto max-h-64 whitespace-pre-wrap break-all">
+{recommendedStr}
+                                </pre>
+                              </div>
+                            </div>
+                            <div className="flex justify-end">
+                              <button
+                                type="button"
+                                onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                                  e.stopPropagation();
+                                  void applySchemaDiagnosis(row);
+                                }}
+                                disabled={busy || alreadyApplied}
+                                className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {busy ? "Applying…" : alreadyApplied ? "Applied" : "Apply"}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       )}
