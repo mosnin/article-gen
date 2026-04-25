@@ -127,16 +127,33 @@ def build_orchestrator(ctx: _RunCtx) -> Agent:
 
     @function_tool
     async def invoke_subagent(name: str, brief: str) -> str:
-        """Delegate a focused task to a subagent.
+        """Delegate a focused task to one of: research, outline, writer, metadata, images, qa, publish, refresh, audit, cluster_strategist, social_snippet, keyword_harvester."""
+        try:
+            agent = _lazy_subagent(name)
+        except Exception as e:
+            await progress.emit(
+                ctx.payload.runId, "warning", agent_name="orchestrator",
+                tool_name="invoke_subagent",
+                message=f"unknown subagent {name!r}: {e!s}",
+            )
+            return json.dumps({"error": f"unknown subagent: {name}", "detail": str(e)})
 
-        Valid names: research, outline, writer, metadata, images, qa, publish.
-        """
-        agent = _lazy_subagent(name)
         session = ctx.session.build_subagent_session()
-        result = await ctx.pool.invoke(agent, brief, session=session, name=name)
+        try:
+            result = await ctx.pool.invoke(agent, brief, session=session, name=name)
+        except Exception as e:
+            await progress.emit(
+                ctx.payload.runId, "warning", agent_name="orchestrator",
+                tool_name="invoke_subagent",
+                message=f"subagent {name} failed: {e!s}",
+            )
+            return json.dumps({"error": f"subagent {name} failed", "detail": str(e)})
+
         if hasattr(result, "model_dump_json"):
             return result.model_dump_json()
-        return json.dumps(result) if not isinstance(result, str) else result
+        if isinstance(result, str):
+            return result
+        return json.dumps(result)
 
     @function_tool
     def list_subagents() -> list[str]:
@@ -349,6 +366,7 @@ def _compose_initial_brief(payload: TriggerPayload) -> str:
     platforms = options.get("platforms") or []
     return (
         f"Produce a single publication-ready article.\n\n"
+        f"- userId: {payload.userId}\n"
         f"- topic: {payload.topic}\n"
         f"- focusKeyword: {keyword}\n"
         f"- tone: {tone}\n"
@@ -364,6 +382,7 @@ def _compose_initial_brief(payload: TriggerPayload) -> str:
 def _compose_refresh_brief(p: TriggerPayload) -> str:
     return (
         "Refresh an existing article.\n\n"
+        f"- userId: {p.userId}\n"
         f"- articleId: {p.articleId}\n"
         f"- focusKeyword: {p.focusKeyword or ''}\n"
         f"- reason: scheduled refresh\n\n"
@@ -378,6 +397,9 @@ def _compose_audit_brief(p: TriggerPayload) -> str:
     ids = p.articleIds or ([p.articleId] if p.articleId else [])
     return (
         f"Audit {len(ids)} article(s): {ids}.\n"
+        f"- userId: {p.userId}\n"
+        f"- articleId: {p.articleId}\n"
+        f"- articleIds: {ids}\n\n"
         "For each, pull GSC performance, current SERP, and existing schema. "
         "Produce an AuditReport with recommendations ranked by priority. "
         "Return an array of AuditReport JSON, or a single AuditReport if one article."
@@ -387,6 +409,7 @@ def _compose_audit_brief(p: TriggerPayload) -> str:
 def _compose_cluster_plan_brief(p: TriggerPayload) -> str:
     return (
         "Plan a topic cluster.\n\n"
+        f"- userId: {p.userId}\n"
         f"- pillarTopic: {p.clusterPillarTopic or p.topic}\n"
         f"- pillarKeyword: {p.focusKeyword or p.topic}\n"
         f"- tone: {p.tone or 'professional'}\n"
@@ -400,6 +423,8 @@ def _compose_social_snippet_brief(p: TriggerPayload) -> str:
     platforms = p.socialPlatforms or ["twitter", "linkedin"]
     return (
         f"Produce social repurposing snippets for article {p.articleId}.\n"
+        f"- userId: {p.userId}\n"
+        f"- articleId: {p.articleId}\n"
         f"Platforms: {platforms}.\n"
         "For each platform produce 1-3 variants sized appropriately "
         "(tweet threads, LinkedIn posts, IG captions, etc.). Return a "
@@ -410,6 +435,7 @@ def _compose_social_snippet_brief(p: TriggerPayload) -> str:
 def _compose_keyword_harvest_brief(p: TriggerPayload) -> str:
     return (
         "Harvest keyword candidates for this user's niche.\n"
+        f"- userId: {p.userId}\n"
         f"- niche: {p.topic}\n"
         f"- existing focus keyword hint: {p.focusKeyword or ''}\n"
         f"- gscSiteUrl (for GSC-based harvest): {p.gscSiteUrl or ''}\n\n"
@@ -420,6 +446,7 @@ def _compose_keyword_harvest_brief(p: TriggerPayload) -> str:
 
 def _compose_research_brief(p: TriggerPayload) -> str:
     return (
-        f"Research the topic '{p.topic}' (focusKeyword '{p.focusKeyword or p.topic}'). "
+        f"Research the topic '{p.topic}' (focusKeyword '{p.focusKeyword or p.topic}').\n"
+        f"- userId: {p.userId}\n\n"
         "Return only the research output. Do not produce an outline or article body."
     )

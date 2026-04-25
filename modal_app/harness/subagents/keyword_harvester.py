@@ -38,21 +38,6 @@ Quality bar:
 """.strip()
 
 
-def build_agent() -> Agent:
-    return Agent(
-        name="KeywordHarvesterAgent",
-        instructions=INSTRUCTIONS,
-        model=config.MODEL_SUBAGENT,
-        output_type=KeywordCandidateSet,
-        tools=[
-            fetch_gsc_queries,
-            research_niche,
-            serp_analyze,
-            save_candidates,
-        ],
-    )
-
-
 @function_tool
 async def fetch_gsc_queries(user_id: str, limit: int = 100, days: int = 28) -> dict:
     """Fetch the user's GSC query inventory for untapped-demand signal."""
@@ -77,6 +62,21 @@ async def serp_analyze(keyword: str, num_results: int = 10) -> dict:
 async def save_candidates(user_id: str, candidates: list[dict]) -> dict:
     """Persist harvested candidates. Endpoint dedupes by (user_id, lower(keyword))."""
     return await keyword_store.upsert(user_id=user_id, candidates=candidates)
+
+
+def build_agent() -> Agent:
+    return Agent(
+        name="KeywordHarvesterAgent",
+        instructions=INSTRUCTIONS,
+        model=config.MODEL_SUBAGENT,
+        output_type=KeywordCandidateSet,
+        tools=[
+            fetch_gsc_queries,
+            research_niche,
+            serp_analyze,
+            save_candidates,
+        ],
+    )
 
 
 __all__ = ["build_agent", "KeywordCandidate", "KeywordCandidateSet"]

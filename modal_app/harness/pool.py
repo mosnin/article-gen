@@ -17,7 +17,7 @@ import asyncio
 import uuid
 from typing import Any
 
-from agents import Agent, Runner, Session
+from agents import Agent, Runner, SQLiteSession
 
 from modal_app import config
 from modal_app.harness import progress
@@ -37,7 +37,7 @@ class SubAgentPool:
         agent: Agent,
         brief: str,
         *,
-        session: Session | None = None,
+        session: SQLiteSession | None = None,
         name: str | None = None,
     ) -> Any:
         corr_id = f"{name or agent.name}:{uuid.uuid4().hex[:8]}"
@@ -74,7 +74,7 @@ class SubAgentPool:
         agent: Agent,
         brief: str,
         *,
-        session: Session | None = None,
+        session: SQLiteSession | None = None,
         name: str | None = None,
     ) -> tuple[Any, list[Any]]:
         """Same as invoke() but also returns result.raw_responses for cost aggregation."""
@@ -110,7 +110,7 @@ class SubAgentPool:
 
     async def invoke_many(
         self,
-        calls: list[tuple[Agent, str, Session | None]],
+        calls: list[tuple[Agent, str, SQLiteSession | None]],
     ) -> list[Any]:
         """Fan-out multiple subagent invocations concurrently (bounded by semaphore)."""
         tasks = [self.invoke(a, b, session=s) for (a, b, s) in calls]

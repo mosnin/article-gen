@@ -14,9 +14,10 @@ guardrail.
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 
-from agents import Session
+from agents import SQLiteSession
 
 from modal_app.harness.models import SimilarArticle
 
@@ -25,16 +26,18 @@ from modal_app.harness.models import SimilarArticle
 class RunSession:
     run_id: str
     user_id: str
-    orchestrator_session: Session = field(default_factory=Session)
+    orchestrator_session: SQLiteSession = field(
+        default_factory=lambda: SQLiteSession(session_id=f"orch:{uuid.uuid4().hex}")
+    )
     # subagent sessions are short-lived; do not store them on RunSession
     past_work: list[SimilarArticle] = field(default_factory=list)
 
-    def build_subagent_session(self) -> Session:
+    def build_subagent_session(self) -> SQLiteSession:
         """Return a FRESH Session for a subagent invocation.
 
         The orchestrator retains its own session; subagents must not share it.
         """
-        return Session()
+        return SQLiteSession(session_id=f"sub:{uuid.uuid4().hex}")
 
     def inject_past_work(self, similar: list[SimilarArticle]) -> str:
         """Render a short markdown block summarizing recent similar articles.
