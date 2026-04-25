@@ -35,6 +35,10 @@ class TriggerPayload(BaseModel):
         "keyword_harvest",
         "topic_research",
         "research_and_write",
+        "competitor_monitor",
+        "internal_link_optimize",
+        "schema_doctor",
+        "content_brief",
     ] = "article"
     topic: str
     focusKeyword: str | None = None
@@ -51,6 +55,8 @@ class TriggerPayload(BaseModel):
     clusterPillarTopic: str | None = None
     socialPlatforms: list[str] = Field(default_factory=list)
     gscSiteUrl: str | None = None
+    competitorIds: list[str] = Field(default_factory=list)
+    contentBriefId: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -536,6 +542,100 @@ class TopicProposalSet(BaseModel):
     proposals: list[TopicProposal] = Field(min_length=0, max_length=20)
     rejected: list[TopicProposalRejection] = Field(default_factory=list)
     rationale: str = ""
+
+
+# ---------------------------------------------------------------------------
+# CompetitorMonitor (Tier 1)
+# ---------------------------------------------------------------------------
+
+
+class CompetitorArticle(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    url: str
+    title: str
+    publishedAt: str | None = None
+    classification: Literal[
+        "informational", "comparison", "launch",
+        "tutorial", "listicle", "news", "other",
+    ] = "other"
+    rebuttalTopic: str | None = None
+    rebuttalFocusKeyword: str | None = None
+    rebuttalAngle: str | None = None
+
+
+class CompetitorMonitorReport(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    discovered: list[CompetitorArticle] = Field(default_factory=list)
+    skippedDuplicates: int = 0
+    competitorsScanned: int = 0
+
+
+# ---------------------------------------------------------------------------
+# InternalLinkOptimizer (Tier 1)
+# ---------------------------------------------------------------------------
+
+
+class LinkSuggestion(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    sourceArticleId: str
+    targetArticleId: str
+    anchorText: str
+    contextSnippet: str = ""
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class LinkOptimizationReport(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    suggestions: list[LinkSuggestion] = Field(default_factory=list)
+    articlesScanned: int = 0
+    rationale: str = ""
+
+
+# ---------------------------------------------------------------------------
+# SchemaDoctor (Tier 1)
+# ---------------------------------------------------------------------------
+
+
+class SchemaRecommendation(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    kind: Literal[
+        "add_faq", "add_howto", "add_product",
+        "fix_required_field", "tighten_types", "add_breadcrumb",
+    ]
+    reason: str
+    priority: Literal["low", "medium", "high"] = "medium"
+
+
+class SchemaDiagnosis(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    articleId: str
+    currentSchema: dict | None = None
+    recommendedSchema: dict
+    recommendations: list[SchemaRecommendation] = Field(default_factory=list)
+    validationStatus: Literal[
+        "valid", "invalid", "warnings", "pending"
+    ] = "pending"
+    validationErrors: list[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# ContentBrief (Tier 1)
+# ---------------------------------------------------------------------------
+
+
+class ContentBriefArtifact(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    topic: str
+    focusKeyword: str
+    targetWordCount: int = 1500
+    mustCoverEntities: list[str] = Field(default_factory=list)
+    mustLinkSources: list[str] = Field(default_factory=list)
+    readerPersona: str = ""
+    intent: Literal[
+        "informational", "commercial", "transactional", "navigational"
+    ] = "informational"
+    estimatedReadingTime: int | None = None
+    outlineHint: Outline | None = None
 
 
 # Resolve forward references (RefreshBrief.serp -> SerpAnalysis).

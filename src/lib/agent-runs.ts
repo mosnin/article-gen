@@ -5,7 +5,8 @@ export type AgentRun = {
   user_id: string;
   kind: "article" | "autopilot" | "cluster" | "research_only"
       | "refresh" | "audit" | "cluster_plan" | "social_snippet" | "keyword_harvest"
-      | "topic_research" | "research_and_write";
+      | "topic_research" | "research_and_write"
+      | "competitor_monitor" | "internal_link_optimize" | "schema_doctor" | "content_brief";
   status: "pending" | "running" | "succeeded" | "failed" | "cancelled";
   topic: string;
   focus_keyword: string | null;

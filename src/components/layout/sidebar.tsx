@@ -290,6 +290,24 @@ export function Sidebar({
       ),
     },
     {
+      label: "Internal links",
+      href: "/app/research/internal-links",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+    {
+      label: "Content briefs",
+      href: "/app/research/briefs",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+        </svg>
+      ),
+    },
+    {
       label: "Keyword harvester",
       href: "/app/research/keywords",
       icon: (
@@ -316,6 +334,15 @@ export function Sidebar({
       icon: (
         <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
           <path d="M10 2a1 1 0 01.894.553l1.382 2.764 3.053.444a1 1 0 01.554 1.706l-2.208 2.152.521 3.038a1 1 0 01-1.451 1.054L10 12.347l-2.745 1.444a1 1 0 01-1.451-1.054l.521-3.038L4.117 7.547a1 1 0 01.554-1.706l3.053-.444L9.106 2.553A1 1 0 0110 2zM3 15a1 1 0 011-1h2a1 1 0 110 2H4a1 1 0 01-1-1zm11 0a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1zm-5 3a1 1 0 011-1h0a1 1 0 110 2h0a1 1 0 01-1-1z" />
+        </svg>
+      ),
+    },
+    {
+      label: "Competitors",
+      href: "/app/competitors",
+      icon: (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <path fillRule="evenodd" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" clipRule="evenodd" />
         </svg>
       ),
     },

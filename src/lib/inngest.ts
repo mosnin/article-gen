@@ -47,7 +47,11 @@ export type Events = {
         | "social_snippet"
         | "keyword_harvest"
         | "topic_research"
-        | "research_and_write";
+        | "research_and_write"
+        | "competitor_monitor"
+        | "internal_link_optimize"
+        | "schema_doctor"
+        | "content_brief";
       topic: string;
       focusKeyword?: string;
       tone?: string;
@@ -61,6 +65,8 @@ export type Events = {
       clusterPillarTopic?: string;
       socialPlatforms?: string[];
       gscSiteUrl?: string;
+      competitorIds?: string[];
+      contentBriefId?: string;
     };
   };
 };

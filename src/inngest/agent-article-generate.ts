@@ -63,7 +63,11 @@ export const agentArticleGenerate = inngest.createFunction(
             | "social_snippet"
             | "keyword_harvest"
             | "topic_research"
-            | "research_and_write",
+            | "research_and_write"
+            | "competitor_monitor"
+            | "internal_link_optimize"
+            | "schema_doctor"
+            | "content_brief",
           topic: input.topic,
           focusKeyword: input.focusKeyword,
           tone: input.tone,

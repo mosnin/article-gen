@@ -317,6 +317,22 @@ async def run(payload_dict: dict) -> dict:
         )
     if k == "research_and_write":
         return await _run_research_and_write(ctx)
+    if k == "competitor_monitor":
+        return await _run_single_subagent(
+            ctx, "competitor_monitor", _compose_competitor_monitor_brief(payload)
+        )
+    if k == "internal_link_optimize":
+        return await _run_single_subagent(
+            ctx, "internal_link_optimizer", _compose_link_optimize_brief(payload)
+        )
+    if k == "schema_doctor":
+        return await _run_single_subagent(
+            ctx, "schema_doctor", _compose_schema_doctor_brief(payload)
+        )
+    if k == "content_brief":
+        return await _run_single_subagent(
+            ctx, "content_brief", _compose_content_brief_brief(payload)
+        )
     raise ValueError(f"unknown payload kind: {k!r}")
 
 
@@ -581,4 +597,53 @@ def _compose_topic_research_brief(p: TriggerPayload) -> str:
         "Apply the dedup + niche + evidence + freshness rules. Save the "
         "approved proposals via save_topic_proposals. Return a "
         "TopicProposalSet JSON with niche, proposals, and rejected[]."
+    )
+
+
+def _compose_competitor_monitor_brief(p: TriggerPayload) -> str:
+    return (
+        "Monitor competitor sites for new articles in the user's niche.\n\n"
+        f"- userId: {p.userId}\n"
+        f"- niche: {p.topic}\n"
+        f"- competitorIds (subset to scan, empty = all active): {p.competitorIds}\n\n"
+        "Pull each competitor's RSS feed or sitemap, filter to articles "
+        "published in the last 14 days, classify each, and propose a "
+        "rebuttal angle for each. Skip articles already in competitor_articles. "
+        "Return a CompetitorMonitorReport JSON."
+    )
+
+
+def _compose_link_optimize_brief(p: TriggerPayload) -> str:
+    return (
+        "Find missed internal-linking opportunities across this user's article corpus.\n\n"
+        f"- userId: {p.userId}\n\n"
+        "Pull recent published articles, look for anchor candidates that should "
+        "link to other published articles (and don't yet). Score by relevance "
+        "(0..1, drop < 0.6). Save suggestions via save_link_suggestions. "
+        "Return a LinkOptimizationReport JSON."
+    )
+
+
+def _compose_schema_doctor_brief(p: TriggerPayload) -> str:
+    return (
+        "Audit and improve JSON-LD schema for an article.\n\n"
+        f"- userId: {p.userId}\n"
+        f"- articleId: {p.articleId}\n\n"
+        "Fetch the article and its current schema_json. Validate against schema.org "
+        "(Article + FAQPage + HowTo + Product as appropriate). Propose a recommended "
+        "schema. Save via save_schema_diagnosis. Return a SchemaDiagnosis JSON."
+    )
+
+
+def _compose_content_brief_brief(p: TriggerPayload) -> str:
+    return (
+        "Produce a detailed content brief BEFORE writing.\n\n"
+        f"- userId: {p.userId}\n"
+        f"- topic: {p.topic}\n"
+        f"- focusKeyword: {p.focusKeyword or p.topic}\n"
+        f"- tone: {p.tone or 'neutral'}\n"
+        f"- targetAudience: {p.targetAudience or 'general'}\n\n"
+        "Use SERP analysis + niche research to determine target word count, must-cover "
+        "entities, recommended source URLs, reader persona, intent, and a draft outline "
+        "hint. Save via save_content_brief. Return a ContentBriefArtifact JSON."
     )
