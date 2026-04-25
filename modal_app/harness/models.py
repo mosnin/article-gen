@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -33,6 +33,8 @@ class TriggerPayload(BaseModel):
         "cluster_plan",
         "social_snippet",
         "keyword_harvest",
+        "topic_research",
+        "research_and_write",
     ] = "article"
     topic: str
     focusKeyword: str | None = None
@@ -491,6 +493,48 @@ class WebhookEvent(BaseModel):
     durationMs: int | None = None
     statusUpdate: StatusUpdate | None = None
     at: str
+
+
+# ---------------------------------------------------------------------------
+# Topic proposals (TopicResearcher)
+# ---------------------------------------------------------------------------
+
+
+class TopicProposal(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    title: str = Field(min_length=10, max_length=180)
+    focusKeyword: str = Field(min_length=2, max_length=120)
+    angle: str = Field(min_length=20)
+    niche: str = Field(min_length=2)
+    relevanceScore: float = Field(ge=0.0, le=1.0)
+    evidenceUrls: list[str] = Field(min_length=3)
+    rationale: str = Field(min_length=30)
+    freshnessSignal: Literal[
+        "news_30d", "trending_search", "competitor_recent", "seasonal", "evergreen_gap"
+    ] = "evergreen_gap"
+    competitorGap: bool = False
+
+    @field_validator("evidenceUrls")
+    @classmethod
+    def must_be_urls(cls, v: list[str]) -> list[str]:
+        for url in v:
+            if not isinstance(url, str) or not url.startswith(("http://", "https://")):
+                raise ValueError(f"evidenceUrls must be http(s) URLs, got {url!r}")
+        return v
+
+
+class TopicProposalRejection(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    title: str
+    reasons: list[str]
+
+
+class TopicProposalSet(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    niche: str
+    proposals: list[TopicProposal] = Field(min_length=0, max_length=20)
+    rejected: list[TopicProposalRejection] = Field(default_factory=list)
+    rationale: str = ""
 
 
 # Resolve forward references (RefreshBrief.serp -> SerpAnalysis).

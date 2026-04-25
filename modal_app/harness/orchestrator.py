@@ -310,6 +310,12 @@ async def run(payload_dict: dict) -> dict:
         return await _run_single_subagent(
             ctx, "keyword_harvester", _compose_keyword_harvest_brief(payload)
         )
+    if k == "topic_research":
+        return await _run_single_subagent(
+            ctx, "topic_researcher", _compose_topic_research_brief(payload)
+        )
+    if k == "research_and_write":
+        return await _run_research_and_write(ctx)
     raise ValueError(f"unknown payload kind: {k!r}")
 
 
