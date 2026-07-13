@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { Suspense, useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
@@ -85,7 +85,7 @@ async function safeFetch(
   return { ok: true, data };
 }
 
-export default function Home() {
+function GeneratePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -2869,5 +2869,14 @@ export default function Home() {
         />
       )}
   </>
+  );
+}
+
+// useSearchParams() requires a Suspense boundary for static prerendering.
+export default function GeneratePage() {
+  return (
+    <Suspense fallback={null}>
+      <GeneratePageInner />
+    </Suspense>
   );
 }

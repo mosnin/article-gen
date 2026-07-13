@@ -12,8 +12,12 @@ import { getAdminClient } from "@/lib/supabase-admin";
  * burst manageable.
  */
 export const newsletterCron = inngest.createFunction(
-  { id: "newsletter-cron", name: "Weekly newsletter digest cron", retries: 1 },
-  { cron: "0 9 * * 1" },
+  {
+    id: "newsletter-cron",
+    name: "Weekly newsletter digest cron",
+    retries: 1,
+    triggers: [{ cron: "0 9 * * 1" }],
+  },
   async () => {
     const admin = getAdminClient();
     const cutoffIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();

@@ -7,8 +7,12 @@ import { getAdminClient } from "@/lib/supabase-admin";
  * user receives a single agent run carrying all their due snippet ids.
  */
 export const socialPublishCron = inngest.createFunction(
-  { id: "social-publish-cron", name: "Social publish cron", retries: 1 },
-  { cron: "*/15 * * * *" },
+  {
+    id: "social-publish-cron",
+    name: "Social publish cron",
+    retries: 1,
+    triggers: [{ cron: "*/15 * * * *" }],
+  },
   async () => {
     const admin = getAdminClient();
     const nowIso = new Date().toISOString();

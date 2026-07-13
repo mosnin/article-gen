@@ -19,8 +19,12 @@ async function postSlack(text: string, blocks?: unknown[]): Promise<void> {
 }
 
 export const agentRunsStuckAlert = inngest.createFunction(
-  { id: "agent-runs-stuck-alert", name: "Agent runs stuck alert", retries: 0 },
-  { cron: "*/15 * * * *" }, // every 15 min
+  {
+    id: "agent-runs-stuck-alert",
+    name: "Agent runs stuck alert",
+    retries: 0,
+    triggers: [{ cron: "*/15 * * * *" }], // every 15 min
+  },
   async () => {
     const admin = getAdminClient();
     const threshold = new Date(Date.now() - STUCK_AFTER_MINUTES * 60 * 1000).toISOString();

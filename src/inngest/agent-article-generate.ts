@@ -13,8 +13,8 @@ export const agentArticleGenerate = inngest.createFunction(
     name: "Agent: generate article",
     concurrency: { limit: 5 },
     retries: 2,
+    triggers: [{ event: "agent/article.generate" }],
   },
-  { event: "agent/article.generate" },
   async ({ event, step }) => {
     const input = event.data;
     if (!input?.userId || !input?.topic) {

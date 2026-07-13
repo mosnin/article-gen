@@ -6,8 +6,8 @@ export const generateAutopilotArticle = inngest.createFunction(
     name: "Generate Autopilot Article",
     concurrency: { limit: 3 },
     retries: 1,
+    triggers: [{ event: "autopilot/article.generate" }],
   },
-  { event: "autopilot/article.generate" },
   async ({ event }) => {
     const { userId, slotId, keyword, topic, contentType } = event.data;
 

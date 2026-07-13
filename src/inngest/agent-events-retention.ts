@@ -4,8 +4,12 @@ import { getAdminClient } from "@/lib/supabase-admin";
 const RETENTION_DAYS = 30;
 
 export const agentEventsRetention = inngest.createFunction(
-  { id: "agent-events-retention", name: "Agent events retention", retries: 1 },
-  { cron: "10 2 * * *" }, // 02:10 UTC daily
+  {
+    id: "agent-events-retention",
+    name: "Agent events retention",
+    retries: 1,
+    triggers: [{ cron: "10 2 * * *" }], // 02:10 UTC daily
+  },
   async ({ step }) => {
     const admin = getAdminClient();
     const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();

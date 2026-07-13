@@ -2,8 +2,12 @@ import { inngest } from "@/lib/inngest";
 import { getAdminClient } from "@/lib/supabase-admin";
 
 export const competitorMonitorCron = inngest.createFunction(
-  { id: "competitor-monitor-cron", name: "Competitor monitor cron", retries: 1 },
-  { cron: "30 3 * * *" },
+  {
+    id: "competitor-monitor-cron",
+    name: "Competitor monitor cron",
+    retries: 1,
+    triggers: [{ cron: "30 3 * * *" }],
+  },
   async () => {
     const admin = getAdminClient();
     const { data: rows } = await admin
