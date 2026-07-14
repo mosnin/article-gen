@@ -42,6 +42,8 @@ export const PLANS = {
 export type PlanKey = keyof typeof PLANS;
 
 export function getPlanByPriceId(priceId: string): PlanKey | null {
+  // The dedicated trial price converts onto the starter plan.
+  if (priceId && priceId === process.env.STRIPE_TRIAL_PRICE_ID) return "starter";
   for (const [key, plan] of Object.entries(PLANS)) {
     if (plan.priceId === priceId) return key as PlanKey;
   }

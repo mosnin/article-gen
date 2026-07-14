@@ -95,10 +95,26 @@ export async function POST(req: NextRequest) {
     const session = await getStripe().checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
-      line_items: [{ price: trialPriceId, quantity: 1 }],
+      line_items: [
+        { price: trialPriceId, quantity: 1 },
+        // The advertised "$1 to start" setup/verification fee — a one-time
+        // line item billed on the first invoice (i.e. at checkout, since the
+        // subscription itself is in its trial period).
+        {
+          price_data: {
+            currency: "usd",
+            unit_amount: 100,
+            product_data: { name: "Account verification fee (one-time)" },
+          },
+          quantity: 1,
+        },
+      ],
       subscription_data: {
         trial_period_days: 3,
-        metadata: { supabase_user_id: user.id, trial: "true" },
+        // plan:"starter" is what the webhook's checkout.session.completed /
+        // subscription handlers key off to provision credits — trials
+        // convert onto the starter plan.
+        metadata: { supabase_user_id: user.id, trial: "true", plan: "starter" },
       },
       payment_method_collection: "always",
       success_url: `${origin}/app/onboarding?trial=1`,
@@ -106,6 +122,7 @@ export async function POST(req: NextRequest) {
       metadata: {
         supabase_user_id: user.id,
         trial: "true",
+        plan: "starter",
       },
     });
 

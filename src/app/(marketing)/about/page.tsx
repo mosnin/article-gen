@@ -105,13 +105,13 @@ export default function AboutPage() {
               className="font-bold text-[#111827] mb-8"
               style={{ fontSize: "36px", lineHeight: "1.2" }}
             >
-              Try ArticleGen free for 14 days
+              Try ArticleGen for 3 days for $1
             </h2>
             <Link
               href="/trial"
               className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold text-[15px] px-8 py-3 rounded-lg transition-colors inline-block"
             >
-              Start Free Trial
+              Start Your Trial
             </Link>
           </BlurFade>
         </div>

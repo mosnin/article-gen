@@ -39,7 +39,7 @@ export function CtaBanner() {
                 borderWidth={1}
                 className="h-[52px] px-8 text-base font-semibold"
               >
-                Start Free Trial
+                Start Your Trial
               </StarButtonInner>
             </Link>
           </div>

@@ -15,7 +15,7 @@ export function FinalCtaSection() {
         </h2>
 
         <p className="text-[20px] text-[#6B7280] mt-3 text-center leading-[1.5]">
-          Start your free trial today. No credit card required.
+          Start your 3-day trial today for just $1. Cancel anytime.
         </p>
 
         <div className="mt-8 inline-flex">
@@ -26,7 +26,7 @@ export function FinalCtaSection() {
               borderWidth={1}
               className="h-[52px] px-8 text-base font-semibold"
             >
-              Start Free Trial
+              Start Your Trial
             </StarButtonInner>
           </Link>
         </div>

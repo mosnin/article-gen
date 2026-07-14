@@ -261,12 +261,12 @@ export function MarketingHeader() {
             Log in
           </Link>
 
-          {/* Start Free Trial — solid dark */}
+          {/* Start Your Trial — solid dark */}
           <Link
             href="/trial"
             className="px-4 py-1.5 text-sm font-semibold text-white bg-[#111827] hover:bg-[#1f2937] rounded-full transition-colors duration-200"
           >
-            Start Free Trial
+            Start Your Trial
           </Link>
         </div>
 
@@ -352,7 +352,7 @@ export function MarketingHeader() {
             onClick={() => setMobileOpen(false)}
             className="w-full text-center px-4 py-2.5 text-sm font-semibold text-white bg-[#111827] hover:bg-[#1f2937] rounded-full transition-colors duration-200"
           >
-            Start Free Trial
+            Start Your Trial
           </Link>
         </div>
       </div>

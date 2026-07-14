@@ -10,9 +10,9 @@ interface FaqItem {
 
 const faqs: FaqItem[] = [
   {
-    question: "How does the free trial work?",
+    question: "How does the trial work?",
     answer:
-      "Start your 14-day free trial with full access — no credit card required. After the trial, choose the plan that fits your team.",
+      "Start a 3-day trial with full access for a one-time $1 verification fee. Cancel before the trial ends and you pay nothing more; otherwise you continue on the Starter plan.",
   },
   {
     question: "What platforms can I publish to?",

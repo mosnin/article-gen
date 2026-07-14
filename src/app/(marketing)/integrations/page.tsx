@@ -215,7 +215,7 @@ export default function IntegrationsPage() {
                 href="/trial"
                 className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold text-[15px] px-6 py-3 rounded-lg transition-colors"
               >
-                Start Free Trial
+                Start Your Trial
               </Link>
               <a
                 href="mailto:hello@articlesauce.com"

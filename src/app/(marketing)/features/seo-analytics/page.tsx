@@ -185,13 +185,13 @@ export default function SeoAnalyticsPage() {
               Ready to start?
             </h2>
             <p className="text-[18px] text-[#6B7280] mt-2">
-              Start your free 14-day trial today.
+              Start your 3-day trial for $1 today.
             </p>
             <Link
               href="/trial"
               className="h-[52px] px-8 text-base font-semibold rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white mt-6 inline-flex items-center transition-colors"
             >
-              Start free trial
+              Start your trial
             </Link>
           </BlurFade>
         </div>

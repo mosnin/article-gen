@@ -22,7 +22,7 @@ const tiers: PricingTier[] = [
     price: 29,
     description: "Perfect for solo bloggers and small sites getting started with AI content.",
     features: [
-      "10 articles per month",
+      "50 credits per month",
       "All publishing integrations",
       "SEO scoring",
       "Basic analytics",
@@ -30,10 +30,10 @@ const tiers: PricingTier[] = [
   },
   {
     name: "Growth",
-    price: 79,
+    price: 50,
     description: "For growing content teams that need volume, quality, and automation.",
     features: [
-      "50 articles per month",
+      "120 credits per month",
       "Autopilot content scheduling",
       "GSC integration",
       "Topic clustering",
@@ -42,14 +42,14 @@ const tiers: PricingTier[] = [
     isPopular: true,
   },
   {
-    name: "Agency",
-    price: 199,
-    description: "For agencies and power users publishing at scale across multiple clients.",
+    name: "Pro",
+    price: 99,
+    description: "For agencies and power users publishing at scale.",
     features: [
-      "150 articles per month",
-      "Multiple workspaces",
-      "White-label reporting",
-      "API access",
+      "300 credits per month",
+      "Everything in Growth",
+      "Agent & MCP API access",
+      "Premium quality generation",
       "Dedicated support",
     ],
   },
@@ -58,16 +58,17 @@ const tiers: PricingTier[] = [
 const faqs = [
   {
     question: "Is there a free trial?",
-    answer: "Yes — all plans start with a 14-day free trial. No credit card required.",
+    answer:
+      "Yes — start with a 3-day trial for a one-time $1 verification fee. Cancel before the trial ends and you pay nothing more.",
   },
   {
     question: "Can I change plans?",
     answer: "Yes, upgrade or downgrade anytime. Billing is prorated automatically.",
   },
   {
-    question: "What counts as one article?",
+    question: "What counts as one credit?",
     answer:
-      "One article is one generation — typically 2,000–4,000 words with SEO metadata and schema.",
+      "One credit is one standard article generation — typically 2,000 words with SEO metadata and schema. Premium (4,000-word) generations use 3 credits, and adding AI images uses 1 extra credit.",
   },
 ];
 
@@ -149,7 +150,7 @@ export default function PricingPage() {
                           : "block w-full text-center border border-[#E5E7EB] bg-white hover:bg-[#F8F9FA] text-[#111827] font-semibold text-[15px] px-6 py-3 rounded-lg transition-colors"
                       }
                     >
-                      Start Free Trial
+                      Start Your Trial
                     </Link>
                     <ul className="mt-6 space-y-3">
                       {tier.features.map((feature) => (
@@ -199,13 +200,13 @@ export default function PricingPage() {
               className="font-bold text-[#111827] mb-8"
               style={{ fontSize: "36px", lineHeight: "1.2" }}
             >
-              Try ArticleGen free for 14 days
+              Try ArticleGen for 3 days for $1
             </h2>
             <Link
               href="/trial"
               className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold text-[15px] px-8 py-3 rounded-lg transition-colors inline-block"
             >
-              Start Free Trial
+              Start Your Trial
             </Link>
           </BlurFade>
         </div>
