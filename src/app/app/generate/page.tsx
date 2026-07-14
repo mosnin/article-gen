@@ -998,7 +998,7 @@ function GeneratePageInner() {
     }
   };
 
-  const settingsSaveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const settingsSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const updateAdvanced = (field: keyof AdvancedSettings, value: string) => {
     setAdvancedSettings((prev) => {
       const updated = { ...prev, [field]: value };
