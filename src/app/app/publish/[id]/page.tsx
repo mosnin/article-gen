@@ -10,7 +10,7 @@ import SnippetOptimizerPanel from "./SnippetOptimizerPanel";
 import { toast } from "sonner";
 import type { NLPScoreResult } from "@/lib/nlp-scorer";
 
-type Platform = "wordpress" | "shopify" | "medium" | "ghost" | "devto";
+type Platform = "wordpress" | "shopify" | "medium" | "ghost" | "devto" | "webhook";
 
 interface Category {
   id: number;
@@ -42,6 +42,7 @@ interface Article {
 }
 
 interface WpBlog { id: string; name: string; url: string; }
+interface WebhookEndpoint { id: string; name: string; url: string; secret?: string; format: "json" | "html" | "markdown"; }
 interface ShopifyAccount { id: string; name: string; shopDomain: string; }
 interface MediumAccount { id: string; name: string; }
 interface GhostBlog { id: string; name: string; url: string; }
@@ -61,6 +62,7 @@ const PLATFORMS: { id: Platform; label: string }[] = [
   { id: "medium", label: "Medium" },
   { id: "ghost", label: "Ghost" },
   { id: "devto", label: "Dev.to" },
+  { id: "webhook", label: "Webhook" },
 ];
 
 export default function PublishPage() {
@@ -108,6 +110,10 @@ export default function PublishPage() {
   // Dev.to state
   const [devtoAccounts, setDevtoAccounts] = useState<DevToAccount[]>([]);
   const [activeDevtoId, setActiveDevtoId] = useState("");
+
+  // Custom webhook state
+  const [webhookEndpoints, setWebhookEndpoints] = useState<WebhookEndpoint[]>([]);
+  const [activeWebhookId, setActiveWebhookId] = useState("");
   const [devtoPublished, setDevtoPublished] = useState(false);
   const [devtoCanonical, setDevtoCanonical] = useState("");
   const [tagInput, setTagInput] = useState("");
@@ -222,12 +228,20 @@ export default function PublishPage() {
         setDevtoAccounts(devto);
         if (devto[0]) setActiveDevtoId(devto[0].id);
 
+        // Custom webhooks
+        const hooks: WebhookEndpoint[] = Array.isArray(settings.webhook_endpoints)
+          ? (settings.webhook_endpoints as WebhookEndpoint[]).filter((w) => w.url)
+          : [];
+        setWebhookEndpoints(hooks);
+        if (hooks[0]) setActiveWebhookId(hooks[0].id);
+
         // Auto-select first available platform
         if (blogs.length > 0) setActivePlatform("wordpress");
         else if (shopify.length > 0) setActivePlatform("shopify");
         else if (medium.length > 0) setActivePlatform("medium");
         else if (ghost.length > 0) setActivePlatform("ghost");
         else if (devto.length > 0) setActivePlatform("devto");
+        else if (hooks.length > 0) setActivePlatform("webhook");
       }
     }
 
@@ -303,13 +317,19 @@ export default function PublishPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ articleId, blogId: activeGhostId || undefined, tags, status: ghostStatus }),
         });
-      } else {
-        // Dev.to
+      } else if (activePlatform === "devto") {
         const tags = tagInput.split(",").map((t) => t.trim()).filter(Boolean);
         res = await fetch("/api/devto/publish", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ articleId, accountId: activeDevtoId || undefined, tags, published: devtoPublished, canonicalUrl: devtoCanonical || undefined }),
+        });
+      } else {
+        // Custom webhook
+        res = await fetch("/api/webhook/publish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ articleId, webhookId: activeWebhookId || undefined }),
         });
       }
 
@@ -330,6 +350,7 @@ export default function PublishPage() {
   };
 
   const handleSchedule = async () => {
+    if (activePlatform === "webhook") { setError("Scheduled publishing is not available for custom webhooks yet — use Publish Now."); return; }
     if (!scheduleDateTime) { setError("Please select a date and time"); return; }
     setScheduling(true);
     setError("");
@@ -416,6 +437,8 @@ export default function PublishPage() {
           entry.accountId = activeDevtoId || undefined;
           const tags = tagInput.split(",").map((t) => t.trim()).filter(Boolean);
           entry.options = { published: devtoPublished, tags, canonicalUrl: devtoCanonical || undefined };
+        } else if (p === "webhook") {
+          entry.accountId = activeWebhookId || undefined;
         }
         return entry;
       });
@@ -544,6 +567,7 @@ export default function PublishPage() {
     medium: "Medium",
     ghost: "Ghost",
     devto: "Dev.to",
+    webhook: "Webhook",
   };
 
   const hasPlatform: Record<Platform, boolean> = {
@@ -552,6 +576,7 @@ export default function PublishPage() {
     medium: mediumAccounts.length > 0,
     ghost: ghostBlogs.length > 0,
     devto: devtoAccounts.length > 0,
+    webhook: webhookEndpoints.length > 0,
   };
 
   const hasAnyPlatform = Object.values(hasPlatform).some(Boolean);
@@ -1002,10 +1027,36 @@ export default function PublishPage() {
                       </>
                     )}
 
+                    {/* Custom webhook options */}
+                    {activePlatform === "webhook" && (
+                      <>
+                        {webhookEndpoints.length > 1 && (
+                          <div>
+                            <label style={labelStyle}>Endpoint</label>
+                            <select value={activeWebhookId} onChange={(e) => setActiveWebhookId(e.target.value)} style={{ ...inputStyle, fontWeight: 500 }}>
+                              {webhookEndpoints.map((w) => <option key={w.id} value={w.id}>{w.name || w.url}</option>)}
+                            </select>
+                          </div>
+                        )}
+                        {webhookEndpoints.length === 1 && (
+                          <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>Sending to <strong style={{ color: "var(--text-primary)", fontWeight: 600 }}>{webhookEndpoints[0].name || webhookEndpoints[0].url}</strong></p>
+                        )}
+                        {(() => {
+                          const wh = webhookEndpoints.find((w) => w.id === activeWebhookId) ?? webhookEndpoints[0];
+                          return wh ? (
+                            <p style={{ fontSize: 11, color: "var(--text-tertiary)", margin: 0, lineHeight: 1.5 }}>
+                              Sends the full article ({wh.format === "html" ? "HTML" : "Markdown"} content, metadata, keywords, images) as a JSON POST{wh.secret ? ", signed with your HMAC secret" : ""}. Manage endpoints in Settings &rarr; Integrations.
+                            </p>
+                          ) : null;
+                        })()}
+                      </>
+                    )}
+
                     {/* Divider */}
                     <div style={{ height: 1, background: "var(--border-default)", margin: "0 -2px" }} />
 
                     {/* Schedule mode toggle */}
+                    {activePlatform !== "webhook" && (
                     <div style={{ display: "flex", gap: 4, borderRadius: 8, background: "var(--surface-raised)", border: "1px solid var(--border-default)", padding: 3 }}>
                       <button onClick={() => { setScheduleMode(false); setError(""); setScheduleResult(null); }}
                         style={{ flex: 1, padding: "7px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: !scheduleMode ? "var(--surface-base)" : "transparent", color: !scheduleMode ? "var(--text-primary)" : "var(--text-secondary)", boxShadow: !scheduleMode ? "0 1px 3px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
@@ -1016,9 +1067,10 @@ export default function PublishPage() {
                         Schedule
                       </button>
                     </div>
+                    )}
 
                     {/* Schedule datetime picker */}
-                    {scheduleMode && (
+                    {scheduleMode && activePlatform !== "webhook" && (
                       <div>
                         <label style={labelStyle}>Publish Date &amp; Time</label>
                         <input
@@ -1051,7 +1103,7 @@ export default function PublishPage() {
                         style={{ width: "100%", padding: "11px 12px", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: (batchPublishing || selectedPlatforms.size === 0) ? 0.55 : 1, letterSpacing: "-0.01em" }}>
                         {batchPublishing ? "Publishing…" : `Publish to ${selectedPlatforms.size} Platform${selectedPlatforms.size !== 1 ? "s" : ""}`}
                       </button>
-                    ) : scheduleMode ? (
+                    ) : scheduleMode && activePlatform !== "webhook" ? (
                       <button onClick={handleSchedule} disabled={scheduling || !scheduleDateTime}
                         style={{ width: "100%", padding: "11px 12px", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: (scheduling || !scheduleDateTime) ? 0.55 : 1, letterSpacing: "-0.01em" }}>
                         {scheduling ? "Scheduling…" : `Schedule for ${platformLabel[activePlatform]}`}

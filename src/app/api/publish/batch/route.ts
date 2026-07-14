@@ -29,6 +29,7 @@ const PLATFORM_ENDPOINTS: Record<string, string> = {
   medium: "/api/medium/publish",
   ghost: "/api/ghost/publish",
   devto: "/api/devto/publish",
+  webhook: "/api/webhook/publish",
 };
 
 export async function POST(req: NextRequest) {
@@ -106,6 +107,8 @@ export async function POST(req: NextRequest) {
             entry.platform === "ghost"
           ) {
             platformBody.blogId = entry.accountId;
+          } else if (entry.platform === "webhook") {
+            platformBody.webhookId = entry.accountId;
           } else {
             platformBody.accountId = entry.accountId;
           }
