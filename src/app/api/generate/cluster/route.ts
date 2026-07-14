@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
 import { checkCredits, deductCredit } from "@/lib/credits";
+import { deduplicateWithinPlan } from "@/lib/content-dedup";
 import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
         {
           role: "system",
           content:
-            "You are an expert SEO content strategist specializing in topic cluster strategy and topical authority building. You design comprehensive content clusters that follow hub-and-spoke models for maximum SEO impact. You must respond with valid JSON only.",
+            "You are an expert SEO content strategist specializing in topic cluster strategy and topical authority building. You design comprehensive content clusters that follow hub-and-spoke models for maximum SEO impact. Never use em dashes (—) or en dashes (–) in any concept, keyword, or text you produce; use commas, colons, or parentheses instead. You must respond with valid JSON only.",
         },
         {
           role: "user",
@@ -104,6 +105,8 @@ REQUIREMENTS FOR CLUSTER ARTICLES:
 - Articles should cover different search intents: informational, how-to, comparison, best-of, troubleshooting, beginner guides, advanced tips
 - Together, the cluster articles should comprehensively cover all aspects of the pillar topic
 - No two cluster articles should target the same keyword or overlap significantly
+- Every concept must take a DISTINCT angle: no two concepts may share their main noun phrase, and no concept may be a reworded version of another or of the pillar topic
+- Every keyword must be unique across the set; keywords must not be simple plural/singular or reordered variants of each other (their derived URL slugs must all differ)
 - Include a mix of: beginner guides, how-to articles, comparisons, listicles, case studies, and deep dives
 - Each concept should be specific enough for a focused 2000-4000 word article
 - Order them logically: start with foundational/beginner content, then intermediate, then advanced/specialized
@@ -129,8 +132,21 @@ Generate exactly ${articleCount} cluster article ideas.`,
     const raw = completion.choices[0].message.content || "{}";
     const parsed = JSON.parse(raw);
 
+    // Programmatic uniqueness backstop: the prompt demands distinct angles
+    // and keywords, but models drift — drop any piece whose keyword or
+    // concept overlaps an earlier one too closely (Jaccard on word sets).
+    type ClusterIdea = { concept?: string; keyword?: string; relation?: string };
+    const ideas = ((parsed.clusterArticles as ClusterIdea[]) || []).filter(
+      (a) => a?.concept && a?.keyword,
+    );
+    const deduped = deduplicateWithinPlan(
+      ideas.map((a) => ({ ...a, topic: a.concept as string, keyword: a.keyword as string })),
+      0.6,
+    ).map(({ topic: _topic, ...rest }) => rest);
+
     return NextResponse.json({
-      clusterArticles: parsed.clusterArticles || [],
+      clusterArticles: deduped,
+      droppedAsDuplicates: ideas.length - deduped.length,
     });
   } catch (error: unknown) {
     logger.error("Failed to generate cluster", error);

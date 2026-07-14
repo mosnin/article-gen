@@ -350,7 +350,6 @@ export default function PublishPage() {
   };
 
   const handleSchedule = async () => {
-    if (activePlatform === "webhook") { setError("Scheduled publishing is not available for custom webhooks yet — use Publish Now."); return; }
     if (!scheduleDateTime) { setError("Please select a date and time"); return; }
     setScheduling(true);
     setError("");
@@ -372,10 +371,13 @@ export default function PublishPage() {
         accountId = activeGhostId || undefined;
         const tags = tagInput.split(",").map((t) => t.trim()).filter(Boolean);
         scheduledOptions = { status: ghostStatus, tags };
-      } else {
+      } else if (activePlatform === "devto") {
         accountId = activeDevtoId || undefined;
         const tags = tagInput.split(",").map((t) => t.trim()).filter(Boolean);
         scheduledOptions = { published: devtoPublished, tags, canonicalUrl: devtoCanonical || undefined };
+      } else {
+        // Custom webhook — delivered by the scheduled-publish sweep
+        accountId = activeWebhookId || undefined;
       }
 
       const res = await fetch("/api/articles/schedule", {
@@ -1056,7 +1058,6 @@ export default function PublishPage() {
                     <div style={{ height: 1, background: "var(--border-default)", margin: "0 -2px" }} />
 
                     {/* Schedule mode toggle */}
-                    {activePlatform !== "webhook" && (
                     <div style={{ display: "flex", gap: 4, borderRadius: 8, background: "var(--surface-raised)", border: "1px solid var(--border-default)", padding: 3 }}>
                       <button onClick={() => { setScheduleMode(false); setError(""); setScheduleResult(null); }}
                         style={{ flex: 1, padding: "7px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: !scheduleMode ? "var(--surface-base)" : "transparent", color: !scheduleMode ? "var(--text-primary)" : "var(--text-secondary)", boxShadow: !scheduleMode ? "0 1px 3px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s" }}>
@@ -1067,10 +1068,9 @@ export default function PublishPage() {
                         Schedule
                       </button>
                     </div>
-                    )}
 
                     {/* Schedule datetime picker */}
-                    {scheduleMode && activePlatform !== "webhook" && (
+                    {scheduleMode && (
                       <div>
                         <label style={labelStyle}>Publish Date &amp; Time</label>
                         <input
@@ -1103,7 +1103,7 @@ export default function PublishPage() {
                         style={{ width: "100%", padding: "11px 12px", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: (batchPublishing || selectedPlatforms.size === 0) ? 0.55 : 1, letterSpacing: "-0.01em" }}>
                         {batchPublishing ? "Publishing…" : `Publish to ${selectedPlatforms.size} Platform${selectedPlatforms.size !== 1 ? "s" : ""}`}
                       </button>
-                    ) : scheduleMode && activePlatform !== "webhook" ? (
+                    ) : scheduleMode ? (
                       <button onClick={handleSchedule} disabled={scheduling || !scheduleDateTime}
                         style={{ width: "100%", padding: "11px 12px", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: (scheduling || !scheduleDateTime) ? 0.55 : 1, letterSpacing: "-0.01em" }}>
                         {scheduling ? "Scheduling…" : `Schedule for ${platformLabel[activePlatform]}`}

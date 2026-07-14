@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
+import { stripAiDashes } from "@/lib/sanitize-content";
 import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
         {
           role: "system",
           content:
-            "You are an SEO expert specializing in content optimization. Generate highly optimized metadata for articles. You must respond with valid JSON only.",
+            "You are an SEO expert specializing in content optimization. Generate highly optimized metadata for articles. Never use em dashes (—) or en dashes (–) in titles, descriptions, or any text; use commas, colons, or parentheses instead. You must respond with valid JSON only.",
         },
         {
           role: "user",
@@ -100,6 +101,25 @@ The 5 keywords should be high-intent keywords related to the topic. They should 
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
 
+    // Slugs must be unique per user — cluster pieces with sibling keywords
+    // (e.g. "best running shoes" / "best running shoe") otherwise collide.
+    // Suffix -2, -3, … until free.
+    const ensureUniqueSlug = async (base: string): Promise<string> => {
+      const slugBase = base || defaultSlug || "article";
+      const { data: rows } = await supabase
+        .from("articles")
+        .select("slug")
+        .eq("user_id", user.id)
+        .like("slug", `${slugBase}%`)
+        .limit(200);
+      const taken = new Set((rows ?? []).map((r) => r.slug as string));
+      if (!taken.has(slugBase)) return slugBase;
+      for (let i = 2; i < 100; i++) {
+        if (!taken.has(`${slugBase}-${i}`)) return `${slugBase}-${i}`;
+      }
+      return `${slugBase}-${Date.now().toString(36)}`;
+    };
+
     let metadata: {
       title: string;
       metaDescription: string;
@@ -119,10 +139,11 @@ The 5 keywords should be high-intent keywords related to the topic. They should 
         .replace(/(^-|-$)/g, "");
 
       metadata = {
-        title: parsed.title || topic,
-        metaDescription:
+        title: stripAiDashes(parsed.title || topic),
+        metaDescription: stripAiDashes(
           parsed.metaDescription || `Learn everything about ${topic}`,
-        slug: keywordSlug,
+        ),
+        slug: await ensureUniqueSlug(keywordSlug),
         focusKeyword: resolvedKeyword,
         keywords: Array.isArray(parsed.keywords) ? parsed.keywords : [],
       };
@@ -135,7 +156,7 @@ The 5 keywords should be high-intent keywords related to the topic. They should 
       metadata = {
         title: topic,
         metaDescription: `Learn everything about ${topic}`,
-        slug: fallbackSlug,
+        slug: await ensureUniqueSlug(fallbackSlug),
         focusKeyword: fallbackKeyword,
         keywords: [],
       };

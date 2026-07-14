@@ -118,6 +118,7 @@ export default function CannibalizationPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [dispatching, setDispatching] = useState(false);
   const [niche, setNiche] = useState<string>("");
+  const [siteDomain, setSiteDomain] = useState<string>("");
 
   // Initial fetch
   useEffect(() => {
@@ -132,11 +133,15 @@ export default function CannibalizationPage() {
 
       const { data: settings } = await supabase
         .from("user_settings")
-        .select("niche")
+        .select("niche, domain")
         .eq("user_id", user.user.id)
         .maybeSingle();
-      const settingsNiche = ((settings as { niche?: string } | null)?.niche ?? "").toString();
-      if (!cancelled) setNiche(settingsNiche);
+      const settingsRow = settings as { niche?: string; domain?: string } | null;
+      if (!cancelled) {
+        setNiche((settingsRow?.niche ?? "").toString());
+        const rawDomain = (settingsRow?.domain ?? "").toString().trim().replace(/\/$/, "");
+        setSiteDomain(rawDomain && !/^https?:\/\//i.test(rawDomain) ? `https://${rawDomain}` : rawDomain);
+      }
 
       const { data } = await supabase
         .from("cannibalization_resolutions")
@@ -530,16 +535,20 @@ export default function CannibalizationPage() {
                         >
                           {primaryTitle}
                         </Link>
-                        {primarySlug && (
-                          <Link
-                            href={`/blog/${primarySlug}`}
+                        {primarySlug && (siteDomain ? (
+                          <a
+                            href={`${siteDomain}/blog/${primarySlug}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="rounded-full border border-[var(--border-default)] px-2 py-0.5 text-[10px] text-[var(--text-tertiary)] hover:bg-[var(--surface-sunken)]"
                           >
                             /blog/{primarySlug}
-                          </Link>
-                        )}
+                          </a>
+                        ) : (
+                          <span className="rounded-full border border-[var(--border-default)] px-2 py-0.5 text-[10px] text-[var(--text-tertiary)]">
+                            /blog/{primarySlug}
+                          </span>
+                        ))}
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -553,16 +562,20 @@ export default function CannibalizationPage() {
                         >
                           {secondaryTitle}
                         </Link>
-                        {secondarySlug && (
-                          <Link
-                            href={`/blog/${secondarySlug}`}
+                        {secondarySlug && (siteDomain ? (
+                          <a
+                            href={`${siteDomain}/blog/${secondarySlug}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="rounded-full border border-[var(--border-default)] px-2 py-0.5 text-[10px] text-[var(--text-tertiary)] hover:bg-[var(--surface-sunken)]"
                           >
                             /blog/{secondarySlug}
-                          </Link>
-                        )}
+                          </a>
+                        ) : (
+                          <span className="rounded-full border border-[var(--border-default)] px-2 py-0.5 text-[10px] text-[var(--text-tertiary)]">
+                            /blog/{secondarySlug}
+                          </span>
+                        ))}
                       </div>
 
                       <div className="flex items-center gap-3">

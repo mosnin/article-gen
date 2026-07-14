@@ -20,7 +20,6 @@ import { defineTool, jsonResult, errorResult } from "@/lib/mcp/context";
 import type { McpAuth } from "@/lib/mcp/auth";
 
 const PUBLISH_PLATFORMS = ["wordpress", "ghost", "medium", "shopify", "devto", "webhook"] as const;
-const SCHEDULABLE_PLATFORMS = ["wordpress", "ghost", "medium", "shopify", "devto"] as const;
 
 async function ownsArticle(userId: string, articleId: string): Promise<boolean> {
   const admin = getAdminClient();
@@ -121,7 +120,7 @@ export function registerPublishingTools(server: McpServer, auth: McpAuth) {
     scope: "publish",
     schema: {
       article_id: z.string().uuid(),
-      platform: z.enum(SCHEDULABLE_PLATFORMS),
+      platform: z.enum(PUBLISH_PLATFORMS),
       publish_at: z.string().datetime({ offset: true }).describe("RFC3339 timestamp, must be in the future"),
       connection_id: z.string().optional(),
       status: z.enum(["draft", "publish"]).optional(),

@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { createClient } from "@/lib/supabase-server";
 import { deductCredit } from "@/lib/credits";
 import { acquireGenerationSlot, releaseGenerationSlot } from "@/lib/rate-limit";
+import { stripAiDashes } from "@/lib/sanitize-content";
 import { logger } from "@/lib/logger";
 
 export const maxDuration = 60;
@@ -103,7 +104,7 @@ export async function POST(req: NextRequest) {
 TITLE: ${title}
 META DESCRIPTION: ${metaDescription}
 FOCUS KEYWORD: ${focusKeyword}
-ALL KEYWORDS (aim for combined 2% keyword density across all): ${(allKeywords as string[]).join(", ")}
+ALL KEYWORDS (work in naturally; keep focus keyword density around 0.8-1.5%, never stuffed): ${(allKeywords as string[]).join(", ")}
 
 RESEARCH CONTEXT:
 ${researchContext}
@@ -120,7 +121,7 @@ REQUIREMENTS:
 6. Include 3 outbound links to authoritative sources (use real, plausible URLs from the research)
 7. Include an FAQ section with at least 5 questions and answers as an H2
 8. Write a conclusion paragraph with a descriptive H2 heading that includes the focus keyword (DO NOT use the word "Conclusion")
-9. Maintain a combined 2% keyword density across all keywords: ${(allKeywords as string[]).join(", ")}
+9. Use the focus keyword in the H1, the first paragraph, and at least one H2; keep its density around 0.8-1.5% and weave the other keywords (${(allKeywords as string[]).join(", ")}) in naturally where they fit. Never sacrifice readability for keyword placement
 10. Use markdown formatting throughout (H1 #, H2 ##, H3 ###, bold, italic, lists, links)
 11. Write approximately ${wordCount} words - this is critical, do not write less
 12. Make the content engaging, informative, and actionable
@@ -256,7 +257,7 @@ Return format:
       }),
     ]);
 
-    const article = articleResult.choices[0].message.content || "";
+    const article = stripAiDashes(articleResult.choices[0].message.content || "");
 
     let imagePrompts: { type: string; prompt: string; altText: string }[] = [];
     try {

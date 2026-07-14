@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { cn } from "@/lib/utils";
@@ -111,7 +111,26 @@ function ConnectedBadge() {
 
 export default function IntegrationsPage() {
   const router = useRouter();
-  const [connected] = useState<Set<string>>(new Set());
+  const [connected, setConnected] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { settings?: Record<string, unknown> } | null) => {
+        const s = data?.settings;
+        if (!s) return;
+        const nonEmpty = (v: unknown) => Array.isArray(v) && v.length > 0;
+        const next = new Set<string>();
+        if (nonEmpty(s.wp_blogs)) next.add("wordpress");
+        if (nonEmpty(s.ghost_blogs)) next.add("ghost");
+        if (nonEmpty(s.shopify_accounts)) next.add("shopify");
+        if (nonEmpty(s.notion_connections)) next.add("notion");
+        if (nonEmpty(s.webflow_sites)) next.add("webflow");
+        if (nonEmpty(s.webhook_endpoints)) next.add("webhook");
+        setConnected(next);
+      })
+      .catch(() => {});
+  }, []);
 
   const integrations: Integration[] = [
     {

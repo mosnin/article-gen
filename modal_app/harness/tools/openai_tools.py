@@ -27,6 +27,17 @@ from modal_app.harness.tools.db import fetch_user_articles
 _client: openai.AsyncOpenAI | None = None
 
 
+def _strip_ai_dashes(text: str) -> str:
+    """Deterministic backstop for the no-em/en-dash rule: prompts forbid them
+    but models drift. Numeric ranges keep a plain hyphen; other dashes become
+    a comma pause."""
+    if not text:
+        return text
+    text = re.sub(r"(\d)\s*[–—]\s*(\d)", r"\1-\2", text)
+    text = re.sub(r"\s+[–—]\s+", ", ", text)
+    return re.sub(r"[–—]", ", ", text)
+
+
 def _oai() -> openai.AsyncOpenAI:
     global _client
     if _client is None:
@@ -70,7 +81,9 @@ async def generate_outline_json(
         "outline that ranks and serves the reader. Rules: exactly one H1 "
         "(level=1) as the first section, 5 to 10 H2 sections (level=2), and 0 "
         "to 3 H3 sections (level=3) immediately under each H2. Every section "
-        "must include concrete notes the writer can follow. Do not use em-dashes."
+        "must include concrete notes the writer can follow. Never use em-dashes "
+        "or en-dashes in headings or notes. Every heading must be unique within "
+        "the outline and phrased differently from the H1."
     )
     research_summary = json.dumps(research or {}, separators=(",", ":"))[:6000]
     user = (
@@ -105,13 +118,13 @@ async def generate_outline_json(
 async def generate_metadata_json(
     topic: str, keyword: str, article_md: str, tone: str
 ) -> Metadata:
-    """Produce SEO metadata: title 50-60 chars, kebab-case slug, meta 120-160 chars."""
+    """Produce SEO metadata: title 50-60 chars, kebab-case slug, meta 150-160 chars."""
     system = (
         "You are an SEO metadata specialist. Generate concise, high-CTR "
         "metadata. Strict constraints: title 50-60 characters, slug in "
         "kebab-case (lowercase, hyphen-separated, no punctuation), meta "
-        "description 120-160 characters. Include the focus keyword naturally "
-        "in the title and meta description. Do not use em-dashes."
+        "description 150-160 characters. Include the focus keyword naturally "
+        "in the title and meta description. Never use em-dashes or en-dashes."
     )
     excerpt = article_md[:6000]
     user = (
@@ -134,6 +147,8 @@ async def generate_metadata_json(
     parsed = resp.choices[0].message.parsed
     if parsed is None:
         raise RuntimeError("generate_metadata_json: model returned no parsed payload")
+    parsed.title = _strip_ai_dashes(parsed.title)
+    parsed.metaDescription = _strip_ai_dashes(parsed.metaDescription)
     return parsed
 
 
@@ -230,7 +245,7 @@ async def write_section(heading: str, notes: str, context: SectionContext) -> st
         temperature=0.7,
     )
     _record_resp_usage(resp, config.MODEL_WRITER)
-    return (resp.choices[0].message.content or "").strip()
+    return _strip_ai_dashes((resp.choices[0].message.content or "").strip())
 
 
 # ---------------------------------------------------------------------------

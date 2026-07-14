@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
   }));
 
   const prompt = `You are an expert SEO content strategist. Create a detailed content brief.
+Never use em dashes (—) or en dashes (–) anywhere in your output; use commas, colons, or parentheses instead.
 
 Keyword: "${keyword}"
 ${niche ? `Niche: ${niche}` : ""}
@@ -76,7 +77,7 @@ ${competitorSummary.map((c, i) => `${i + 1}. "${c.title}"\n   ${c.highlights}`).
 
 Generate a comprehensive content brief as JSON:
 {
-  "suggestedTitle": "compelling SEO title 50-70 chars",
+  "suggestedTitle": "compelling SEO title 50-60 chars including the keyword",
   "suggestedWordCount": number (beat competitors by 10-20%, min 1200),
   "targetAudience": "specific audience description",
   "contentAngle": "unique angle that differentiates from competitors",

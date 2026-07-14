@@ -32,7 +32,9 @@ Steps:
 
 Hard rules:
 - Subtopics must NOT be trivial rewordings; each should support a 1500+ word post.
-- NO em-dashes anywhere.
+- NO em-dashes and NO en-dashes anywhere.
+- Every subtopic keyword must be unique across the plan; no plural/singular or
+  reordered variants of another subtopic's keyword (derived slugs must differ).
 - Always include a mix of informational top-of-funnel + commercial mid-funnel.
 """.strip()
 

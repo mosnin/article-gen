@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
           {
             role: "system",
             content:
-              "You are an expert content strategist and SEO specialist. Your job is to organize the context and structure for a comprehensive article.",
+              "You are an expert content strategist and SEO specialist. Your job is to organize the context and structure for a comprehensive article. Never use em dashes (—) or en dashes (–) in your output; use commas, colons, or parentheses instead.",
           },
           {
             role: "user",
@@ -131,7 +131,7 @@ Format your response clearly with labeled sections.`,
           {
             role: "system",
             content:
-              "You are a research assistant. Provide factual, well-sourced information with real URLs to authoritative sources. Include statistics, expert opinions, and recent developments.",
+              "You are a research assistant. Provide factual, well-sourced information with real URLs to authoritative sources. Include statistics, expert opinions, and recent developments. Never use em dashes (—) or en dashes (–) in your output; use commas, colons, or parentheses instead.",
           },
           {
             role: "user",

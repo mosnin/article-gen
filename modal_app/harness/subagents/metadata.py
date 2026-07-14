@@ -48,7 +48,8 @@ publication-ready metadata:
   - title: 50-60 chars, must contain the focus keyword near the front.
   - slug: kebab-case, lowercase, no stopwords like "the" or "a" unless
     semantically necessary.
-  - metaDescription: 120-160 chars, enticing, includes the focus keyword.
+  - metaDescription: 150-160 chars, enticing, includes the focus keyword.
+  - Never use em-dashes or en-dashes in any field.
   - focusKeyword: echo the brief's focus keyword.
   - keywords: 6-10 related keyphrases for on-page SEO.
 

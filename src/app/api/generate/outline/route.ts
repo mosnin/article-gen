@@ -65,7 +65,9 @@ Return ONLY valid JSON matching this schema exactly:
     { "level": 3, "heading": "Subsection", "notes": "..." }
   ]
 }
-Use ${Math.round(wordCount / 200)} to ${Math.round(wordCount / 150)} H2/H3 headings appropriate for a ${wordCount}-word article.`;
+Use ${Math.round(wordCount / 200)} to ${Math.round(wordCount / 150)} H2/H3 headings appropriate for a ${wordCount}-word article.
+Never use em dashes (—) or en dashes (–) in the title, headings, or notes; use commas, colons, or parentheses instead.
+Every heading must be unique within the outline and phrased differently from the title.`;
 
     const userPrompt = `Topic: ${topic}
 Focus keyword: ${focusKeyword || topic}

@@ -46,7 +46,7 @@ Subagent roster (call via `invoke_subagent(name, brief)`):
 
 Strict writing rules (enforce via subagent briefs):
   - Output article_markdown with a single H1, H2/H3 nesting, 500-8000 words.
-  - NO em-dashes anywhere in the final article.
+  - NO em-dashes and NO en-dashes anywhere in the final article, titles, or metadata.
   - Focus keyword must appear in title, first paragraph, at least one H2,
     and with natural frequency throughout (~0.8-1.5% density).
   - Include internal linking suggestions where relevant (the writer has a

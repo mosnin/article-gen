@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
         {
           role: "system",
           content:
-            "You are an expert SEO content strategist who generates high-value article ideas for blogs. You identify topics with strong search intent and ranking potential. You must respond with valid JSON only.",
+            "You are an expert SEO content strategist who generates high-value article ideas for blogs. You identify topics with strong search intent and ranking potential. Never use em dashes (—) or en dashes (–) in concepts or keywords; use commas, colons, or parentheses instead. You must respond with valid JSON only.",
         },
         {
           role: "user",
