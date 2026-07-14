@@ -16,7 +16,7 @@ import type { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { getAdminClient } from "@/lib/supabase-admin";
 
-export const MCP_SCOPES = ["read", "generate", "publish", "connections", "write"] as const;
+export const MCP_SCOPES = ["read", "generate", "publish", "connections", "write", "storage"] as const;
 export type McpScope = (typeof MCP_SCOPES)[number];
 
 export const KEY_PREFIX = "agmcp_";

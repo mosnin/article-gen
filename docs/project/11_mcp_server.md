@@ -18,8 +18,9 @@ the credential.
 Claude Code):
 - Format `agmcp_<48 hex>`; only a SHA-256 hash is stored. The full key is
   shown once at creation and cannot be recovered — only revoked/replaced.
-- Per-key **scopes**: `read`, `generate`, `publish`, `connections`, `write`.
-  Every tool declares a required scope; calls without it are refused.
+- Per-key **scopes**: `read`, `generate`, `publish`, `connections`, `write`,
+  `storage`. Every tool declares a required scope; calls without it are
+  refused.
 - Optional expiry, instant revocation, `last_used_at` stamping, max 10
   active keys per user.
 - Legacy plaintext keys (pre-v2, `user_settings.mcp_api_key`) still
@@ -51,7 +52,7 @@ before storage. Users can read their own log via RLS.
 **Error containment.** Handlers never leak stack traces; failures return a
 clean one-line message and are recorded in the audit log.
 
-## Tool surface (30 tools)
+## Tool surface (35 tools)
 
 | Area | Tools | Scope |
 |---|---|---|
@@ -61,6 +62,7 @@ clean one-line message and are recorded in the audit log.
 | Connections | `list_connections`, `add_blog_connection`, `update_blog_connection`, `remove_blog_connection`, `test_connection` | connections / read |
 | Autopilot | `get_autopilot_plan`, `approve_autopilot_slot`, `approve_all_autopilot_slots`, `get_pending_articles` | read / write |
 | Analytics | `get_article_stats`, `get_content_audit`, `get_gsc_top_keywords` | read |
+| Storage (Wasabi) | `upload_content`, `get_upload_url`, `list_uploads`, `get_download_url`, `delete_upload` | storage / read |
 | SEO research | `analyze_serp`, `get_keyword_difficulty`, `bulk_keyword_difficulty`, `find_content_gaps` | read |
 | AI utilities | `generate_article_brief`, `generate_title_variations`, `generate_meta_description`, `suggest_internal_links` | generate |
 
@@ -71,6 +73,15 @@ Notes:
 - `run_agent_task` deliberately excludes internal/ops kinds
   (cost_optimize, prompt_drift_detect, user_segment, autopilot).
 - Article deletion is intentionally not exposed over MCP.
+- Storage tools are backed by Wasabi (S3-compatible, `WASABI_*` env vars).
+  Every object lives under the authenticated user's `users/<id>/uploads/`
+  prefix — keys are validated against the prefix on every operation, so a
+  key cannot escape its tenant. Transfers use short-lived presigned HTTPS
+  URLs (15 min upload / 60 min download); Wasabi encrypts objects at rest
+  with AES-256; direct uploads are capped at 10 MB (larger files go through
+  `get_upload_url`); file bodies are redacted from the audit log. Users have
+  the same storage at Settings-adjacent page `/app/uploads` ("Files" in the
+  sidebar), driven by `/api/storage/presign` and `/api/storage/objects`.
 
 ## Client setup
 

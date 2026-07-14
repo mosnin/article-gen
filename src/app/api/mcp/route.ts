@@ -10,6 +10,7 @@ import { registerGenerationTools } from "./generation-tools";
 import { registerSeoTools } from "./seo-tools";
 import { registerAnalyticsTools } from "./analytics-tools";
 import { registerAutopilotTools } from "./autopilot-tools";
+import { registerStorageTools } from "./storage-tools";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -30,6 +31,7 @@ function createServer(auth: McpAuth): McpServer {
   registerSeoTools(server, auth);
   registerAnalyticsTools(server, auth);
   registerAutopilotTools(server, auth);
+  registerStorageTools(server, auth);
   return server;
 }
 

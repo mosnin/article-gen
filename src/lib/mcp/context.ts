@@ -55,7 +55,9 @@ function checkRateLimit(auth: McpAuth, scope: McpScope): boolean {
 
 // ── Audit logging ────────────────────────────────────────────────────────────
 
-const SECRET_KEY_RE = /pass(word)?|token|secret|api.?key|credential|authorization/i;
+// Redact credentials AND bulk content payloads (uploaded file bodies don't
+// belong in the audit log).
+const SECRET_KEY_RE = /pass(word)?|token|secret|api.?key|credential|authorization|content_base64|content_text/i;
 const MAX_ARG_JSON = 2_000;
 
 export function redactArgs(args: unknown): unknown {
