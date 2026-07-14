@@ -1,52 +1,60 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase-server";
-import { getAdminClient } from "@/lib/supabase-admin";
+import { resolveMcpAuth, type McpAuth } from "@/lib/mcp/auth";
+import { registerContentTools } from "./content-tools";
+import { registerAgentTools } from "./agent-tools";
+import { registerPublishingTools } from "./publishing-tools";
+import { registerConnectionTools } from "./connection-tools";
 import { registerGenerationTools } from "./generation-tools";
 import { registerSeoTools } from "./seo-tools";
 import { registerAnalyticsTools } from "./analytics-tools";
 import { registerAutopilotTools } from "./autopilot-tools";
 
+export const runtime = "nodejs";
 export const maxDuration = 60;
 
-function createServer(): McpServer {
-  const server = new McpServer({ name: "article-gen", version: "1.0.0" });
-  registerSeoTools(server);
-  registerAnalyticsTools(server);
-  registerGenerationTools(server);
-  registerAutopilotTools(server);
+/**
+ * The server is created per request with the authenticated identity bound
+ * into every tool. Tools never accept a user id from the model; all data
+ * access is scoped to auth.userId, and each tool declares a required scope
+ * that is checked against the key's grants (see src/lib/mcp/context.ts).
+ */
+function createServer(auth: McpAuth): McpServer {
+  const server = new McpServer({ name: "article-gen", version: "2.0.0" });
+  registerContentTools(server, auth);
+  registerAgentTools(server, auth);
+  registerPublishingTools(server, auth);
+  registerConnectionTools(server, auth);
+  registerGenerationTools(server, auth);
+  registerSeoTools(server, auth);
+  registerAnalyticsTools(server, auth);
+  registerAutopilotTools(server, auth);
   return server;
 }
 
-async function resolveUser(req: NextRequest): Promise<string | null> {
-  // 1. Authorization: Bearer <token>  (Claude Code / external clients)
-  const authHeader = req.headers.get("authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice(7).trim();
-    const admin = getAdminClient();
-    const { data } = await admin
-      .from("user_settings")
-      .select("user_id")
-      .eq("mcp_api_key", token)
-      .single();
-    if (data?.user_id) return data.user_id;
+async function handleMcp(req: NextRequest): Promise<Response> {
+  // Transport security: in production, refuse plaintext HTTP so credentials
+  // and article data are always encrypted in transit. (Vercel/most proxies
+  // terminate TLS and set x-forwarded-proto.)
+  const proto = req.headers.get("x-forwarded-proto");
+  const hostname = req.nextUrl.hostname;
+  const isLoopback = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  if (process.env.NODE_ENV === "production" && !isLoopback && proto && proto !== "https") {
+    return new Response(JSON.stringify({ error: "HTTPS required" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
-  // 2. Supabase session cookie (browser / dashboard use)
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) return user.id;
-
-  return null;
-}
-
-async function handleMcp(req: NextRequest): Promise<Response> {
-  const userId = await resolveUser(req);
-  if (!userId) {
+  // Fail closed: any error during credential resolution (misconfigured
+  // backend, DB unavailable) reads as unauthorized rather than a 500 that
+  // could leak internals.
+  const auth = await resolveMcpAuth(req).catch(() => null);
+  if (!auth) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "WWW-Authenticate": "Bearer" },
     });
   }
 
@@ -54,7 +62,7 @@ async function handleMcp(req: NextRequest): Promise<Response> {
     sessionIdGenerator: undefined,
   });
 
-  const server = createServer();
+  const server = createServer(auth);
   await server.connect(transport);
   return transport.handleRequest(req);
 }

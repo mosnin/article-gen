@@ -4,7 +4,7 @@
       "type": "http",
       "url": "http://localhost:3000/api/mcp",
       "headers": {
-        "x-api-key": "${MCP_API_KEY}"
+        "Authorization": "Bearer ${MCP_API_KEY}"
       }
     }
   }

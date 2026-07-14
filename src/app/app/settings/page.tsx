@@ -161,7 +161,10 @@ export default function SettingsPage() {
   const [siteAbout, setSiteAbout] = useState("");
 
   // MCP
-  const [mcpApiKey, setMcpApiKey] = useState<string | null>(null);
+  type McpKeyMeta = { id: string; name: string; key_prefix: string; scopes: string[]; created_at: string; last_used_at: string | null; expires_at: string | null; revoked_at: string | null };
+  const [mcpKeys, setMcpKeys] = useState<McpKeyMeta[]>([]);
+  const [mcpNewToken, setMcpNewToken] = useState<string | null>(null);
+  const [mcpHasLegacyKey, setMcpHasLegacyKey] = useState(false);
   const [mcpLoading, setMcpLoading] = useState(false);
   const [mcpSetupOpen, setMcpSetupOpen] = useState(false);
 
@@ -220,23 +223,42 @@ export default function SettingsPage() {
 
   useEffect(() => { fetchSettings(); }, [fetchSettings]);
 
-  useEffect(() => {
+  const loadMcpKeys = useCallback(() => {
     fetch("/api/mcp/key")
       .then((r) => r.json())
-      .then((data: { apiKey?: string | null }) => setMcpApiKey(data.apiKey ?? null))
+      .then((data: { keys?: McpKeyMeta[]; hasLegacyKey?: boolean }) => {
+        setMcpKeys(data.keys ?? []);
+        setMcpHasLegacyKey(Boolean(data.hasLegacyKey));
+      })
       .catch(() => {});
   }, []);
+
+  useEffect(() => { loadMcpKeys(); }, [loadMcpKeys]);
 
   const generateMcpKey = async () => {
     setMcpLoading(true);
     try {
-      const res = await fetch("/api/mcp/key", { method: "POST" });
-      const data = await res.json() as { apiKey?: string };
+      const res = await fetch("/api/mcp/key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Claude Code" }),
+      });
+      const data = await res.json() as { apiKey?: string; error?: string };
       if (data.apiKey) {
-        setMcpApiKey(data.apiKey);
+        setMcpNewToken(data.apiKey);
+        setMcpSetupOpen(true);
+        loadMcpKeys();
       }
     } catch { /* ignore */ }
     finally { setMcpLoading(false); }
+  };
+
+  const revokeMcpKey = async (id: string) => {
+    if (!window.confirm("Revoke this key? Any agent using it will lose access immediately.")) return;
+    try {
+      await fetch(`/api/mcp/key?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      loadMcpKeys();
+    } catch { /* ignore */ }
   };
 
   const handleSave = async () => {
@@ -921,90 +943,107 @@ export default function SettingsPage() {
             <p style={{ fontSize: 13, color: "var(--muted)" }}>Use Article Gen directly from Claude Code — generate content, manage autopilot, and run SEO tools without leaving your terminal.</p>
           </div>
           <div style={cardStyle}>
-            {mcpApiKey ? (
-              <>
-                {/* Token — copy to use in Authorization header */}
-                <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--card-border)" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Your MCP Token</span>
-                    <button
-                      type="button"
-                      disabled={mcpLoading}
-                      onClick={() => { if (window.confirm("This will disconnect any existing Claude Code sessions. Continue?")) generateMcpKey(); }}
-                      style={{ fontSize: 11, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                      {mcpLoading ? "Rotating..." : "Rotate Token"}
-                    </button>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <code style={{ flex: 1, fontFamily: "monospace", fontSize: 13, padding: "10px 14px", borderRadius: 8, background: "var(--background)", border: "1px solid var(--card-border)", letterSpacing: "0.1em", color: "var(--muted)" }}>
-                      {"•".repeat(36)}
-                    </code>
-                    <button
-                      type="button"
-                      onClick={() => navigator.clipboard.writeText(mcpApiKey)}
-                      style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>
-                      Copy Token
-                    </button>
-                  </div>
-                  <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>This token is unique to your account. Never share it or put it in a URL.</p>
-                </div>
+            {mcpHasLegacyKey && (
+              <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--card-border)", fontSize: 12, color: "var(--warning, #b45309)" }}>
+                You have a legacy MCP token stored in a recoverable format. Create a new key below — the legacy token is disabled automatically and the new key is stored hashed (unrecoverable).
+              </div>
+            )}
 
-                {/* .mcp.json snippet */}
-                <div style={{ padding: "16px 20px" }}>
+            {/* One-time token reveal */}
+            {mcpNewToken && (
+              <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--card-border)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>New key — copy it now</span>
+                  <button type="button" onClick={() => setMcpNewToken(null)}
+                    style={{ fontSize: 11, color: "var(--muted)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                    Dismiss
+                  </button>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <code style={{ flex: 1, fontFamily: "monospace", fontSize: 12, padding: "10px 14px", borderRadius: 8, background: "var(--background)", border: "1px solid var(--card-border)", overflow: "auto", whiteSpace: "nowrap" }}>
+                    {mcpNewToken}
+                  </code>
                   <button
                     type="button"
-                    onClick={() => setMcpSetupOpen((v) => !v)}
-                    style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                      style={{ transform: mcpSetupOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                    How to connect Claude Code
+                    onClick={() => navigator.clipboard.writeText(mcpNewToken)}
+                    style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>
+                    Copy Key
                   </button>
-                  {mcpSetupOpen && (
-                    <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-                      <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
-                        Add this to your project&apos;s <code style={{ fontFamily: "monospace", fontSize: 11 }}>.mcp.json</code>, replacing <code style={{ fontFamily: "monospace", fontSize: 11 }}>YOUR_TOKEN</code> with the token you copied above:
-                      </p>
-                      <div style={{ position: "relative" }}>
-                        <pre style={{ fontFamily: "monospace", fontSize: 12, padding: "14px 16px", borderRadius: 8, background: "var(--background)", border: "1px solid var(--card-border)", overflow: "auto", margin: 0 }}>{`{
-  "mcpServers": {
-    "article-gen": {
-      "url": "${typeof window !== "undefined" ? window.location.origin.replace(/^http:/, "https:") : "https://YOUR_DOMAIN"}/api/mcp",
-      "headers": {
-        "Authorization": "Bearer YOUR_TOKEN"
-      }
-    }
-  }
-}`}</pre>
-                        <button
-                          type="button"
-                          onClick={() => navigator.clipboard.writeText(`{\n  "mcpServers": {\n    "article-gen": {\n      "url": "${typeof window !== "undefined" ? window.location.origin.replace(/^http:/, "https:") : "https://YOUR_DOMAIN"}/api/mcp",\n      "headers": {\n        "Authorization": "Bearer ${mcpApiKey}"\n      }\n    }\n  }\n}`)}
-                          style={{ position: "absolute", top: 8, right: 8, padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: "var(--card)", border: "1px solid var(--card-border)", cursor: "pointer" }}>
-                          Copy
-                        </button>
-                      </div>
-                      <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>The token is sent as an HTTP header — it never appears in URLs or server logs.</p>
-                    </div>
-                  )}
                 </div>
-              </>
-            ) : (
-              <div style={{ padding: "24px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12, textAlign: "center" }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Connect Claude Code</p>
-                  <p style={{ fontSize: 12, color: "var(--muted)" }}>Generate your personal MCP token to start using Article Gen from Claude Code.</p>
-                </div>
+                <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>This is the only time the key is shown — it is stored hashed and cannot be recovered. Never share it or put it in a URL.</p>
+              </div>
+            )}
+
+            {/* Key list */}
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--card-border)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: mcpKeys.length > 0 ? 10 : 0 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>API Keys</span>
                 <button
                   type="button"
                   disabled={mcpLoading}
                   onClick={generateMcpKey}
-                  style={{ padding: "9px 20px", borderRadius: 8, fontSize: 14, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: mcpLoading ? 0.6 : 1 }}>
-                  {mcpLoading ? "Setting up..." : "Activate Claude Code"}
+                  style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "var(--accent)", color: "#fff", border: "none", cursor: "pointer", opacity: mcpLoading ? 0.6 : 1 }}>
+                  {mcpLoading ? "Creating..." : "+ Create Key"}
                 </button>
               </div>
-            )}
+              {mcpKeys.filter((k) => !k.revoked_at).length === 0 && !mcpNewToken && (
+                <p style={{ fontSize: 12, color: "var(--muted)", margin: "8px 0 0" }}>No keys yet. Create one to let Claude Code or other agents manage your content, connections, and publishing.</p>
+              )}
+              {mcpKeys.filter((k) => !k.revoked_at).map((k) => (
+                <div key={k.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: "1px solid var(--card-border)", fontSize: 12 }}>
+                  <code style={{ fontFamily: "monospace", color: "var(--muted)" }}>{k.key_prefix}…</code>
+                  <span style={{ fontWeight: 600 }}>{k.name}</span>
+                  <span style={{ color: "var(--muted)" }}>{(k.scopes ?? []).join(", ")}</span>
+                  <span style={{ color: "var(--muted)", marginLeft: "auto" }}>
+                    {k.last_used_at ? `used ${new Date(k.last_used_at).toLocaleDateString()}` : "never used"}
+                  </span>
+                  <button type="button" onClick={() => revokeMcpKey(k.id)}
+                    style={{ fontSize: 11, color: "var(--error, #dc2626)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                    Revoke
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* .mcp.json snippet */}
+            <div style={{ padding: "16px 20px" }}>
+              <button
+                type="button"
+                onClick={() => setMcpSetupOpen((v) => !v)}
+                style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ transform: mcpSetupOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+                How to connect Claude Code
+              </button>
+              {mcpSetupOpen && (
+                <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                  <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
+                    Add this to your project&apos;s <code style={{ fontFamily: "monospace", fontSize: 11 }}>.mcp.json</code>, replacing <code style={{ fontFamily: "monospace", fontSize: 11 }}>YOUR_KEY</code> with the key you copied above:
+                  </p>
+                  <div style={{ position: "relative" }}>
+                    <pre style={{ fontFamily: "monospace", fontSize: 12, padding: "14px 16px", borderRadius: 8, background: "var(--background)", border: "1px solid var(--card-border)", overflow: "auto", margin: 0 }}>{`{
+  "mcpServers": {
+    "article-gen": {
+      "url": "${typeof window !== "undefined" ? window.location.origin.replace(/^http:/, "https:") : "https://YOUR_DOMAIN"}/api/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_KEY"
+      }
+    }
+  }
+}`}</pre>
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(`{\n  "mcpServers": {\n    "article-gen": {\n      "url": "${typeof window !== "undefined" ? window.location.origin.replace(/^http:/, "https:") : "https://YOUR_DOMAIN"}/api/mcp",\n      "headers": {\n        "Authorization": "Bearer ${mcpNewToken ?? "YOUR_KEY"}"\n      }\n    }\n  }\n}`)}
+                      style={{ position: "absolute", top: 8, right: 8, padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: "var(--card)", border: "1px solid var(--card-border)", cursor: "pointer" }}>
+                      Copy
+                    </button>
+                  </div>
+                  <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>Keys are sent as an HTTP header over HTTPS only — they never appear in URLs or server logs, and only a hash is stored server-side.</p>
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
